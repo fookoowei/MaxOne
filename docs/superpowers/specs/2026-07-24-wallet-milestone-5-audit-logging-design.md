@@ -200,8 +200,15 @@ Middleware  →  als.run({ ip, userAgent }, next)
                    └─ Guards → Controller → Service → AuditService reads the store
 ```
 
-New `AuditContextMiddleware` (in `AuditModule`), applied globally in `AppModule` via
-`configure(consumer)`.
+A plain **functional Express middleware** (`auditContextMiddleware`), registered globally in
+`main.ts` with `app.use(...)`.
+
+Functional rather than a DI-injected `NestMiddleware` class because it has no dependencies — it
+only writes to a module-level `AsyncLocalStorage` instance, so DI would be ceremony (the same
+reasoning that makes `toSafeUser` a plain function). Registered in `main.ts` rather than via
+`AppModule.configure(consumer)` because NestJS 11 ships **Express 5**, whose path-to-regexp v8
+rejects the bare `forRoutes('*')` wildcard; `app.use()` sidesteps that entirely and applies to
+every route including future ones.
 
 ### 6.1 Why middleware rather than an interceptor
 
@@ -247,7 +254,7 @@ backend/src/audit/
 ├── audit.service.ts          # log() + findMany(); sole owner of prisma.auditLog
 ├── audit.controller.ts       # GET /audit-logs, audit.view gated
 ├── audit.context.ts          # AsyncLocalStorage instance + typed helpers
-├── audit.middleware.ts       # captures ip/userAgent into the store
+├── audit.middleware.ts       # functional middleware: captures ip/userAgent into the store
 ├── audit.actions.ts          # the closed union of action values
 └── audit.module.ts           # provides + exports AuditService
 ```
