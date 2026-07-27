@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RolesService } from './roles.service';
 import { toSafeUser } from './to-safe-user';
 import type { AuthUser } from '../auth/jwt.strategy';
+import { AuditService } from '../audit/audit.service';
 
 export interface CreateUserData {
   email: string;
@@ -17,6 +18,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly roles: RolesService,
+    private readonly audit: AuditService,
   ) {}
 
   create(data: CreateUserData) {
@@ -73,13 +75,29 @@ export class UsersService {
     // Self-lockout guard: suspending yourself is never intentional.
     if (id === actor.id) throw new ForbiddenException('You cannot change your own status');
 
-    await this.findById(id); // 404 if the target doesn't exist
-    const user = await this.prisma.user.update({
-      where: { id },
-      data: { status },
-      include: { role: { select: { id: true, name: true } } },
+    // 404 if the target doesn't exist — and the result is the "before" state for the audit
+    // entry, which this method previously threw away.
+    const before = await this.findById(id);
+
+    // Transaction so the change and its audit entry land together or not at all.
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id },
+        data: { status },
+        include: { role: { select: { id: true, name: true } } },
+      });
+
+      await this.audit.log(tx, {
+        actorUserId: actor.id,
+        action: 'user.status_change',
+        entityType: 'user',
+        entityId: id,
+        oldValue: { status: before.status },
+        newValue: { status },
+      });
+
+      return toSafeUser(user);
     });
-    return toSafeUser(user);
   }
 
   async updateRole(id: string, roleName: string, actor: AuthUser) {
@@ -96,12 +114,27 @@ export class UsersService {
     const role = await this.roles.findByName(roleName);
     if (!role) throw new NotFoundException(`Unknown role: ${roleName}`);
 
-    await this.findById(id); // 404 if the target doesn't exist
-    const user = await this.prisma.user.update({
-      where: { id },
-      data: { roleId: role.id },
-      include: { role: { select: { id: true, name: true } } },
+    const before = await this.findById(id); // 404 if the target doesn't exist
+
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id },
+        data: { roleId: role.id },
+        include: { role: { select: { id: true, name: true } } },
+      });
+
+      // Delegation (an admin granting `finance`) is allowed by design — this entry is the
+      // control that makes it accountable. Names, not ids, so the log reads without a join.
+      await this.audit.log(tx, {
+        actorUserId: actor.id,
+        action: 'user.role_change',
+        entityType: 'user',
+        entityId: id,
+        oldValue: { role: before.role.name },
+        newValue: { role: role.name },
+      });
+
+      return toSafeUser(user);
     });
-    return toSafeUser(user);
   }
 }
