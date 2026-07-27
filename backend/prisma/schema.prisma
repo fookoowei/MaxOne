@@ -95,3 +95,27 @@ model Transaction {
   @@index([status])
   @@index([transferId])
 }
+
+// Append-only record of who did what. Written INSIDE the same transaction as the change it
+// describes, so a state change can never exist without its audit entry.
+model AuditLog {
+  id          String   @id @default(uuid())
+  // Plain String, deliberately NOT a foreign key: an FK would force either ON DELETE RESTRICT
+  // (a user who ever acted can never be deleted) or ON DELETE CASCADE (deleting a user erases
+  // their audit trail — exactly what an audit log exists to prevent). Audit outlives its subject.
+  actorUserId String
+  action      String   // closed set, see src/audit/audit.actions.ts
+  entityType  String   // "transaction" | "wallet" | "user"
+  entityId    String
+  // Changed fields ONLY, never full rows: User rows carry passwordHash, and this table is
+  // readable by every audit.view holder.
+  oldValue    Json?
+  newValue    Json?
+  ipAddress   String?  // captured at the HTTP edge; null outside a request
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([actorUserId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
