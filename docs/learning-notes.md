@@ -897,3 +897,127 @@ This is the same instinct as `WalletsModule` being the only place that touches `
 - **Wall off what will change** — a single-owner seam for the external call turns "swap the FX provider" into a one-file edit.
 
 **Deferred (noted, not built):** FX fees/spread + a treasury revenue account (post-M7); rate caching/TTL; keyed providers and historical rates; multi-hop conversion; quote-then-confirm; reversals/disputes; recipient lookup by email; transfer limits / velocity / fraud rules; the integration-test harness against a real test DB; pagination on wallet history; KYC gating (optional, unscheduled).
+
+---
+
+# Milestone 5 — audit logging
+
+## The system spine, completed: who may → what changed → and the proof it happened
+
+By the end of M5 every sensitive action runs the same three-stage gauntlet:
+
+1. **RBAC check** (M3) — *may this actor do this at all?* A guard reads the DB and answers 401/403.
+2. **State change** (M4) — the balance moves, the status flips, the role changes, inside a `$transaction`.
+3. **Audit entry** (M5) — a permanent record of *who did what, to which entity, from where, and what changed* — written **inside the very same transaction** as step 2.
+
+The whole milestone hinges on steps 2 and 3 being **one atomic unit**. If the change could commit without its audit entry (or vice-versa), the log would have holes exactly where something interesting happened — useless for an incident, and exploitable by a malicious insider. Binding them in one transaction makes "a state change with no audit trail" not *unlikely* but **impossible**, enforced by the database rather than by hoping the process doesn't crash at the wrong microsecond.
+
+## Two meanings of "transaction" — a noun and a wrapper, unrelated
+
+The word is badly overloaded in this codebase. They have **nothing** to do with each other:
+
+| | `Transaction` (the table) | `$transaction` (the mechanism) |
+|---|---|---|
+| What it is | A **noun** — the money ledger. One row per deposit/withdrawal/transfer. | A **wrapper** — the ACID tool. Writes nothing of its own. |
+| Where | A `model` in `schema.prisma` | `prisma.$transaction(async (tx) => …)` |
+| Job | *Store* what happened to money | *Make a group of writes atomic* — all commit or none |
+
+A `$transaction` is **table-agnostic** — it can wrap writes to *any* table(s). Proof: `updateStatus`/`updateRole` open a `$transaction` that touches only the **`User`** and **`AuditLog`** tables and never goes near the `Transaction` ledger. The money ops write ledger rows *because they're about money*, not because a transaction requires it. Rename the ledger table tomorrow and every `$transaction` keeps working — the shared word is the only thing connecting them, and that connection is an illusion.
+
+## Why the audit write goes INSIDE the transaction — while M4c's rate fetch stayed OUTSIDE
+
+These look contradictory ("keep slow work out of transactions" vs "put the audit write in") but they're the **same rule** applied honestly. The rule was never *"keep transactions empty."* It is: **keep transactions free of *slow and external* work.**
+
+- **M4c's FX rate fetch** — an HTTP call to another company's server. Slow (network), and it can hang or fail. Holding two wallet **locks** across it risks starving the connection pool and cascading into deadlock. So it runs *before* the transaction opens, fail-closed.
+- **M5's audit write** — a local `INSERT` on a connection the transaction *already holds*. It costs microseconds and touches only our own database. There's nothing to wait on. It **belongs** inside, because that's the only place it can be atomic with the change.
+
+Fast + local ⇒ inside. Slow + external ⇒ outside. One principle, two answers.
+
+## How atomicity *forced* the mechanism (why not an interceptor?)
+
+The requirement "the audit entry must be atomic with the change" isn't just a nice property — it **dictated** how audit had to be built, and ruled out the tidier-looking option.
+
+A NestJS **interceptor** wraps the route handler, with an "after" half that runs once the handler returns. But the handler is where `$transaction` opens *and commits*. So:
+
+```
+Interceptor (before)
+  └─ Controller.approve()
+       └─ WalletsService.approve()
+            └─ $transaction( balance write )   ← opens AND COMMITS here
+Interceptor (after)  ← runs now — the transaction is already gone
+```
+
+An interceptor-written audit row could only ever land **after** the commit — reopening the exact crash window we set out to close. So the audit write had to be an **explicit `AuditService.log(tx, …)`** call, *inside* the service, handed the live transaction client. Not chosen for elegance — forced by atomicity. Every call site has a unit test asserting the first argument is the transaction client (`expect(client).toBe(txDouble)`) and that the root `prisma` client is never used — the guarantee, encoded as a test.
+
+## AsyncLocalStorage — capturing `ip`/`userAgent` without poisoning the service layer
+
+The audit entry wants the caller's IP and user-agent. But those live on the HTTP `Request`, and a service (`WalletsService`, `UsersService`) has no business knowing it was even called over HTTP — it should work identically from a job or a script. Threading `req` down through every method would be exactly that poison.
+
+**AsyncLocalStorage** (Node's `async_hooks`) solves it: request-scoped storage that *follows the async call chain* automatically. A tiny middleware at the HTTP edge stuffs `{ ipAddress, userAgent }` into the store; `AuditService.log`, deep in the stack, reads it back — and nothing in between has to pass it along. (Same mechanism behind correlation IDs and distributed tracing.)
+
+**Why middleware hosts it, not an interceptor.** The store is only alive *inside* `als.run(store, () => …)`. Middleware is a plain callback — it calls `next()` **synchronously inside** `run()`, so everything downstream (guards, controller, service, Prisma) executes within the context. An interceptor returns an **Observable** whose handler only runs when Nest *subscribes* — after `run()` has already exited — so the store would be silently empty. Live-proved: the adjustment audit row came back with `ipAddress: "::1"`.
+
+An empty store is **not an error** — outside any request, `getAuditContext()` returns `{ ipAddress: null, userAgent: null }`. A null IP beats a failed money movement.
+
+## Changed fields only — "impossible by construction" beats "remember to strip it"
+
+`oldValue`/`newValue` store *only the fields that changed* — `{ status: "pending" }`, `{ balance: 42500 }` — never a whole row. The reason is concrete: `User` rows carry `passwordHash`, and the `AuditLog` table is readable by every `audit.view` holder. Snapshotting a full user row would copy the credential hash straight into an admin-readable table.
+
+The design principle: don't rely on a reviewer *remembering* to strip secrets. Shape the code so the secret **cannot arrive in the first place** — you can only reach the sensitive field by explicitly naming a safe one. Verified by grep: every `oldValue`/`newValue` in the codebase is a field-level literal.
+
+## No foreign key on `actorUserId` — an audit record must outlive its subject
+
+`actorUserId` is a plain `String`, deliberately **not** an FK to `User`. An FK forces one of two bad choices:
+
+- `ON DELETE RESTRICT` — you could *never delete a user who ever acted*. The audit log would hold the whole user table hostage forever.
+- `ON DELETE CASCADE` — deleting a user would **erase their audit trail** — precisely the evidence an audit log exists to preserve.
+
+An audit record has to survive its subject. So we drop the referential link and keep the id as data. (Same YAGNI-plus-independence reasoning as the ledger's `requestedBy`.)
+
+## The circular dependency that only a real boot revealed
+
+`UsersModule` imports `AuditModule` (services write audit rows); `AuditModule` imports `UsersModule` (the `/audit-logs` guard reads permissions via `UsersService`). At boot NestJS must fully build each module before anyone imports it — so each waits on the other and deadlocks: *"Circular dependency… Scope [AppModule → UsersModule]."*
+
+Crucially, **all 84 unit tests passed and `tsc` was silent** — because each test builds its own isolated module and never exercises the full DI graph. Only *booting the app* surfaced it. Lesson: green unit tests are not proof the application runs. The fix is `forwardRef(() => OtherModule)` on **both** sides — an arrow-function wrapper that tells Nest "resolve this *later*, once both exist." Both edges of the cycle must defer, or the eager side still hits an `undefined`.
+
+## Deliberate non-goals in M5 (and why)
+
+- **Authentication events** (login/logout/refresh) — the schema already supports them; adding them is purely more call sites, deferred to keep M5 about the *mechanism*.
+- **Tamper-evidence via hash-chaining** — each row hashing `(its content + previous row's hash)` so altering history is provable. The genuinely interesting hardening; the natural companion to append-only; parked for a post-M7 enhancement.
+- **Retention / archival** policies and **DB-level append-only enforcement** (a Postgres trigger that raises on `UPDATE`/`DELETE`) — application-level discipline (no update/delete methods) covers M5; the DB-enforced version is a later hardening.
+
+## 🔑 Milestone 5 recap — audit logging, end to end
+
+**One new endpoint** — the read side; the write side is invisible, woven into the six actions that already existed:
+
+| Method | Path | Gate | Behaviour |
+|---|---|---|---|
+| `GET` | `/audit-logs` | authenticated + **`audit.view`** (staff only) | filtered, paginated history (filters AND-combined; `take` capped at 100), newest first |
+
+**The six audited actions and what each records:**
+
+| Action | Fired by | `oldValue` → `newValue` |
+|---|---|---|
+| `deposit.approve` / `withdrawal.approve` | `WalletsService.approve` | `{status: pending}` → `{status: approved, balanceAfter}` |
+| `deposit.reject` / `withdrawal.reject` | `WalletsService.reject` | `{status: pending}` → `{status: rejected, note}` |
+| `wallet.adjust` | `WalletsService.adjust` | `{balance}` → `{balance, direction, amount, note}` |
+| `wallet.transfer` | `WalletsService.transfer` | `{balance}` → `{balance, toWalletId, amount, credit, exchangeRate}` (one row, anchored to the **source**) |
+| `user.status_change` | `UsersService.updateStatus` | `{status}` → `{status}` |
+| `user.role_change` | `UsersService.updateRole` | `{role: name}` → `{role: name}` (**names, not uuids**) |
+
+**The write path (every action):**
+
+1. **The edge captures context** — middleware puts `{ ipAddress, userAgent }` into AsyncLocalStorage.
+2. **The service changes state** inside a `$transaction` — four money ops already had one; `updateStatus`/`updateRole` gained one *specifically* so their audit entry could be atomic.
+3. **`this.audit.log(tx, entry)`** writes the audit row on that **same** `tx`, reading ip/userAgent from the store.
+4. **Both commit or neither does.** A failure rolls back the change *and* its audit entry together — live-proved: a rejected adjustment (`400`) left the audit-row count unchanged.
+
+**Interview-ready principles (new in 5):**
+- **Atomicity is a design constraint, not a decoration** — it dictated the mechanism (explicit `log(tx)`, not an interceptor) and the module wiring.
+- **"Fast + local ⇒ inside the transaction; slow + external ⇒ outside"** — one rule reconciles M5's audit write with M4c's FX fetch.
+- **Keep the service transport-agnostic** — AsyncLocalStorage carries request metadata so the domain layer never sees `req`.
+- **Make leaks impossible by construction** — changed-fields-only means `passwordHash` can't reach the log, no vigilance required.
+- **An audit record outlives its subject** — hence no FK on `actorUserId`.
+- **Green unit tests ≠ a running app** — the DI cycle proved only a real boot exercises the full wiring.
+
+**Deferred (noted, not built):** authentication events; hash-chaining/tamper-evidence (post-M7); retention/archival; DB-level append-only via a Postgres trigger; per-actor rate limiting on the read endpoint.
