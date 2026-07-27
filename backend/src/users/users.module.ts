@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { RolesService } from './roles.service';
 import { UsersController } from './users.controller';
@@ -6,7 +6,8 @@ import { RolesController } from './roles.controller';
 import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [AuditModule],
+  // forwardRef: paired with AuditModule's forwardRef to UsersModule — see that file.
+  imports: [forwardRef(() => AuditModule)],
   controllers: [UsersController, RolesController],
   providers: [UsersService, RolesService],
   exports: [UsersService, RolesService],

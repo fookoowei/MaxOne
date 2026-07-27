@@ -66,3 +66,59 @@ describe('AuditService.log', () => {
     });
   });
 });
+
+describe('AuditService.findMany', () => {
+  const page = (over: any = {}) => ({
+    auditLog: {
+      findMany: jest.fn().mockResolvedValue([{ id: 'log-1' }]),
+      count: jest.fn().mockResolvedValue(1),
+      ...over,
+    },
+  });
+
+  it('returns a page plus the total, newest first', async () => {
+    const prisma = page();
+    const service = await buildService(prisma);
+
+    const result = await service.findMany({});
+
+    expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 0, take: 20, orderBy: { createdAt: 'desc' } }),
+    );
+    expect(result).toEqual({ total: 1, skip: 0, take: 20, logs: [{ id: 'log-1' }] });
+  });
+
+  it('composes filters into a single AND-ed where clause', async () => {
+    const prisma = page();
+    const service = await buildService(prisma);
+
+    await service.findMany({
+      actorId: 'user-1',
+      entityType: 'wallet',
+      action: 'wallet.adjust',
+      from: new Date('2026-01-01'),
+      to: new Date('2026-12-31'),
+    });
+
+    expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          actorUserId: 'user-1',
+          entityType: 'wallet',
+          action: 'wallet.adjust',
+          createdAt: { gte: new Date('2026-01-01'), lte: new Date('2026-12-31') },
+        },
+      }),
+    );
+  });
+
+  it('caps take at 100 so one request cannot pull the whole table', async () => {
+    const prisma = page();
+    const service = await buildService(prisma);
+
+    const result = await service.findMany({ take: 5000 });
+
+    expect(prisma.auditLog.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 100 }));
+    expect(result.take).toBe(100);
+  });
+});

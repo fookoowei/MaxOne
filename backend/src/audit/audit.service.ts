@@ -46,4 +46,44 @@ export class AuditService {
       },
     });
   }
+
+  /**
+   * One page of audit history, newest first. Filters are optional and AND-combined, serving both
+   * real questions from one endpoint: "what did this actor do?" and "what happened to this entity?"
+   */
+  async findMany(filters: {
+    actorId?: string;
+    entityType?: string;
+    entityId?: string;
+    action?: string;
+    from?: Date;
+    to?: Date;
+    skip?: number;
+    take?: number;
+  }) {
+    const skip = filters.skip ?? 0;
+    // Capped so a single request cannot pull the entire table, exactly like GET /users.
+    const take = Math.min(filters.take ?? 20, 100);
+
+    const where: Prisma.AuditLogWhereInput = {
+      ...(filters.actorId ? { actorUserId: filters.actorId } : {}),
+      ...(filters.entityType ? { entityType: filters.entityType } : {}),
+      ...(filters.entityId ? { entityId: filters.entityId } : {}),
+      ...(filters.action ? { action: filters.action } : {}),
+      ...(filters.from || filters.to
+        ? {
+            createdAt: {
+              ...(filters.from ? { gte: filters.from } : {}),
+              ...(filters.to ? { lte: filters.to } : {}),
+            },
+          }
+        : {}),
+    };
+
+    const [logs, total] = await Promise.all([
+      this.prisma.auditLog.findMany({ where, skip, take, orderBy: { createdAt: 'desc' } }),
+      this.prisma.auditLog.count({ where }),
+    ]);
+    return { total, skip, take, logs };
+  }
 }
