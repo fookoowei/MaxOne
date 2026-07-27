@@ -12,6 +12,7 @@ import { UsersService } from '../users/users.service';
 import type { AuthUser } from '../auth/jwt.strategy';
 import { Prisma } from '@prisma/client';
 import { RatesService } from '../rates/rates.service';
+import { AuditService } from '../audit/audit.service';
 
 const actor: AuthUser = { id: 'user-1', email: 'u1@example.com', role: 'user' };
 const other: AuthUser = { id: 'user-2', email: 'u2@example.com', role: 'user' };
@@ -20,6 +21,7 @@ function buildService(
   prismaMock: any,
   usersMock: any = { findByIdWithPermissions: jest.fn() },
   ratesMock: any = { getRate: jest.fn() },
+  auditMock: any = { log: jest.fn() },
 ) {
   return Test.createTestingModule({
     providers: [
@@ -27,6 +29,7 @@ function buildService(
       { provide: PrismaService, useValue: prismaMock },
       { provide: UsersService, useValue: usersMock },
       { provide: RatesService, useValue: ratesMock },
+      { provide: AuditService, useValue: auditMock },
     ],
   })
     .compile()
@@ -450,6 +453,7 @@ function transferPrisma(overrides: Record<string, any> = {}) {
         Promise.resolve({ id: `txn-${data.type}`, ...data }),
       ),
     },
+    auditLog: { create: jest.fn() },
   };
   return { txDouble, prisma: txPrisma(txDouble) };
 }
@@ -644,5 +648,138 @@ describe('WalletsService.transfer', () => {
       service.transfer('wallet-1', actor, { toWalletId: 'ghost', amount: 100 }),
     ).rejects.toThrow(NotFoundException);
     expect(txDouble.wallet.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('WalletsService audit trail', () => {
+  it('audits an approved withdrawal with the transaction client', async () => {
+    const txDouble = {
+      $queryRaw: jest.fn().mockResolvedValue([]),
+      transaction: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'txn-1', walletId: 'wallet-1', type: 'withdrawal', amount: 1000, status: 'pending',
+        }),
+        update: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'txn-1', ...data })),
+      },
+      wallet: {
+        findUnique: jest.fn().mockResolvedValue(wallet({ id: 'wallet-1', balance: 5000 })),
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      auditLog: { create: jest.fn() },
+    };
+    const prisma = txPrisma(txDouble);
+    const audit = { log: jest.fn() };
+    const users = {
+      findByIdWithPermissions: jest.fn().mockResolvedValue({
+        role: { permissions: [{ code: 'withdrawal.approve' }] },
+      }),
+    };
+    const service = await buildService(prisma, users, undefined, audit);
+
+    await service.approve('txn-1', actor);
+
+    expect(audit.log).toHaveBeenCalledTimes(1);
+    const [client, entry] = audit.log.mock.calls[0];
+    expect(client).toBe(txDouble); // the transaction client, NOT the root prisma client
+    expect(entry).toEqual({
+      actorUserId: 'user-1',
+      action: 'withdrawal.approve',
+      entityType: 'transaction',
+      entityId: 'txn-1',
+      oldValue: { status: 'pending' },
+      newValue: { status: 'approved', balanceAfter: 4000 },
+    });
+  });
+
+  it('audits a rejected deposit with the note', async () => {
+    const txDouble = {
+      $queryRaw: jest.fn().mockResolvedValue([]),
+      transaction: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'txn-2', walletId: 'wallet-1', type: 'deposit', amount: 500, status: 'pending', note: null,
+        }),
+        update: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'txn-2', ...data })),
+      },
+      auditLog: { create: jest.fn() },
+    };
+    const prisma = txPrisma(txDouble);
+    const audit = { log: jest.fn() };
+    const users = {
+      findByIdWithPermissions: jest.fn().mockResolvedValue({
+        role: { permissions: [{ code: 'deposit.approve' }] },
+      }),
+    };
+    const service = await buildService(prisma, users, undefined, audit);
+
+    await service.reject('txn-2', actor, 'looks fraudulent');
+
+    const [client, entry] = audit.log.mock.calls[0];
+    expect(client).toBe(txDouble);
+    expect(entry).toMatchObject({
+      action: 'deposit.reject',
+      entityType: 'transaction',
+      entityId: 'txn-2',
+      oldValue: { status: 'pending' },
+      newValue: { status: 'rejected', note: 'looks fraudulent' },
+    });
+  });
+
+  it('audits an adjustment with the balance before and after', async () => {
+    const txDouble = {
+      $queryRaw: jest.fn().mockResolvedValue([]),
+      wallet: {
+        findUnique: jest.fn().mockResolvedValue(wallet({ id: 'wallet-1', balance: 100 })),
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      transaction: {
+        create: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'txn-3', ...data })),
+      },
+      auditLog: { create: jest.fn() },
+    };
+    const prisma = txPrisma(txDouble);
+    const audit = { log: jest.fn() };
+    const service = await buildService(prisma, undefined, undefined, audit);
+
+    await service.adjust('wallet-1', { direction: 'credit', amount: 150, note: 'goodwill' }, actor);
+
+    const [client, entry] = audit.log.mock.calls[0];
+    expect(client).toBe(txDouble);
+    expect(entry).toEqual({
+      actorUserId: 'user-1',
+      action: 'wallet.adjust',
+      entityType: 'wallet',
+      entityId: 'wallet-1',
+      oldValue: { balance: 100 },
+      newValue: { balance: 250, direction: 'credit', amount: 150, note: 'goodwill' },
+    });
+  });
+
+  it('audits a cross-currency transfer against the source wallet, with the rate as a string', async () => {
+    const { txDouble, prisma } = transferPrisma({
+      'wallet-2': wallet({ id: 'wallet-2', userId: 'user-2', balance: 100, currency: 'EUR' }),
+    });
+    const rates = { getRate: jest.fn().mockResolvedValue(new Prisma.Decimal('0.9')) };
+    const audit = { log: jest.fn() };
+    const service = await buildService(prisma, undefined, rates, audit);
+
+    await service.transfer('wallet-1', actor, { toWalletId: 'wallet-2', amount: 1000 });
+
+    expect(audit.log).toHaveBeenCalledTimes(1); // ONE row per action, anchored to the source
+    const [client, entry] = audit.log.mock.calls[0];
+    expect(client).toBe(txDouble);
+    expect(entry).toEqual({
+      actorUserId: 'user-1',
+      action: 'wallet.transfer',
+      entityType: 'wallet',
+      entityId: 'wallet-1',
+      oldValue: { balance: 5000 },
+      newValue: {
+        balance: 4000,
+        toWalletId: 'wallet-2',
+        amount: 1000,
+        credit: 900,
+        exchangeRate: '0.9', // Decimal stringified — JSON has no decimal type
+      },
+    });
   });
 });

@@ -11,6 +11,8 @@ import type { AuthUser } from '../auth/jwt.strategy';
 import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { RatesService } from '../rates/rates.service';
+import { AuditService } from '../audit/audit.service';
+import type { AuditAction } from '../audit/audit.actions';
 
 @Injectable()
 export class WalletsService {
@@ -18,6 +20,7 @@ export class WalletsService {
     private readonly prisma: PrismaService,
     private readonly users: UsersService,
     private readonly rates: RatesService,
+    private readonly audit: AuditService,
   ) {}
 
   createWallet(actor: AuthUser, dto: { name: string; currency: string }) {
@@ -100,7 +103,7 @@ export class WalletsService {
       }
 
       await tx.wallet.update({ where: { id: wallet.id }, data: { balance: after } });
-      return tx.transaction.update({
+      const updated = await tx.transaction.update({
         where: { id: txn.id },
         data: {
           status: 'approved',
@@ -110,6 +113,21 @@ export class WalletsService {
           balanceAfter: after,
         },
       });
+
+      // Same tx: the settlement and its audit entry commit together or not at all.
+      // Explicit ternary rather than a template string, so the value is typed, not cast.
+      const action: AuditAction =
+        txn.type === 'withdrawal' ? 'withdrawal.approve' : 'deposit.approve';
+      await this.audit.log(tx, {
+        actorUserId: actor.id,
+        action,
+        entityType: 'transaction',
+        entityId: txn.id,
+        oldValue: { status: 'pending' },
+        newValue: { status: 'approved', balanceAfter: after },
+      });
+
+      return updated;
     });
   }
 
@@ -122,15 +140,29 @@ export class WalletsService {
       if (!txn) throw new NotFoundException('Transaction not found');
       if (txn.status !== 'pending') throw new ConflictException('Transaction already reviewed');
 
-      return tx.transaction.update({
+      const note_ = note ?? txn.note;
+      const updated = await tx.transaction.update({
         where: { id: txn.id },
         data: {
           status: 'rejected',
           reviewedBy: actor.id,
           reviewedAt: new Date(),
-          note: note ?? txn.note,
+          note: note_,
         },
       });
+
+      const action: AuditAction =
+        txn.type === 'withdrawal' ? 'withdrawal.reject' : 'deposit.reject';
+      await this.audit.log(tx, {
+        actorUserId: actor.id,
+        action,
+        entityType: 'transaction',
+        entityId: txn.id,
+        oldValue: { status: 'pending' },
+        newValue: { status: 'rejected', note: note_ },
+      });
+
+      return updated;
     });
   }
 
@@ -154,7 +186,7 @@ export class WalletsService {
       if (after < 0) throw new BadRequestException('Adjustment would make the balance negative');
 
       await tx.wallet.update({ where: { id: walletId }, data: { balance: after } });
-      return tx.transaction.create({
+      const created = await tx.transaction.create({
         data: {
           walletId,
           type: 'adjustment',
@@ -168,6 +200,19 @@ export class WalletsService {
           note: dto.note,
         },
       });
+
+      // The control weakness accepted in M4a (requestedBy === reviewedBy) is mitigated here:
+      // narrow permission + mandatory note + this audit entry.
+      await this.audit.log(tx, {
+        actorUserId: actor.id,
+        action: 'wallet.adjust',
+        entityType: 'wallet',
+        entityId: walletId,
+        oldValue: { balance: before },
+        newValue: { balance: after, direction: dto.direction, amount: dto.amount, note: dto.note },
+      });
+
+      return created;
     });
   }
 
@@ -268,6 +313,24 @@ export class WalletsService {
           counterpartyWalletId: from.id,
           balanceBefore: to.balance,
           balanceAfter: toAfter,
+        },
+      });
+
+      // Anchored to the SOURCE wallet: one action by one actor is one audit row. The
+      // destination appears in newValue, and the ledger already links both halves by transferId.
+      await this.audit.log(tx, {
+        actorUserId: actor.id,
+        action: 'wallet.transfer',
+        entityType: 'wallet',
+        entityId: from.id,
+        oldValue: { balance: from.balance },
+        newValue: {
+          balance: fromAfter,
+          toWalletId: to.id,
+          amount: dto.amount,
+          credit,
+          // JSON has no decimal type; stringify so the rate survives round-tripping exactly.
+          exchangeRate: exchangeRate ? exchangeRate.toString() : null,
         },
       });
 
