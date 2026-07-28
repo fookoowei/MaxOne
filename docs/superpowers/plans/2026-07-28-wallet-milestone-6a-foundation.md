@@ -4,7 +4,7 @@
 
 **Goal:** Stand up a Next.js staff back-office console foundation — a Backend-for-Frontend (BFF) auth tier that holds httpOnly cookies and proxies to NestJS, plus a role-aware protected shell reachable only after login.
 
-**Architecture:** The browser talks only to Next.js. Next Route Handlers (`/api/auth/*`) call NestJS (`:3100`), set the auth cookies via `next/headers`, and forward `Authorization: Bearer` server-side — tokens never touch client JS. A readable-server-side `session_user` cookie (httpOnly, non-sensitive `{id,email,role}` JSON) lets server components render the role-aware shell without re-calling NestJS during render (Next forbids cookie writes during render, so we avoid needing a refresh there). `middleware.ts` redirects unauthenticated users off protected routes. NestJS reverts to a clean token API.
+**Architecture:** The browser talks only to Next.js. Next Route Handlers (`/api/auth/*`) call NestJS (`:3100`), set the auth cookies via `next/headers`, and forward `Authorization: Bearer` server-side — tokens never touch client JS. A readable-server-side `session_user` cookie (httpOnly, non-sensitive `{id,email,role}` JSON) lets server components render the role-aware shell without re-calling NestJS during render (Next forbids cookie writes during render, so we avoid needing a refresh there). `proxy.ts` (Next 16's renamed middleware) redirects unauthenticated users off protected routes. NestJS reverts to a clean token API.
 
 **Tech Stack:** Next.js (App Router) + React + TypeScript + Tailwind + shadcn/ui + react-hook-form + zod; Vitest + React Testing Library. Backend: NestJS token API.
 
@@ -34,7 +34,7 @@
 - `lib/auth/session.ts` — async cookie helpers (`setAuthCookies`, `refreshAuthCookies`, `clearAuthCookies`, `getSessionUser`).
 - `lib/auth/permissions.ts` — role→permission map + helpers.
 - `app/api/auth/{login,logout,me,refresh}/route.ts` — BFF handlers.
-- `middleware.ts` — auth-presence route guard.
+- `proxy.ts` — auth-presence route guard (Next 16 renamed `middleware` → `proxy`).
 - `app/login/page.tsx` — login form (react-hook-form + zod).
 - `app/(dashboard)/layout.tsx` — protected shell (reads `session_user`).
 - `app/(dashboard)/page.tsx` — dashboard placeholder.
@@ -711,24 +711,28 @@ git commit -m "feat(frontend): add BFF auth route handlers (Milestone 6a, Task 5
 
 ---
 
-## Task 6: Middleware route guard
+## Task 6: Proxy route guard (Next 16's renamed middleware)
+
+> **Next 16 note:** Middleware is renamed **Proxy** — the file is `proxy.ts` and the export
+> is `proxy()` (same functionality, same `config.matcher`). The Next docs explicitly bless
+> this use ("optimistic checks such as permission-based redirects").
 
 **Files:**
-- Create: `frontend/middleware.ts`
-- Test: `frontend/middleware.test.ts`
+- Create: `frontend/proxy.ts`
+- Test: `frontend/proxy.test.ts`
 
 **Interfaces:**
 - Consumes: `SESSION_USER_COOKIE`.
-- Produces: `middleware(request: NextRequest)` — redirects to `/login` when the `session_user` cookie is absent on a matched protected route; otherwise passes through. `config.matcher` covers `/` and the four sections.
+- Produces: `proxy(request: NextRequest)` — redirects to `/login` when the `session_user` cookie is absent on a matched protected route; otherwise passes through. `config.matcher` covers `/` and the four sections.
 
 - [ ] **Step 1: Write the failing test**
 
-Create `frontend/middleware.test.ts`:
+Create `frontend/proxy.test.ts`:
 
 ```typescript
 import { describe, it, expect } from 'vitest';
 import { NextRequest } from 'next/server';
-import { middleware } from './middleware';
+import { proxy } from './proxy';
 
 function reqTo(path: string, withSession: boolean): NextRequest {
   const req = new NextRequest(new URL(`http://localhost:3200${path}`));
@@ -736,15 +740,15 @@ function reqTo(path: string, withSession: boolean): NextRequest {
   return req;
 }
 
-describe('middleware', () => {
+describe('proxy', () => {
   it('redirects to /login when no session cookie', () => {
-    const res = middleware(reqTo('/', false));
+    const res = proxy(reqTo('/', false));
     expect(res.status).toBe(307);
     expect(res.headers.get('location')).toContain('/login');
   });
 
   it('passes through when the session cookie is present', () => {
-    const res = middleware(reqTo('/', true));
+    const res = proxy(reqTo('/', true));
     // NextResponse.next() carries no redirect location.
     expect(res.headers.get('location')).toBeNull();
   });
@@ -753,18 +757,18 @@ describe('middleware', () => {
 
 - [ ] **Step 2: Run it and watch it fail**
 
-Run: `cd frontend && npx vitest run middleware.test.ts`
-Expected: FAIL — middleware not found.
+Run: `cd frontend && npx vitest run proxy.test.ts`
+Expected: FAIL — proxy not found.
 
-- [ ] **Step 3: Implement the middleware**
+- [ ] **Step 3: Implement the proxy**
 
-Create `frontend/middleware.ts`:
+Create `frontend/proxy.ts`:
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
 import { SESSION_USER_COOKIE } from '@/lib/auth/cookie-names';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const hasSession = request.cookies.has(SESSION_USER_COOKIE);
   if (!hasSession) {
     const url = request.nextUrl.clone();
@@ -782,14 +786,14 @@ export const config = {
 
 - [ ] **Step 4: Run it and watch it pass**
 
-Run: `cd frontend && npx vitest run middleware.test.ts`
+Run: `cd frontend && npx vitest run proxy.test.ts`
 Expected: PASS (2 specs).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd .. && git add frontend/middleware.ts frontend/middleware.test.ts
-git commit -m "feat(frontend): add auth-presence route middleware (Milestone 6a, Task 6)"
+cd .. && git add frontend/proxy.ts frontend/proxy.test.ts
+git commit -m "feat(frontend): add auth-presence proxy guard (Milestone 6a, Task 6)"
 ```
 
 ---
@@ -1212,6 +1216,6 @@ git commit -m "feat(frontend): role-aware protected shell + gated routes (Milest
 
 ## Self-Review notes (already applied)
 
-- **Spec coverage:** backend token API (Task 1) ↔ §5; scaffold+shadcn+Vitest (Task 2) ↔ §3; permissions map (Task 3) ↔ §8; session cookies (Task 4) + BFF handlers (Task 5) ↔ §4/§7; middleware (Task 6) ↔ §7; login page (Task 7) ↔ §6/§9; shell + gated routes (Task 8) ↔ §6/§8. Playwright deferred (§2/§10). **`lib/api/server.ts` (silent-refresh fetch wrapper) is deferred to 6b** — no 6a domain call exercises it; the `/api/auth/refresh` handler mechanism is built in Task 5. Middleware does auth-presence only; auto-refresh-on-expiry lands in 6b with the first data screen.
+- **Spec coverage:** backend token API (Task 1) ↔ §5; scaffold+shadcn+Vitest (Task 2) ↔ §3; permissions map (Task 3) ↔ §8; session cookies (Task 4) + BFF handlers (Task 5) ↔ §4/§7; proxy guard (Task 6) ↔ §7; login page (Task 7) ↔ §6/§9; shell + gated routes (Task 8) ↔ §6/§8. Playwright deferred (§2/§10). **`lib/api/server.ts` (silent-refresh fetch wrapper) is deferred to 6b** — no 6a domain call exercises it; the `/api/auth/refresh` handler mechanism is built in Task 5. The proxy does auth-presence only; auto-refresh-on-expiry lands in 6b with the first data screen.
 - **Type consistency:** `SessionUser {id,email,role}` used across cookie-names, session, login route, layout, dashboard; `Permission` union + `roleHasPermission`/`permissionsForRole` consistent Tasks 3→8; cookie names `access_token`/`refresh_token`/`session_user` consistent Tasks 4→6.
 - **Placeholder scan:** no TBD/TODO; every code step carries real code. The only manual fallback is Task 1 Step 6's token copy if the `json` CLI is absent — spelled out, not hand-waved.

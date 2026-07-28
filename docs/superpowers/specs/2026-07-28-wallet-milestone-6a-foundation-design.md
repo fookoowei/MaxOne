@@ -48,7 +48,7 @@ application shell**, served by a real, tested auth pipeline. No feature screens 
 **In scope**
 - New `frontend/` Next.js app (App Router) + TypeScript + Tailwind + shadcn/ui.
 - **BFF auth:** Next Route Handlers (`/api/auth/*`) proxy to NestJS and own the httpOnly
-  cookies; `middleware.ts` guards protected routes.
+  cookies; `proxy.ts` (Next 16's renamed middleware) guards protected routes.
 - **Backend sub-task:** revert NestJS to a clean token API for the BFF (keep `{ user, tokens }`;
   remove the NestJS-owns-cookies plumbing).
 - Login page (react-hook-form + zod), protected app shell (sidebar + topbar), one placeholder
@@ -78,7 +78,7 @@ application shell**, served by a real, tested auth pipeline. No feature screens 
 ## 4. Architecture — the BFF
 
 ```
-Browser ──▶ Next.js (Route Handlers + middleware) ──▶ NestJS (:3100) ──▶ Postgres
+Browser ──▶ Next.js (Route Handlers + proxy) ──▶ NestJS (:3100) ──▶ Postgres
             holds httpOnly cookies;                    token API; RBAC;
             forwards Authorization: Bearer             ledger; audit
             NO domain logic                            ALL domain logic
@@ -114,7 +114,7 @@ frontend/
     api/auth/login/route.ts        # BFF: NestJS login → set cookies → return user
     api/auth/logout/route.ts       # BFF: NestJS logout → clear cookies
     api/auth/me/route.ts           # BFF: return current user (Bearer from cookie)
-  middleware.ts                    # redirect unauthenticated users off protected routes
+  proxy.ts                         # redirect unauthenticated users off protected routes (Next 16)
   lib/
     auth/permissions.ts            # role→permission map (mirrors seed) + helpers
     auth/session.ts                # cookie names, read/set/clear helpers (next/headers)
@@ -128,7 +128,7 @@ frontend/
 2. The Route Handler calls NestJS `/auth/login`, receives `{ user, tokens }`, sets the two
    httpOnly cookies, and returns `user` to the browser.
 3. Client redirects to `/`.
-4. `middleware.ts` guards the `(dashboard)` routes: no `access_token` cookie → redirect
+4. `proxy.ts` guards the `(dashboard)` routes: no `access_token` cookie → redirect
    `/login`.
 5. Data fetches run in server components / Route Handlers via `lib/api/server.ts`, which reads
    the access cookie and calls NestJS with `Bearer`.
@@ -167,7 +167,7 @@ NestJS still enforces every call; the map only decides what to render.
 | Wrong credentials | Inline generic "Invalid email or password" (no field enumeration) |
 | Expired access token | Server wrapper refreshes silently and retries once |
 | Refresh fails / no session | Clear cookies, redirect to `/login` |
-| Protected route while logged out | `middleware.ts` redirects to `/login` |
+| Protected route while logged out | `proxy.ts` redirects to `/login` |
 
 ## 10. Testing
 
