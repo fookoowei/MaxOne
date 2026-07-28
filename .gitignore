@@ -22,3 +22,6 @@ npm-debug.log*
 .idea/
 .vscode/
 *.swp
+
+# Design docs (specs, plans, learning notes) — kept local, not tracked in the repo
+docs/
