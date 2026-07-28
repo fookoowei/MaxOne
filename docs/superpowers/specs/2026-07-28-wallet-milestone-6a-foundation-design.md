@@ -1,6 +1,6 @@
 # Milestone 6a — Frontend Foundation (design)
 
-**Status:** approved 2026-07-28
+**Status:** approved 2026-07-28 (revised — framework changed to React/Next.js)
 **Implements:** the frontend promised in §3 "Tech stack" of
 `2026-07-13-wallet-management-system-design.md`, as the first slice of Milestone 6.
 
@@ -8,21 +8,26 @@
 
 ## 0. Framework decision (change from the master design)
 
-The master design named **Angular** for the frontend. This milestone **keeps Angular** — but
-the decision was re-examined and made deliberately, not inherited:
+The master design named **Angular**. After deliberate re-examination this milestone uses
+**React + Next.js (App Router)** instead:
 
-- The frontend is a **staff back-office console**, not a customer app. Every backend endpoint
-  is a permission-gated *staff* action (`transaction.view_all`, `deposit.approve`, …); the
-  `user` role has zero back-office permissions. So there is nothing customer-facing to build
-  against the current API.
-- Angular mirrors NestJS (modules, DI, guards) — one mental model, gentle curve right after
-  five backend milestones. It is also a strong, authentic fit for enterprise/fintech/iGaming
-  back-office consoles.
-- **Committed future work:** a separate **React/Next.js customer portal** (needs new
-  customer-scoped backend endpoints first). That yields the portfolio narrative:
-  **one NestJS API → an Angular staff console + a React/Next customer portal**, demonstrating
-  two frameworks and the "one API, many clients" boundary — without ever mixing frameworks
-  inside a single app.
+- The frontend is a **staff back-office console** (not a customer app): every backend endpoint
+  is a permission-gated *staff* action; the `user` role has no back-office access, so there is
+  nothing customer-facing to build against the current API.
+- **React/Next.js is the primary goal skill.** It has the larger freelance market and is the
+  stack the builder wants next. "Finish the highest-value skill first" outweighs Angular's
+  gentle-curve advantage.
+- Next.js earns its place through the **BFF (Backend-for-Frontend)** pattern: server-side Route
+  Handlers + middleware hold the auth cookies and proxy to NestJS, so tokens never touch
+  JavaScript. That is a genuine Next.js skill, not "React with extra steps."
+- **Angular is shelved as an optional future project.** If built later (e.g. a second frontend
+  against the same API), it would still yield the "one API, many clients" story — but it is no
+  longer on the committed path.
+
+**Consequence for prior work:** an earlier task made NestJS set httpOnly cookies itself (the
+right design for a *pure-SPA* Angular client with no server tier). Under the Next BFF, the
+**BFF owns the cookies** and NestJS reverts to a clean token API. The only kept change is
+`login` returning `{ user, tokens }` — exactly what the BFF consumes.
 
 ## 1. Goal
 
@@ -36,111 +41,104 @@ application shell**, served by a real, tested auth pipeline. No feature screens 
 2. The shell's navigation shows **only** the sections the logged-in role has permission for.
 3. Logout clears the session.
 4. Visiting any protected route while logged out redirects to `/login`.
-5. Tokens are **never** readable by JavaScript (httpOnly cookies).
+5. Tokens are **never** readable by JavaScript (httpOnly cookies held by the BFF).
 
 ## 2. Scope
 
 **In scope**
-- New `frontend/` Angular app (standalone components) + Angular Material.
-- **Backend sub-task:** switch NestJS auth to **httpOnly-cookie** sessions.
-- Login page (reactive form), protected app shell (sidebar + topbar), one placeholder
+- New `frontend/` Next.js app (App Router) + TypeScript + Tailwind + shadcn/ui.
+- **BFF auth:** Next Route Handlers (`/api/auth/*`) proxy to NestJS and own the httpOnly
+  cookies; `middleware.ts` guards protected routes.
+- **Backend sub-task:** revert NestJS to a clean token API for the BFF (keep `{ user, tokens }`;
+  remove the NestJS-owns-cookies plumbing).
+- Login page (react-hook-form + zod), protected app shell (sidebar + topbar), one placeholder
   dashboard route.
-- Role-aware navigation + route guards driven by a client-side role→permission map.
-- Silent access-token refresh via an HTTP interceptor.
+- Role-aware navigation + route protection driven by a client-side role→permission map.
+- Silent access-token refresh in the server-side fetch wrapper.
 
 **Out of scope (later slices / milestones)**
 - Feature screens: approvals (6b), wallets (6c), users + audit (6d) — placeholders only here.
 - Visual polish beyond a clean, functional shell.
-- The React/Next.js customer portal and its backend endpoints (future milestone).
 - Playwright end-to-end tests (noted as a later addition).
+- An Angular frontend (shelved, optional).
 
 ## 3. Stack
 
 | Concern | Choice |
 |---|---|
-| Framework | Angular, standalone components |
-| Language | TypeScript |
-| UI library | Angular Material (MatTable/CDK, forms, dialogs, theming) |
-| State | Services + signals; RxJS for HTTP |
-| Forms | Angular Reactive Forms |
-| Auth transport | Backend-set httpOnly cookies + `withCredentials` |
-| Dev networking | Angular dev-server proxy (`/api/*` → NestJS `:3100`) |
-| Tests | Angular default (Jasmine + Karma) |
+| Framework | Next.js (App Router), React, TypeScript |
+| UI | Tailwind CSS + shadcn/ui (Radix primitives; components owned in-repo) |
+| Server state | TanStack Query (client components) |
+| Forms | react-hook-form + zod |
+| Auth transport | BFF: httpOnly cookies held by Next; `Bearer` forwarded to NestJS |
+| Backend contract | NestJS token API: `login → { user, tokens }`, `Bearer` auth, body refresh/logout |
+| Tests | Vitest + React Testing Library |
 | Package manager | npm (matches backend) |
 
-## 4. Architecture — pure SPA + backend cookie auth + dev proxy
-
-Angular is a **pure client-side SPA** (static JS/HTML in the browser); it has no server tier of
-its own. Security therefore lives in the **backend + the browser's cookie rules**, not in a
-BFF:
+## 4. Architecture — the BFF
 
 ```
-Browser ──▶ Angular dev proxy (:4200) ──▶ NestJS (:3100) ──▶ Postgres
-            single origin; cookies are     sets/reads httpOnly
-            first-party (SameSite=Lax)      cookies; RBAC; ledger
+Browser ──▶ Next.js (Route Handlers + middleware) ──▶ NestJS (:3100) ──▶ Postgres
+            holds httpOnly cookies;                    token API; RBAC;
+            forwards Authorization: Bearer             ledger; audit
+            NO domain logic                            ALL domain logic
 ```
 
-**Why the dev proxy matters.** Talking cross-origin (`:4200` → `:3100`) would force
-`SameSite=None` cookies and a full CSRF-token scheme. Routing all API calls through Angular's
-dev proxy makes the browser see a **single origin**, so cookies are **first-party** and
-`httpOnly; Secure; SameSite=Lax` is sufficient — **no CORS, minimal CSRF surface**. This also
-mirrors a production reverse-proxy / same-origin deployment.
+The browser talks **only** to Next. Next holds `access_token` / `refresh_token` as
+`httpOnly, Secure, SameSite=Lax` cookies (set via `next/headers`), reads the access token
+server-side, and calls NestJS with `Authorization: Bearer`. Tokens are never exposed to
+client JavaScript. The BFF holds **zero** business logic — it is a session/proxy tier.
 
-## 5. Backend sub-task (NestJS cookie auth)
+## 5. Backend sub-task (NestJS → clean token API)
 
-Tokens currently arrive in the login **response body**. Change to cookies:
+Revert the pure-SPA cookie plumbing; keep the useful return shape:
 
-- Add `cookie-parser`.
-- `POST /auth/login` — set `access_token` and `refresh_token` as
-  `httpOnly; Secure; SameSite=Lax` cookies (via `@Res({ passthrough: true })`); return the
-  **safe user** `{ id, email, role }` in the body instead of raw tokens.
-- `JwtStrategy` — extract the JWT from the `access_token` cookie. Keep
-  `fromAuthHeaderAsBearerToken` as a fallback so existing curl/tests still work.
-- `POST /auth/refresh` — read the refresh token from its cookie, rotate, reset both cookies.
-- `POST /auth/logout` — read the refresh cookie, revoke server-side, **clear** both cookies.
-- `GET /auth/me` — unchanged; the guard now reads the cookie.
-- **CSRF posture:** `SameSite=Lax` first-party cookies plus the same-origin proxy neutralise
-  cross-site POSTs. A double-submit CSRF token is noted as a hardening option for a future
-  production-polish milestone, not built here.
-- **Tests:** extend the existing auth specs — login sets the two cookies with the right flags;
-  the guard authenticates from a cookie; logout clears them.
+- `POST /auth/login` → returns `{ user: { id, email, role }, tokens: { accessToken, refreshToken } }`.
+  (No `res.cookie`; the BFF sets cookies.)
+- `POST /auth/refresh` → body `{ refreshToken }`; rotate; return `{ accessToken, refreshToken }`.
+- `POST /auth/logout` → body `{ refreshToken }`; revoke; `204`.
+- `GET /auth/me` → `{ id, email, role }`; authenticate via `Authorization: Bearer`.
+- `JwtStrategy` → `fromAuthHeaderAsBearerToken()` (drop the cookie extractor).
+- Remove `cookie-parser` from `main.ts` and uninstall it.
+- Existing auth spec keeps the `{ user, tokens }` login assertion.
 
-## 6. Angular structure
+## 6. Next.js structure
 
 ```
 frontend/
-  src/app/
-    core/auth/
-      auth.service.ts            # login/logout/me; current user in a signal
-      auth.guard.ts              # CanActivate: authed? else redirect /login
-      permission.guard.ts        # CanActivate: role holds required permission?
-      permissions.ts             # role→permission map (mirrors seed) + helpers
-      credentials.interceptor.ts # withCredentials on every call; 401 → refresh → retry once
-    features/
-      login/login.component.ts   # reactive-form login
-      dashboard/dashboard.component.ts  # placeholder landing
-    layout/
-      shell.component.ts         # sidebar + topbar; role-aware nav; logout
-    app.routes.ts                # routes + guards
-    app.config.ts                # providers: HttpClient(+interceptor), Material, router
-  proxy.conf.json                # /api → http://localhost:3100
+  app/
+    login/page.tsx                 # login form (react-hook-form + zod), client component
+    (dashboard)/layout.tsx         # protected shell: sidebar + topbar
+    (dashboard)/page.tsx           # dashboard placeholder
+    (dashboard)/{approvals,wallets,users,audit}/page.tsx  # gated placeholders
+    api/auth/login/route.ts        # BFF: NestJS login → set cookies → return user
+    api/auth/logout/route.ts       # BFF: NestJS logout → clear cookies
+    api/auth/me/route.ts           # BFF: return current user (Bearer from cookie)
+  middleware.ts                    # redirect unauthenticated users off protected routes
+  lib/
+    auth/permissions.ts            # role→permission map (mirrors seed) + helpers
+    auth/session.ts                # cookie names, read/set/clear helpers (next/headers)
+    api/server.ts                  # server fetch wrapper: Bearer + 401→refresh→retry
+  components/                      # shadcn primitives + nav
 ```
 
-## 7. Auth flow
+## 7. Auth flow (BFF)
 
-1. Login component posts `{ email, password }` to `/api/auth/login` (proxied).
-2. NestJS validates, sets the httpOnly cookies, returns `{ id, email, role }`.
-3. `AuthService` stores the user in a signal; the router navigates to `/`.
-4. `authGuard` protects dashboard routes: if no known user, it calls `/api/auth/me`; a 401
-   redirects to `/login`.
-5. `credentialsInterceptor` attaches `withCredentials` to every request so cookies ride along.
-6. On a 401 from any call, the interceptor calls `/api/auth/refresh` **once**; on success it
-   retries the original request; on failure it clears the user and redirects to `/login`.
-7. Logout calls `/api/auth/logout`, which clears the cookies; `AuthService` clears the user.
+1. Login page (client) POSTs `{ email, password }` to Next `POST /api/auth/login`.
+2. The Route Handler calls NestJS `/auth/login`, receives `{ user, tokens }`, sets the two
+   httpOnly cookies, and returns `user` to the browser.
+3. Client redirects to `/`.
+4. `middleware.ts` guards the `(dashboard)` routes: no `access_token` cookie → redirect
+   `/login`.
+5. Data fetches run in server components / Route Handlers via `lib/api/server.ts`, which reads
+   the access cookie and calls NestJS with `Bearer`.
+6. **Silent refresh:** on a NestJS `401`, the wrapper calls `/auth/refresh` with the refresh
+   cookie, resets both cookies, retries **once**; failure → clear cookies → redirect `/login`.
+7. Logout: Route Handler calls NestJS `/auth/logout`, clears both cookies.
 
 ## 8. Role-aware shell
 
-`permissions.ts` mirrors the seed's role→permission map:
+`lib/auth/permissions.ts` mirrors the seed's role→permission map:
 
 | Role | Permissions |
 |---|---|
@@ -150,7 +148,7 @@ frontend/
 | `support` | `transaction.view_all` |
 | `user` | *(none)* |
 
-Navigation links **and** route guards gate on permission:
+Navigation links (and each gated route) require a permission:
 
 | Nav section (placeholder in 6a) | Required permission |
 |---|---|
@@ -160,31 +158,32 @@ Navigation links **and** route guards gate on permission:
 | Audit | `audit.view` |
 
 A `user` (no permissions) sees a "no back-office access" state. **Client gating is UX only** —
-NestJS still enforces every call server-side; the client map only decides what to *show*.
+NestJS still enforces every call; the map only decides what to render.
 
 ## 9. Error handling
 
 | Situation | Behaviour |
 |---|---|
-| Wrong credentials | Inline generic "Invalid email or password" (no enumeration of which field) |
-| Expired access token | Interceptor refreshes silently and retries once |
-| Refresh fails / no session | Clear user, redirect to `/login` |
-| Protected route while logged out | `authGuard` redirects to `/login` |
+| Wrong credentials | Inline generic "Invalid email or password" (no field enumeration) |
+| Expired access token | Server wrapper refreshes silently and retries once |
+| Refresh fails / no session | Clear cookies, redirect to `/login` |
+| Protected route while logged out | `middleware.ts` redirects to `/login` |
 
 ## 10. Testing
 
-- **Frontend (Jasmine/Karma):** `permissions.ts` map + helpers; `authGuard`/`permissionGuard`
-  decisions; `AuthService` against a mocked `HttpClient` (login stores user, logout clears,
-  401 path).
-- **Backend:** extend auth specs for cookie-setting on login, cookie extraction in the guard,
-  and cookie-clearing on logout.
+- **Frontend (Vitest + RTL):** `permissions.ts` map + helpers; the login Route Handler (mock
+  the NestJS fetch → asserts cookies set with the right flags, 401 surfaces as an auth error);
+  the login form (success redirects, 401 shows the generic error); nav-gating (given a role,
+  which links render).
+- **Backend:** the existing auth specs continue to cover the `{ user, tokens }` login shape and
+  Bearer authentication.
 - **Later:** Playwright end-to-end (login → shell → logout), not in 6a.
 
 ## 11. Milestone 6 slice map (context)
 
 | Slice | Delivers |
 |---|---|
-| **6a — Foundation** *(this spec)* | Angular app, cookie auth, role-aware protected shell |
+| **6a — Foundation** *(this spec)* | Next.js app, BFF cookie auth, role-aware protected shell |
 | 6b — Approvals | Pending-approvals queue + approve/reject |
 | 6c — Wallets | Wallet list/detail + deposit/withdrawal/transfer/adjustment forms |
 | 6d — Users & Audit | User management + audit-log viewer |
