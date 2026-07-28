@@ -50,6 +50,10 @@ export class AuthService {
     );
     if (!user || !passwordMatches) throw new UnauthorizedException('Invalid credentials');
 
-    return this.tokens.issueTokens(user);
+    const tokens = await this.tokens.issueTokens(user);
+    return {
+      user: { id: user.id, email: user.email, role: user.role.name },
+      tokens,
+    };
   }
 }

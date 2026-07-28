@@ -98,8 +98,11 @@ describe('AuthService.login', () => {
 
     const result = await service.login(credentials);
 
-    // Returns exactly the token pair the factory produced.
-    expect(result).toEqual({ accessToken: 'a.jwt', refreshToken: 'r-opaque' });
+    // Returns the safe user AND the token pair.
+    expect(result).toEqual({
+      user: { id: 'user-1', email: credentials.email, role: 'user' },
+      tokens: { accessToken: 'a.jwt', refreshToken: 'r-opaque' },
+    });
     // The factory was handed the found user (so tokens carry the right identity/role).
     expect(tokensMock.issueTokens).toHaveBeenCalledWith(foundUser);
   });

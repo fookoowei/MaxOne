@@ -66,7 +66,7 @@ Modify `backend/src/main.ts` — add the import and `app.use(cookieParser())` ri
 ```typescript
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import * as cookieParser from 'cookie-parser';
+import cookieParser from 'cookie-parser'; // default import: esModuleInterop + `export =`
 import { AppModule } from './app.module';
 import { auditContextMiddleware } from './audit/audit.middleware';
 

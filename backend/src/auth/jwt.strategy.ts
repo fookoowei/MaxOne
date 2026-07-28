@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
+import type { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
 /** The shape of our access-token payload (set in TokensService.issueTokens). */
@@ -21,8 +22,12 @@ export interface AuthUser {
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(config: ConfigService) {
     super({
-      // Pull the token from the "Authorization: Bearer <token>" header.
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      // Prefer the httpOnly access_token cookie (the browser flow); fall back to the
+      // "Authorization: Bearer <token>" header so curl / tests still work.
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (req: Request) => (req?.cookies?.['access_token'] as string | undefined) ?? null,
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ]),
       // Reject expired tokens (this is what enforces the 15-minute lifetime).
       ignoreExpiration: false,
       // Verify the signature with the SAME secret we signed with.
