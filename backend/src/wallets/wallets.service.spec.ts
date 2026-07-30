@@ -47,6 +47,34 @@ const wallet = (over: Partial<any> = {}) => ({
   ...over,
 });
 
+describe('WalletsService.listPending', () => {
+  it('returns pending rows oldest-first, enriched with wallet + owner email', async () => {
+    const rows = [{ id: 't1', status: 'pending' }];
+    const findMany = jest.fn().mockResolvedValue(rows);
+    const service = await buildService({ transaction: { findMany } });
+
+    const result = await service.listPending();
+
+    expect(result).toBe(rows);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { status: 'pending' },
+        orderBy: { createdAt: 'asc' },
+        include: {
+          wallet: {
+            select: {
+              id: true,
+              name: true,
+              currency: true,
+              user: { select: { email: true } },
+            },
+          },
+        },
+      }),
+    );
+  });
+});
+
 describe('WalletsService.createWallet', () => {
   it('creates a wallet owned by the actor', async () => {
     const prismaMock = { wallet: { create: jest.fn().mockResolvedValue(wallet()) } };

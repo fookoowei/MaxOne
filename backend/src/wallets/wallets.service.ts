@@ -67,9 +67,22 @@ export class WalletsService {
   }
 
   listPending() {
+    // Enrich each row so the approvals UI is self-describing (no per-row lookups):
+    // the wallet's name + currency (currency is needed to format the amount) and the
+    // wallet owner's email. `requestedBy` stays a bare string — it has no FK to join.
     return this.prisma.transaction.findMany({
       where: { status: 'pending' },
       orderBy: { createdAt: 'asc' },
+      include: {
+        wallet: {
+          select: {
+            id: true,
+            name: true,
+            currency: true,
+            user: { select: { email: true } },
+          },
+        },
+      },
     });
   }
 
