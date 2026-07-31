@@ -86,6 +86,49 @@ export class WalletsService {
     });
   }
 
+  // Staff (back-office) reads: ownership-free — authorization is the AdminWalletsController's
+  // job (transaction.view_all). Kept separate from the customer methods above so each has one
+  // audience and one authz rule. `satisfies` (not `as const`) validates the shape against
+  // Prisma's select type while keeping the literal so Prisma still infers the returned fields.
+  private static readonly STAFF_WALLET_SELECT = {
+    id: true,
+    name: true,
+    currency: true,
+    balance: true,
+    createdAt: true,
+    user: { select: { email: true } },
+  } satisfies Prisma.WalletSelect;
+
+  async listAllWallets({ skip = 0, take = 20 }: { skip?: number; take?: number }) {
+    const [wallets, total] = await Promise.all([
+      this.prisma.wallet.findMany({
+        skip,
+        take,
+        orderBy: { createdAt: 'asc' },
+        select: WalletsService.STAFF_WALLET_SELECT,
+      }),
+      this.prisma.wallet.count(),
+    ]);
+    return { total, skip, take, wallets };
+  }
+
+  async getWalletForStaff(id: string) {
+    const wallet = await this.prisma.wallet.findUnique({
+      where: { id },
+      select: WalletsService.STAFF_WALLET_SELECT,
+    });
+    if (!wallet) throw new NotFoundException('Wallet not found');
+    return wallet;
+  }
+
+  async listTransactionsForStaff(id: string) {
+    await this.getWalletForStaff(id); // 404 if the wallet doesn't exist
+    return this.prisma.transaction.findMany({
+      where: { walletId: id },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async approve(txnId: string, actor: AuthUser) {
     // Permission check runs BEFORE the transaction opens: it needs only `type`, which is
     // immutable, and it does unrelated I/O (a user+permissions read). Doing it under the

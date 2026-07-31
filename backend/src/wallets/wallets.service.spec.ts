@@ -75,6 +75,59 @@ describe('WalletsService.listPending', () => {
   });
 });
 
+describe('WalletsService staff wallet reads', () => {
+  it('listAllWallets paginates and includes the owner email', async () => {
+    const wallets = [{ id: 'w1' }];
+    const findMany = jest.fn().mockResolvedValue(wallets);
+    const count = jest.fn().mockResolvedValue(1);
+    const service = await buildService({ wallet: { findMany, count } });
+
+    const result = await service.listAllWallets({ skip: 0, take: 20 });
+
+    expect(result).toEqual({ total: 1, skip: 0, take: 20, wallets });
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: 0,
+        take: 20,
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          currency: true,
+          balance: true,
+          createdAt: true,
+          user: { select: { email: true } },
+        },
+      }),
+    );
+  });
+
+  it('getWalletForStaff throws NotFound when the wallet is missing', async () => {
+    const service = await buildService({ wallet: { findUnique: jest.fn().mockResolvedValue(null) } });
+    await expect(service.getWalletForStaff('nope')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('getWalletForStaff returns the wallet + owner when present', async () => {
+    const wallet = { id: 'w1', user: { email: 'a@b.c' } };
+    const service = await buildService({ wallet: { findUnique: jest.fn().mockResolvedValue(wallet) } });
+    await expect(service.getWalletForStaff('w1')).resolves.toBe(wallet);
+  });
+
+  it('listTransactionsForStaff returns the wallet rows newest-first (no ownership check)', async () => {
+    const rows = [{ id: 't1' }];
+    const findUnique = jest.fn().mockResolvedValue({ id: 'w1', user: { email: 'a@b.c' } });
+    const txFindMany = jest.fn().mockResolvedValue(rows);
+    const service = await buildService({ wallet: { findUnique }, transaction: { findMany: txFindMany } });
+
+    const result = await service.listTransactionsForStaff('w1');
+
+    expect(result).toBe(rows);
+    expect(txFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { walletId: 'w1' }, orderBy: { createdAt: 'desc' } }),
+    );
+  });
+});
+
 describe('WalletsService.createWallet', () => {
   it('creates a wallet owned by the actor', async () => {
     const prismaMock = { wallet: { create: jest.fn().mockResolvedValue(wallet()) } };
