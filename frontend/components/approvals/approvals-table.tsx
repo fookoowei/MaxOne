@@ -1,4 +1,5 @@
 import { formatMoney } from '@/lib/format/money';
+import { RowActions } from './row-actions';
 
 export interface PendingTransaction {
   id: string;
@@ -10,8 +11,6 @@ export interface PendingTransaction {
 }
 
 export function ApprovalsTable({ rows, role }: { rows: PendingTransaction[]; role: string }) {
-  void role; // consumed once the Actions column (per-row gating) lands in Task 6.
-
   if (rows.length === 0) {
     return <p className="text-sm text-muted-foreground">No pending transactions.</p>;
   }
@@ -26,6 +25,7 @@ export function ApprovalsTable({ rows, role }: { rows: PendingTransaction[]; rol
             <th className="px-4 py-2 font-medium">Wallet</th>
             <th className="px-4 py-2 font-medium">Owner</th>
             <th className="px-4 py-2 font-medium">Requested</th>
+            <th className="px-4 py-2 font-medium">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -37,6 +37,9 @@ export function ApprovalsTable({ rows, role }: { rows: PendingTransaction[]; rol
               <td className="px-4 py-2">{row.wallet.user.email}</td>
               <td className="px-4 py-2 text-muted-foreground">
                 {new Date(row.createdAt).toLocaleString()}
+              </td>
+              <td className="px-4 py-2">
+                <RowActions id={row.id} type={row.type} role={role} />
               </td>
             </tr>
           ))}

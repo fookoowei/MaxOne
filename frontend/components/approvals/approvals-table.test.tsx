@@ -1,6 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ApprovalsTable, type PendingTransaction } from './approvals-table';
+
+// ApprovalsTable now renders RowActions, which calls useRouter().
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const rows: PendingTransaction[] = [
   {
