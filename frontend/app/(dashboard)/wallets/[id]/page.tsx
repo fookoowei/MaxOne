@@ -5,6 +5,7 @@ import { serverApi } from '@/lib/api/server';
 import { formatMoney } from '@/lib/format/money';
 import type { StaffWallet } from '@/components/wallets/wallets-table';
 import { TransactionHistory, type WalletTransaction } from '@/components/wallets/transaction-history';
+import { AdjustmentForm } from '@/components/wallets/adjustment-form';
 
 export default async function WalletDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -54,6 +55,11 @@ export default async function WalletDetailPage({ params }: { params: Promise<{ i
           {wallet.currency} · owner {wallet.user.email}
         </p>
       </header>
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium text-muted-foreground">New adjustment</h2>
+        <AdjustmentForm walletId={wallet.id} role={user.role} />
+      </section>
 
       <section className="space-y-2">
         <h2 className="text-sm font-medium text-muted-foreground">Transaction history</h2>
