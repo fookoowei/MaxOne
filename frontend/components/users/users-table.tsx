@@ -1,3 +1,5 @@
+import { UserRowActions, type Role } from './user-row-actions';
+
 export interface StaffUser {
   id: string;
   email: string;
@@ -7,7 +9,17 @@ export interface StaffUser {
   role: { id: string; name: string };
 }
 
-export function UsersTable({ users }: { users: StaffUser[] }) {
+export function UsersTable({
+  users,
+  roles,
+  currentUserId,
+  currentUserRole,
+}: {
+  users: StaffUser[];
+  roles: Role[];
+  currentUserId: string;
+  currentUserRole: string;
+}) {
   if (users.length === 0) {
     return <p className="text-sm text-muted-foreground">No users.</p>;
   }
@@ -21,6 +33,7 @@ export function UsersTable({ users }: { users: StaffUser[] }) {
             <th className="px-4 py-2 font-medium">Name</th>
             <th className="px-4 py-2 font-medium">Role</th>
             <th className="px-4 py-2 font-medium">Status</th>
+            <th className="px-4 py-2 font-medium">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -30,6 +43,14 @@ export function UsersTable({ users }: { users: StaffUser[] }) {
               <td className="px-4 py-2">{u.firstName} {u.lastName}</td>
               <td className="px-4 py-2">{u.role.name}</td>
               <td className="px-4 py-2 capitalize">{u.status}</td>
+              <td className="px-4 py-2">
+                <UserRowActions
+                  user={u}
+                  roles={roles}
+                  currentUserId={currentUserId}
+                  currentUserRole={currentUserRole}
+                />
+              </td>
             </tr>
           ))}
         </tbody>

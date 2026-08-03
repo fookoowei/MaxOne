@@ -3,6 +3,7 @@ import { getSessionUser } from '@/lib/auth/session';
 import { roleHasPermission } from '@/lib/auth/permissions';
 import { serverApi } from '@/lib/api/server';
 import { UsersTable, type StaffUser } from '@/components/users/users-table';
+import type { Role } from '@/components/users/user-row-actions';
 
 export default async function UsersPage() {
   const user = await getSessionUser();
@@ -17,9 +18,9 @@ export default async function UsersPage() {
     );
   }
 
-  const res = await serverApi('/users');
-  if (res.status === 401) redirect('/login');
-  if (!res.ok) {
+  const [uRes, rRes] = await Promise.all([serverApi('/users'), serverApi('/roles')]);
+  if (uRes.status === 401 || rRes.status === 401) redirect('/login');
+  if (!uRes.ok || !rRes.ok) {
     return (
       <div>
         <h1 className="text-xl font-semibold">Users</h1>
@@ -28,11 +29,12 @@ export default async function UsersPage() {
     );
   }
 
-  const { users } = (await res.json()) as { users: StaffUser[] };
+  const { users } = (await uRes.json()) as { users: StaffUser[] };
+  const roles = (await rRes.json()) as Role[];
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Users</h1>
-      <UsersTable users={users} />
+      <UsersTable users={users} roles={roles} currentUserId={user.id} currentUserRole={user.role} />
     </div>
   );
 }
