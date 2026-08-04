@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { TokensService } from './tokens.service';
 import { CurrentUser } from './current-user.decorator';
@@ -20,6 +21,8 @@ export class AuthController {
     return this.authService.register(dto);
   }
 
+  // Brute-force is the real risk here: 5 attempts/min/IP (tighter than the global 100/min).
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   login(@Body() dto: LoginDto) {
     // Returns { user, tokens } — the BFF sets cookies from tokens and returns user.
