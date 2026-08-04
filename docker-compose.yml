@@ -11,6 +11,36 @@ services:
       - "5432:5432"
     volumes:
       - wallet_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # "is Postgres actually accepting connections?" — dependents wait on this
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: wallet_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # host is the compose service name `db`, resolved by Docker's internal DNS (not localhost)
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      PORT: 3100
+      NODE_ENV: production
+      FRONTEND_ORIGIN: http://localhost:3200
+    ports:
+      - "3100:3100"
+    healthcheck:
+      # Node 22 ships global fetch, so no curl/wget needed in the slim image
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3100/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   wallet_pgdata:
