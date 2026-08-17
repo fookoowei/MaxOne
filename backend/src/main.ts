@@ -17,6 +17,8 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, transform: true }),
   );
-  await app.listen(process.env.PORT ?? 3000);
+  // Bind to 0.0.0.0 (all IPv4 interfaces), not the default IPv6-only `::` — cloud hosts like
+  // Render scan IPv4 for the open port, and would otherwise see "no open ports".
+  await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
 }
 bootstrap();
