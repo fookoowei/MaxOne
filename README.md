@@ -1,8 +1,8 @@
-# Wallet Management System
+# MaxOne
 
-A full-stack wallet/ledger back-office: a **NestJS + Prisma + PostgreSQL** API (RBAC, immutable
-ledger, transfers, FX, audit) with a **Next.js** staff console in front of it via a
-Backend-for-Frontend (BFF) auth tier.
+**MaxOne** is a full-stack wallet/ledger platform: a **NestJS + Prisma + PostgreSQL** API (RBAC,
+immutable ledger, transfers, FX, audit) with a **Next.js** staff console in front of it via a
+Backend-for-Frontend (BFF) auth tier. A customer-facing app is planned (one API, many clients).
 
 - `backend/` — NestJS API (JWT + rotating refresh tokens, permission-based RBAC, wallets/ledger,
   audit logging). Hardened with `helmet`, CORS, and rate limiting.
