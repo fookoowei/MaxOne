@@ -1,0 +1,65 @@
+name: CI
+
+# Runs on pushes to main (which then deploy) and on PRs targeting main (checks only).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend — type-check + tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx tsc --noEmit
+      - run: npm test
+
+  frontend:
+    name: Frontend — type-check + tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test
+
+  # The gate: only runs on a push to main, and only AFTER both check jobs pass
+  # (`needs`). If a test fails, this job is skipped → nothing deploys.
+  deploy:
+    name: Deploy — main only, gated on green
+    needs: [backend, frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      # Each hook fires only if its secret is set — so you can gate just the
+      # backend, or both, without the workflow erroring on a missing secret.
+      - name: Trigger Render deploy (backend)
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        if: env.HOOK != ''
+        run: curl -fsSL -X POST "$HOOK"
+      - name: Trigger Vercel deploy (frontend)
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        if: env.HOOK != ''
+        run: curl -fsSL -X POST "$HOOK"
