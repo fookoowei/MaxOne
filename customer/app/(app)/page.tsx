@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { serverApi } from '@/lib/api/server';
 import { getSessionUser } from '@/lib/auth/session';
 import { BalanceCard } from '@/components/balance-card';
+import { WalletActions } from '@/components/wallet-actions';
 import { TransactionList, type Transaction } from '@/components/transaction-list';
 
 interface Wallet {
@@ -39,6 +40,8 @@ export default async function DashboardPage() {
       ) : (
         <p className="text-sm text-muted-foreground">No wallet found for your account.</p>
       )}
+
+      <WalletActions />
 
       <section className="space-y-2">
         <h2 className="text-sm font-medium text-muted-foreground">Recent activity</h2>
