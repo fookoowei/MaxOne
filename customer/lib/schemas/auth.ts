@@ -4,6 +4,12 @@ import { z } from 'zod';
 // non-empty names) so the client rejects bad input before it reaches the BFF.
 export const signupSchema = z.object({
   email: z.string().email(),
+  handle: z
+    .string()
+    .regex(
+      /^[a-z][a-z0-9_]{2,19}$/,
+      'Handle: 3–20 chars, lowercase letters/digits/_, start with a letter',
+    ),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),

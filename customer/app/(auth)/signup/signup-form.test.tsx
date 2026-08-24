@@ -27,17 +27,20 @@ describe('SignupForm', () => {
   });
 
   it('POSTs to the BFF and redirects to the dashboard on success', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue(
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ user: { id: 'u1' } }), { status: 201 }),
     );
     render(<SignupForm />);
 
     await userEvent.type(screen.getByLabelText(/first name/i), 'Alice');
     await userEvent.type(screen.getByLabelText(/last name/i), 'Lee');
+    await userEvent.type(screen.getByLabelText(/handle/i), 'alice');
     await userEvent.type(screen.getByLabelText(/email/i), 'alice@example.com');
     await userEvent.type(screen.getByLabelText(/password/i), 'Password123');
     await userEvent.click(screen.getByRole('button', { name: /create account/i }));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith('/'));
+    const sent = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string);
+    expect(sent.handle).toBe('alice');
   });
 });

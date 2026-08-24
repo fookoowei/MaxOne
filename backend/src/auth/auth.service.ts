@@ -23,6 +23,11 @@ export class AuthService {
     const existing = await this.users.findByEmail(dto.email);
     if (existing) throw new ConflictException('Email already registered');
 
+    const handle = dto.handle.toLowerCase();
+    if (await this.users.findByHandle(handle)) {
+      throw new ConflictException('Handle already taken');
+    }
+
     const role = await this.roles.findByNameOrThrow('user');
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
@@ -30,6 +35,7 @@ export class AuthService {
     // by issuing tokens — sign-up returns the same { user, tokens } shape as login.
     const user = await this.users.createWithDefaultWallet({
       email: dto.email,
+      handle,
       passwordHash,
       firstName: dto.firstName,
       lastName: dto.lastName,
@@ -38,7 +44,14 @@ export class AuthService {
 
     const tokens = await this.tokens.issueTokens(user);
     return {
-      user: { id: user.id, email: user.email, role: user.role.name },
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        handle: user.handle,
+      },
       tokens,
     };
   }
@@ -57,7 +70,14 @@ export class AuthService {
 
     const tokens = await this.tokens.issueTokens(user);
     return {
-      user: { id: user.id, email: user.email, role: user.role.name },
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        handle: user.handle,
+      },
       tokens,
     };
   }

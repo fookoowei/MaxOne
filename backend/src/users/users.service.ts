@@ -7,6 +7,7 @@ import { AuditService } from '../audit/audit.service';
 
 export interface CreateUserData {
   email: string;
+  handle: string;
   passwordHash: string;
   firstName: string;
   lastName: string;
@@ -40,6 +41,10 @@ export class UsersService {
 
   findByEmail(email: string) {
     return this.prisma.user.findUnique({ where: { email } });
+  }
+
+  findByHandle(handle: string) {
+    return this.prisma.user.findUnique({ where: { handle } });
   }
 
   findByEmailWithRole(email: string) {

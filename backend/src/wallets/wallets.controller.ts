@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
@@ -9,6 +9,7 @@ import { CreateWalletDto } from './dto/create-wallet.dto';
 import { MoneyAmountDto } from './dto/money-amount.dto';
 import { AdjustmentDto } from './dto/adjustment.dto';
 import { TransferDto } from './dto/transfer.dto';
+import { LookupQueryDto } from './dto/lookup-query.dto';
 
 // JwtAuthGuard only: there is no *permission* a customer holds to read their own
 // wallet. Ownership is enforced in the service, because it depends on the row.
@@ -25,6 +26,12 @@ export class WalletsController {
   @Get()
   list(@CurrentUser() actor: AuthUser) {
     return this.wallets.listWallets(actor);
+  }
+
+  // Placed BEFORE @Get(':id') so 'lookup' isn't parsed as a wallet UUID (ParseUUIDPipe).
+  @Get('lookup')
+  lookup(@Query() query: LookupQueryDto) {
+    return this.wallets.findRecipientByHandle(query.handle);
   }
 
   @Get(':id')

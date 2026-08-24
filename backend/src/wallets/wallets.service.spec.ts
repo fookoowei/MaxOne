@@ -864,3 +864,25 @@ describe('WalletsService audit trail', () => {
     });
   });
 });
+
+describe('WalletsService.findRecipientByHandle', () => {
+  it('returns the recipient wallet + name (handle case-insensitive)', async () => {
+    const usersMock = {
+      findByHandle: jest.fn().mockResolvedValue({ id: 'u2', firstName: 'Alice', lastName: 'Lee' }),
+    };
+    const prismaMock = { wallet: { findFirst: jest.fn().mockResolvedValue({ id: 'w2', currency: 'USD' }) } };
+    const service = await buildService(prismaMock, usersMock);
+
+    const result = await service.findRecipientByHandle('Alice');
+
+    expect(result).toEqual({ walletId: 'w2', currency: 'USD', recipientName: 'Alice Lee' });
+    expect(usersMock.findByHandle).toHaveBeenCalledWith('alice');
+  });
+
+  it('throws NotFound when the handle is unknown', async () => {
+    const usersMock = { findByHandle: jest.fn().mockResolvedValue(null) };
+    const service = await buildService({}, usersMock);
+
+    await expect(service.findRecipientByHandle('ghost')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});

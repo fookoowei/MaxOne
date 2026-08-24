@@ -46,6 +46,11 @@ export function SignupForm() {
         {errors.lastName && <p className="text-sm text-destructive">{errors.lastName.message}</p>}
       </div>
       <div className="space-y-1">
+        <Label htmlFor="handle">Handle</Label>
+        <Input id="handle" placeholder="yourhandle" {...register('handle')} />
+        {errors.handle && <p className="text-sm text-destructive">{errors.handle.message}</p>}
+      </div>
+      <div className="space-y-1">
         <Label htmlFor="email">Email</Label>
         <Input id="email" type="email" {...register('email')} />
         {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}

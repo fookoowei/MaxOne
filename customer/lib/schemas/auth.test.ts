@@ -4,6 +4,7 @@ import { signupSchema, loginSchema } from './auth';
 describe('signupSchema', () => {
   const valid = {
     email: 'alice@example.com',
+    handle: 'alice',
     password: 'Password123',
     firstName: 'Alice',
     lastName: 'Lee',

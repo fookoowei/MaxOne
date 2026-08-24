@@ -15,6 +15,11 @@ export interface SessionUser {
   id: string;
   email: string;
   role: string;
+  // Enriched at login/register so the app can greet the customer by name and show their
+  // @handle without an extra round-trip. Optional so an older cookie never breaks a render.
+  firstName?: string;
+  lastName?: string;
+  handle?: string;
 }
 
 // The security bundle every auth cookie shares. httpOnly keeps it out of JS

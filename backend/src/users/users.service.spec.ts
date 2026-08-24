@@ -248,6 +248,7 @@ describe('UsersService audit trail', () => {
 describe('UsersService.createWithDefaultWallet', () => {
   const data = {
     email: 'alice@example.com',
+    handle: 'alice',
     passwordHash: 'hashed',
     firstName: 'Alice',
     lastName: 'Lee',
@@ -269,5 +270,18 @@ describe('UsersService.createWithDefaultWallet', () => {
     expect(inner.wallet.create).toHaveBeenCalledWith({
       data: { userId: 'u1', name: 'My Wallet', currency: 'USD' },
     });
+  });
+});
+
+describe('UsersService.findByHandle', () => {
+  it('looks a user up by handle', async () => {
+    const found = { id: 'u1', handle: 'alice' };
+    const prismaMock = { user: { findUnique: jest.fn().mockResolvedValue(found) } };
+    const service = await buildService(prismaMock);
+
+    const result = await service.findByHandle('alice');
+
+    expect(result).toBe(found);
+    expect(prismaMock.user.findUnique).toHaveBeenCalledWith({ where: { handle: 'alice' } });
   });
 });
