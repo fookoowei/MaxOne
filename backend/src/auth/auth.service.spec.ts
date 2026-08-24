@@ -9,6 +9,7 @@ import { RegisterDto } from './dto/register.dto';
 
 const dto: RegisterDto = {
   email: 'alice@example.com',
+  handle: 'alice',
   password: 'Password123',
   firstName: 'Alice',
   lastName: 'Lee',
@@ -40,6 +41,7 @@ describe('AuthService.register', () => {
     const createdUser = { id: 'user-1', email: dto.email, role: { name: 'user' } };
     const usersMock = {
       findByEmail: jest.fn().mockResolvedValue(null), // email not taken
+      findByHandle: jest.fn().mockResolvedValue(null), // handle not taken
       createWithDefaultWallet: jest.fn().mockResolvedValue(createdUser),
     };
     const tokensMock = {
@@ -53,11 +55,12 @@ describe('AuthService.register', () => {
       user: { id: 'user-1', email: dto.email, role: 'user' },
       tokens: { accessToken: 'a.jwt', refreshToken: 'r-opaque' },
     });
-    // Stored a hash, not the plaintext; assigned the default 'user' role.
+    // Stored a hash, not the plaintext; assigned the default 'user' role; persisted the handle.
     const passedData = usersMock.createWithDefaultWallet.mock.calls[0][0];
     expect(passedData.passwordHash).toBeDefined();
     expect(passedData.passwordHash).not.toBe(dto.password);
     expect(passedData.roleId).toBe('role-user');
+    expect(passedData.handle).toBe('alice');
     // Tokens issued for the created user (right identity/role).
     expect(tokensMock.issueTokens).toHaveBeenCalledWith(createdUser);
   });
@@ -65,6 +68,19 @@ describe('AuthService.register', () => {
   it('throws ConflictException when the email is already registered', async () => {
     const usersMock = {
       findByEmail: jest.fn().mockResolvedValue({ id: 'existing', email: dto.email }),
+      findByHandle: jest.fn(),
+      createWithDefaultWallet: jest.fn(),
+    };
+    const service = await buildService(usersMock);
+
+    await expect(service.register(dto)).rejects.toBeInstanceOf(ConflictException);
+    expect(usersMock.createWithDefaultWallet).not.toHaveBeenCalled();
+  });
+
+  it('throws ConflictException when the handle is already taken', async () => {
+    const usersMock = {
+      findByEmail: jest.fn().mockResolvedValue(null),
+      findByHandle: jest.fn().mockResolvedValue({ id: 'other', handle: 'alice' }),
       createWithDefaultWallet: jest.fn(),
     };
     const service = await buildService(usersMock);

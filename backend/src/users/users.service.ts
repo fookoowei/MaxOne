@@ -7,6 +7,7 @@ import { AuditService } from '../audit/audit.service';
 
 export interface CreateUserData {
   email: string;
+  handle: string;
   passwordHash: string;
   firstName: string;
   lastName: string;

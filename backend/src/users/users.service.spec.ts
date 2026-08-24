@@ -248,6 +248,7 @@ describe('UsersService audit trail', () => {
 describe('UsersService.createWithDefaultWallet', () => {
   const data = {
     email: 'alice@example.com',
+    handle: 'alice',
     passwordHash: 'hashed',
     firstName: 'Alice',
     lastName: 'Lee',
