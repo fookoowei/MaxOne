@@ -2,7 +2,6 @@ import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/co
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { RolesService } from '../users/roles.service';
-import { toSafeUser } from '../users/to-safe-user';
 import { TokensService } from './tokens.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -27,7 +26,9 @@ export class AuthService {
     const role = await this.roles.findByNameOrThrow('user');
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    const user = await this.users.create({
+    // Create the user + their default wallet atomically, then log them straight in
+    // by issuing tokens — sign-up returns the same { user, tokens } shape as login.
+    const user = await this.users.createWithDefaultWallet({
       email: dto.email,
       passwordHash,
       firstName: dto.firstName,
@@ -35,7 +36,11 @@ export class AuthService {
       roleId: role.id,
     });
 
-    return toSafeUser(user);
+    const tokens = await this.tokens.issueTokens(user);
+    return {
+      user: { id: user.id, email: user.email, role: user.role.name },
+      tokens,
+    };
   }
 
   async login(dto: LoginDto) {

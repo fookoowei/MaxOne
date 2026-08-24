@@ -36,45 +36,41 @@ function buildService(
 }
 
 describe('AuthService.register', () => {
-  it('hashes the password and returns the user without the hash', async () => {
+  it('creates a user with a default wallet, issues tokens, and returns { user, tokens }', async () => {
+    const createdUser = { id: 'user-1', email: dto.email, role: { name: 'user' } };
     const usersMock = {
       findByEmail: jest.fn().mockResolvedValue(null), // email not taken
-      create: jest.fn().mockImplementation((data) =>
-        Promise.resolve({
-          id: 'user-1',
-          status: 'active',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          ...data,
-        }),
-      ),
+      createWithDefaultWallet: jest.fn().mockResolvedValue(createdUser),
     };
-    const service = await buildService(usersMock);
+    const tokensMock = {
+      issueTokens: jest.fn().mockResolvedValue({ accessToken: 'a.jwt', refreshToken: 'r-opaque' }),
+    };
+    const service = await buildService(usersMock, tokensMock);
 
     const result = await service.register(dto);
 
-    // Return value must NOT leak the hash.
-    expect(result).not.toHaveProperty('passwordHash');
-    expect(result.email).toBe(dto.email);
-
-    // What we stored must be a hash, not the plaintext password.
-    const stored = usersMock.create.mock.calls[0][0].passwordHash;
-    expect(stored).toBeDefined();
-    expect(stored).not.toBe(dto.password);
-
-    // New account gets the default 'user' role.
-    expect(usersMock.create.mock.calls[0][0].roleId).toBe('role-user');
+    expect(result).toEqual({
+      user: { id: 'user-1', email: dto.email, role: 'user' },
+      tokens: { accessToken: 'a.jwt', refreshToken: 'r-opaque' },
+    });
+    // Stored a hash, not the plaintext; assigned the default 'user' role.
+    const passedData = usersMock.createWithDefaultWallet.mock.calls[0][0];
+    expect(passedData.passwordHash).toBeDefined();
+    expect(passedData.passwordHash).not.toBe(dto.password);
+    expect(passedData.roleId).toBe('role-user');
+    // Tokens issued for the created user (right identity/role).
+    expect(tokensMock.issueTokens).toHaveBeenCalledWith(createdUser);
   });
 
   it('throws ConflictException when the email is already registered', async () => {
     const usersMock = {
       findByEmail: jest.fn().mockResolvedValue({ id: 'existing', email: dto.email }),
-      create: jest.fn(),
+      createWithDefaultWallet: jest.fn(),
     };
     const service = await buildService(usersMock);
 
     await expect(service.register(dto)).rejects.toBeInstanceOf(ConflictException);
-    expect(usersMock.create).not.toHaveBeenCalled();
+    expect(usersMock.createWithDefaultWallet).not.toHaveBeenCalled();
   });
 });
 
