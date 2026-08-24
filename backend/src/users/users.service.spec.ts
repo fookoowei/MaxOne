@@ -271,3 +271,16 @@ describe('UsersService.createWithDefaultWallet', () => {
     });
   });
 });
+
+describe('UsersService.findByHandle', () => {
+  it('looks a user up by handle', async () => {
+    const found = { id: 'u1', handle: 'alice' };
+    const prismaMock = { user: { findUnique: jest.fn().mockResolvedValue(found) } };
+    const service = await buildService(prismaMock);
+
+    const result = await service.findByHandle('alice');
+
+    expect(result).toBe(found);
+    expect(prismaMock.user.findUnique).toHaveBeenCalledWith({ where: { handle: 'alice' } });
+  });
+});

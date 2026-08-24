@@ -42,6 +42,10 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { email } });
   }
 
+  findByHandle(handle: string) {
+    return this.prisma.user.findUnique({ where: { handle } });
+  }
+
   findByEmailWithRole(email: string) {
     return this.prisma.user.findUnique({
       where: { email },

@@ -13,6 +13,7 @@ datasource db {
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
+  handle       String?  @unique // public @handle for P2P; nullable for migration, required at register
   passwordHash String
   firstName    String
   lastName     String
