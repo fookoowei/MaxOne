@@ -32,7 +32,9 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <header>
         <p className="text-sm text-muted-foreground">Welcome back</p>
-        <h1 className="text-lg font-semibold">{session?.email ?? 'Your wallet'}</h1>
+        <h1 className="text-lg font-semibold">
+          {session?.firstName ? `${session.firstName} ${session.lastName ?? ''}`.trim() : 'Your wallet'}
+        </h1>
       </header>
 
       {primary ? (

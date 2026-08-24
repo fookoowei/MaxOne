@@ -38,7 +38,14 @@ function buildService(
 
 describe('AuthService.register', () => {
   it('creates a user with a default wallet, issues tokens, and returns { user, tokens }', async () => {
-    const createdUser = { id: 'user-1', email: dto.email, role: { name: 'user' } };
+    const createdUser = {
+      id: 'user-1',
+      email: dto.email,
+      firstName: 'Alice',
+      lastName: 'Lee',
+      handle: 'alice',
+      role: { name: 'user' },
+    };
     const usersMock = {
       findByEmail: jest.fn().mockResolvedValue(null), // email not taken
       findByHandle: jest.fn().mockResolvedValue(null), // handle not taken
@@ -52,7 +59,14 @@ describe('AuthService.register', () => {
     const result = await service.register(dto);
 
     expect(result).toEqual({
-      user: { id: 'user-1', email: dto.email, role: 'user' },
+      user: {
+        id: 'user-1',
+        email: dto.email,
+        role: 'user',
+        firstName: 'Alice',
+        lastName: 'Lee',
+        handle: 'alice',
+      },
       tokens: { accessToken: 'a.jwt', refreshToken: 'r-opaque' },
     });
     // Stored a hash, not the plaintext; assigned the default 'user' role; persisted the handle.
@@ -100,6 +114,9 @@ describe('AuthService.login', () => {
       id: 'user-1',
       email: credentials.email,
       passwordHash,
+      firstName: 'Alice',
+      lastName: 'Lee',
+      handle: 'alice',
       role: { name: 'user' },
     };
     const usersMock = { findByEmailWithRole: jest.fn().mockResolvedValue(foundUser) };
@@ -112,7 +129,14 @@ describe('AuthService.login', () => {
 
     // Returns the safe user AND the token pair.
     expect(result).toEqual({
-      user: { id: 'user-1', email: credentials.email, role: 'user' },
+      user: {
+        id: 'user-1',
+        email: credentials.email,
+        role: 'user',
+        firstName: 'Alice',
+        lastName: 'Lee',
+        handle: 'alice',
+      },
       tokens: { accessToken: 'a.jwt', refreshToken: 'r-opaque' },
     });
     // The factory was handed the found user (so tokens carry the right identity/role).

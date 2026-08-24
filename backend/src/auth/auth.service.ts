@@ -44,7 +44,14 @@ export class AuthService {
 
     const tokens = await this.tokens.issueTokens(user);
     return {
-      user: { id: user.id, email: user.email, role: user.role.name },
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        handle: user.handle,
+      },
       tokens,
     };
   }
@@ -63,7 +70,14 @@ export class AuthService {
 
     const tokens = await this.tokens.issueTokens(user);
     return {
-      user: { id: user.id, email: user.email, role: user.role.name },
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        handle: user.handle,
+      },
       tokens,
     };
   }
