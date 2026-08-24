@@ -25,6 +25,19 @@ export class UsersService {
     return this.prisma.user.create({ data });
   }
 
+  // Onboarding: a new customer must land on a dashboard with a real wallet, so the
+  // user and their default USD wallet are created atomically — a failure to create
+  // the wallet rolls back the user too. Returns the user with its role for token issuance.
+  createWithDefaultWallet(data: CreateUserData) {
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({ data, include: { role: true } });
+      await tx.wallet.create({
+        data: { userId: user.id, name: 'My Wallet', currency: 'USD' },
+      });
+      return user;
+    });
+  }
+
   findByEmail(email: string) {
     return this.prisma.user.findUnique({ where: { email } });
   }

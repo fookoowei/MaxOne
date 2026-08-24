@@ -244,3 +244,30 @@ describe('UsersService audit trail', () => {
     });
   });
 });
+
+describe('UsersService.createWithDefaultWallet', () => {
+  const data = {
+    email: 'alice@example.com',
+    passwordHash: 'hashed',
+    firstName: 'Alice',
+    lastName: 'Lee',
+    roleId: 'role-user',
+  };
+
+  it('creates the user (with role) and a default USD wallet in one transaction', async () => {
+    const createdUser = { id: 'u1', email: data.email, role: { name: 'user' } };
+    const inner = {
+      user: { create: jest.fn().mockResolvedValue(createdUser) },
+      wallet: { create: jest.fn().mockResolvedValue({ id: 'w1' }) },
+    };
+    const service = await buildService(txUsersPrisma(inner));
+
+    const result = await service.createWithDefaultWallet(data);
+
+    expect(result).toBe(createdUser);
+    expect(inner.user.create).toHaveBeenCalledWith({ data, include: { role: true } });
+    expect(inner.wallet.create).toHaveBeenCalledWith({
+      data: { userId: 'u1', name: 'My Wallet', currency: 'USD' },
+    });
+  });
+});
