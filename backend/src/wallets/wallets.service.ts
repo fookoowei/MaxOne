@@ -36,6 +36,23 @@ export class WalletsService {
     });
   }
 
+  // Resolve a public @handle to a receivable wallet. Minimal return (never the email or
+  // full row). A 404 reveals non-existence — inherent to pay-by-identifier; auth-gated.
+  async findRecipientByHandle(handle: string) {
+    const user = await this.users.findByHandle(handle.toLowerCase());
+    if (!user) throw new NotFoundException('No account found with that handle');
+    const wallet = await this.prisma.wallet.findFirst({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!wallet) throw new NotFoundException('That account has no wallet');
+    return {
+      walletId: wallet.id,
+      currency: wallet.currency,
+      recipientName: `${user.firstName} ${user.lastName}`,
+    };
+  }
+
   getWallet(id: string, actor: AuthUser) {
     return this.getOwnedWallet(id, actor);
   }
