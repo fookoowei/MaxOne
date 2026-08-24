@@ -43,11 +43,28 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm test
 
-  # The gate: only runs on a push to main, and only AFTER both check jobs pass
+  customer:
+    name: Customer — type-check + tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: customer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: customer/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test
+
+  # The gate: only runs on a push to main, and only AFTER all check jobs pass
   # (`needs`). If a test fails, this job is skipped → nothing deploys.
   deploy:
     name: Deploy — main only, gated on green
-    needs: [backend, frontend]
+    needs: [backend, frontend, customer]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
