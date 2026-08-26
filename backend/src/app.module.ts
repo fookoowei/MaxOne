@@ -11,6 +11,7 @@ import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { AuditModule } from './audit/audit.module';
 import { MarketsModule } from './markets/markets.module';
+import { WatchlistModule } from './watchlist/watchlist.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { MarketsModule } from './markets/markets.module';
     AuthModule,
     AuditModule,
     MarketsModule,
+    WatchlistModule,
   ],
   controllers: [AppController],
   providers: [
