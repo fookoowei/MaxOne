@@ -1,4 +1,5 @@
 import { ServiceUnavailableException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { RatesService } from './rates.service';
 
 // A minimal stand-in for the parts of the fetch Response we use.
@@ -36,5 +37,16 @@ describe('RatesService', () => {
   it('throws 503 when the pair is absent from the response', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(fakeResponse({ rates: {} }));
     await expect(service.getRate('USD', 'XYZ')).rejects.toThrow(ServiceUnavailableException);
+  });
+
+  it('quotes a cross-currency conversion', async () => {
+    jest.spyOn(service, 'getRate').mockResolvedValue(new Prisma.Decimal('0.87781'));
+    const q = await service.quote('USD', 'EUR', 50000);
+    expect(q).toEqual({ from: 'USD', to: 'EUR', amount: 50000, rate: '0.87781', converted: 43890 });
+  });
+
+  it('quotes same-currency as rate 1 with no conversion', async () => {
+    const q = await service.quote('USD', 'USD', 5000);
+    expect(q).toEqual({ from: 'USD', to: 'USD', amount: 5000, rate: '1', converted: 5000 });
   });
 });
