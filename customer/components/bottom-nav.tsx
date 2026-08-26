@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Send, CreditCard, User } from 'lucide-react';
+import { Home, Send, TrendingUp, User } from 'lucide-react';
 
 const tabs = [
   { label: 'Home', icon: Home, href: '/' },
   { label: 'Pay', icon: Send, href: '/pay' },
-  { label: 'Cards', icon: CreditCard, href: null },
+  { label: 'Markets', icon: TrendingUp, href: '/markets' },
   { label: 'Profile', icon: User, href: null },
 ];
 
