@@ -120,3 +120,14 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
 }
+
+model WatchlistItem {
+  id        String   @id @default(uuid())
+  userId    String
+  symbol    String   // e.g. "BTC"
+  type      String   // "crypto" | "stock"
+  createdAt DateTime @default(now())
+
+  @@unique([userId, symbol])
+  @@index([userId])
+}
