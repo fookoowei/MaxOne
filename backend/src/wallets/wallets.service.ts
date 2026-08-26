@@ -11,6 +11,7 @@ import type { AuthUser } from '../auth/jwt.strategy';
 import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { RatesService } from '../rates/rates.service';
+import { convertMinor } from '../rates/convert-minor';
 import { AuditService } from '../audit/audit.service';
 import type { AuditAction } from '../audit/audit.actions';
 
@@ -321,10 +322,7 @@ export class WalletsService {
     let credit = dto.amount;
     if (source.currency !== dest.currency) {
       exchangeRate = await this.rates.getRate(source.currency, dest.currency); // 503 on failure
-      credit = new Prisma.Decimal(dto.amount)
-        .times(exchangeRate)
-        .toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_EVEN) // banker's rounding
-        .toNumber();
+      credit = convertMinor(dto.amount, exchangeRate); // banker's rounding, shared with /rates/quote
     }
 
     const transferId = randomUUID();

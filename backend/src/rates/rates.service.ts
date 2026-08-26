@@ -1,5 +1,6 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { convertMinor } from './convert-minor';
 
 /**
  * The ONLY place the app talks to an external FX provider. Isolated behind this seam so a
@@ -30,5 +31,12 @@ export class RatesService {
       throw new ServiceUnavailableException(`No exchange rate for ${from} -> ${to}`);
     }
     return new Prisma.Decimal(rate);
+  }
+
+  // A preview: the live rate + the converted minor-unit amount, using the same math a transfer
+  // uses (convertMinor). Same-currency short-circuits to rate 1 with no network call.
+  async quote(from: string, to: string, amount: number) {
+    const rate = await this.getRate(from, to);
+    return { from, to, amount, rate: rate.toString(), converted: convertMinor(amount, rate) };
   }
 }
