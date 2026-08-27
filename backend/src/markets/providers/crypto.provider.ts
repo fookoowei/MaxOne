@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CRYPTO_IDS, MarketAsset } from '../market-asset';
+import { AssetDetail, CRYPTO_IDS, MarketAsset } from '../market-asset';
 
 interface CoinGeckoRow {
   id: string;
@@ -30,6 +30,35 @@ export class CryptoProvider {
       }));
     } catch {
       return [];
+    }
+  }
+
+  // One coin, richer fields. Same CoinGecko endpoint filtered to a single id → no over-fetch,
+  // works for any coin. null when not found / on error (the controller turns null into a 404).
+  async fetchOne(id: string): Promise<AssetDetail | null> {
+    try {
+      const res = await fetch(`${this.url}?vs_currency=usd&ids=${id}`);
+      if (!res.ok) return null;
+      const rows = (await res.json()) as (CoinGeckoRow & {
+        market_cap: number | null;
+        high_24h: number | null;
+        low_24h: number | null;
+      })[];
+      const r = rows[0];
+      if (!r) return null;
+      return {
+        id: r.id,
+        symbol: r.symbol.toUpperCase(),
+        name: r.name,
+        type: 'crypto',
+        price: r.current_price,
+        change24h: r.price_change_percentage_24h ?? 0,
+        marketCap: r.market_cap ?? 0,
+        high24h: r.high_24h ?? 0,
+        low24h: r.low_24h ?? 0,
+      };
+    } catch {
+      return null;
     }
   }
 }

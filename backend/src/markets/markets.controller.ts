@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { MarketsService } from './markets.service';
 
@@ -10,5 +10,12 @@ export class MarketsController {
   @Get()
   list() {
     return this.markets.list();
+  }
+
+  @Get(':id')
+  async detail(@Param('id') id: string) {
+    const asset = await this.markets.detail(id);
+    if (!asset) throw new NotFoundException('Asset not found');
+    return asset;
   }
 }

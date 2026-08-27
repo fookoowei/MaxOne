@@ -9,5 +9,12 @@ export interface MarketAsset {
   change24h: number; // percent, e.g. -1.34
 }
 
+// A single asset's detail — the list fields plus a few stats CoinGecko already returns.
+export interface AssetDetail extends MarketAsset {
+  marketCap: number;
+  high24h: number;
+  low24h: number;
+}
+
 // CoinGecko coin ids.
 export const CRYPTO_IDS = ['bitcoin', 'ethereum', 'solana', 'cardano', 'dogecoin'];
