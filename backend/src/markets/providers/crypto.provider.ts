@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { AssetDetail, CRYPTO_IDS, MarketAsset } from '../market-asset';
+import { AssetDetail, ChartData, CRYPTO_IDS, MarketAsset } from '../market-asset';
 
 interface CoinGeckoRow {
   id: string;
@@ -59,6 +59,31 @@ export class CryptoProvider {
       };
     } catch {
       return null;
+    }
+  }
+
+  private chartLabel(tsMs: number, days: number): string {
+    const d = new Date(tsMs);
+    return days <= 1
+      ? d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+      : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  // Price history for a coin. Fail-soft → empty (the page shows "Chart unavailable").
+  async fetchChart(id: string, days: number): Promise<ChartData> {
+    try {
+      const res = await fetch(
+        `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${days}`,
+      );
+      if (!res.ok) return { points: [], labels: [] };
+      const body = (await res.json()) as { prices?: [number, number][] };
+      const prices = body.prices ?? [];
+      return {
+        points: prices.map(([, p]) => p),
+        labels: prices.map(([t]) => this.chartLabel(t, days)),
+      };
+    } catch {
+      return { points: [], labels: [] };
     }
   }
 }

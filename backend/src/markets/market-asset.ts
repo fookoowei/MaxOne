@@ -16,5 +16,10 @@ export interface AssetDetail extends MarketAsset {
   low24h: number;
 }
 
+export interface ChartData {
+  points: number[]; // price values, oldest → newest
+  labels: string[]; // short labels aligned to points
+}
+
 // CoinGecko coin ids.
 export const CRYPTO_IDS = ['bitcoin', 'ethereum', 'solana', 'cardano', 'dogecoin'];

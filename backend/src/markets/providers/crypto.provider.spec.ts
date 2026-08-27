@@ -79,3 +79,25 @@ describe('CryptoProvider.fetchOne', () => {
     expect(await provider.fetchOne('bitcoin')).toBeNull();
   });
 });
+
+describe('CryptoProvider.fetchChart', () => {
+  const provider = new CryptoProvider();
+  afterEach(() => jest.restoreAllMocks());
+
+  it('maps CoinGecko prices to points + labels (same length, ordered)', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ prices: [[1000, 100], [2000, 110], [3000, 105]] }),
+    } as unknown as Response);
+
+    const chart = await provider.fetchChart('bitcoin', 7);
+
+    expect(chart.points).toEqual([100, 110, 105]);
+    expect(chart.labels).toHaveLength(3);
+  });
+
+  it('fails soft to empty on error', async () => {
+    jest.spyOn(global, 'fetch').mockRejectedValue(new Error('down'));
+    expect(await provider.fetchChart('bitcoin', 7)).toEqual({ points: [], labels: [] });
+  });
+});

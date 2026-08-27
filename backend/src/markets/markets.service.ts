@@ -15,4 +15,8 @@ export class MarketsService {
   detail(id: string) {
     return this.crypto.fetchOne(id);
   }
+
+  chart(id: string, days: number) {
+    return this.crypto.fetchChart(id, days);
+  }
 }
