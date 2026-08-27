@@ -6,8 +6,8 @@ import { MarketList } from './market-list';
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const assets = [
-  { symbol: 'BTC', name: 'Bitcoin', type: 'crypto' as const, price: 43000, change24h: 2.34 },
-  { symbol: 'AAPL', name: 'Apple Inc.', type: 'stock' as const, price: 189.5, change24h: -1.1 },
+  { id: 'bitcoin', symbol: 'BTC', name: 'Bitcoin', type: 'crypto' as const, price: 43000, change24h: 2.34 },
+  { id: 'apple', symbol: 'AAPL', name: 'Apple Inc.', type: 'stock' as const, price: 189.5, change24h: -1.1 },
 ];
 
 describe('MarketList', () => {
@@ -29,5 +29,10 @@ describe('MarketList', () => {
     render(<MarketList assets={assets} followedSymbols={['BTC']} />);
     expect(screen.getByRole('button', { name: /unfollow btc/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /follow aapl/i })).toBeInTheDocument();
+  });
+
+  it('links each row to the asset detail page', () => {
+    render(<MarketList assets={assets} />);
+    expect(screen.getByRole('link', { name: /bitcoin/i })).toHaveAttribute('href', '/markets/bitcoin');
   });
 });
