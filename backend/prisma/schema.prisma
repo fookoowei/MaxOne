@@ -131,3 +131,16 @@ model WatchlistItem {
   @@unique([userId, symbol])
   @@index([userId])
 }
+
+model Holding {
+  id        String   @id @default(uuid())
+  userId    String
+  symbol    String
+  type      String
+  quantity  Float
+  avgCost   Float
+  createdAt DateTime @default(now())
+
+  @@unique([userId, symbol])
+  @@index([userId])
+}

@@ -12,6 +12,7 @@ import { AuthModule } from './auth/auth.module';
 import { AuditModule } from './audit/audit.module';
 import { MarketsModule } from './markets/markets.module';
 import { WatchlistModule } from './watchlist/watchlist.module';
+import { HoldingsModule } from './holdings/holdings.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { WatchlistModule } from './watchlist/watchlist.module';
     AuditModule,
     MarketsModule,
     WatchlistModule,
+    HoldingsModule,
   ],
   controllers: [AppController],
   providers: [

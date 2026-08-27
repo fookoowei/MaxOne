@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { serverApi } from '@/lib/api/server';
 import { MarketList, type MarketAsset } from '@/components/market-list';
 
@@ -17,9 +18,14 @@ export default async function MarketsPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-xl font-semibold">Markets</h1>
-        <p className="text-sm text-muted-foreground">Live prices — informational only.</p>
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">Markets</h1>
+          <p className="text-sm text-muted-foreground">Live prices — informational only.</p>
+        </div>
+        <Link href="/portfolio" className="text-sm text-primary underline">
+          Portfolio
+        </Link>
       </header>
 
       <section className="space-y-2">
