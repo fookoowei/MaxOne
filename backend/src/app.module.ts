@@ -13,6 +13,7 @@ import { AuditModule } from './audit/audit.module';
 import { MarketsModule } from './markets/markets.module';
 import { WatchlistModule } from './watchlist/watchlist.module';
 import { HoldingsModule } from './holdings/holdings.module';
+import { AlertsModule } from './alerts/alerts.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { HoldingsModule } from './holdings/holdings.module';
     MarketsModule,
     WatchlistModule,
     HoldingsModule,
+    AlertsModule,
   ],
   controllers: [AppController],
   providers: [

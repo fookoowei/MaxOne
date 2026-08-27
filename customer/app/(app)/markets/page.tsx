@@ -23,9 +23,14 @@ export default async function MarketsPage() {
           <h1 className="text-xl font-semibold">Markets</h1>
           <p className="text-sm text-muted-foreground">Live prices — informational only.</p>
         </div>
-        <Link href="/portfolio" className="text-sm text-primary underline">
-          Portfolio
-        </Link>
+        <div className="flex gap-3">
+          <Link href="/portfolio" className="text-sm text-primary underline">
+            Portfolio
+          </Link>
+          <Link href="/alerts" className="text-sm text-primary underline">
+            Alerts
+          </Link>
+        </div>
       </header>
 
       <section className="space-y-2">
