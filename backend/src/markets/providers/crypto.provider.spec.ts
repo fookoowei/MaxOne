@@ -1,6 +1,7 @@
 import { CryptoProvider } from './crypto.provider';
 
 const coingeckoRow = {
+  id: 'bitcoin',
   symbol: 'btc',
   name: 'Bitcoin',
   current_price: 43000.5,
@@ -20,7 +21,7 @@ describe('CryptoProvider', () => {
     const assets = await provider.fetchAssets();
 
     expect(assets).toEqual([
-      { symbol: 'BTC', name: 'Bitcoin', type: 'crypto', price: 43000.5, change24h: 2.34 },
+      { id: 'bitcoin', symbol: 'BTC', name: 'Bitcoin', type: 'crypto', price: 43000.5, change24h: 2.34 },
     ]);
   });
 

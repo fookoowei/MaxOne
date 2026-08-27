@@ -1,7 +1,7 @@
 import { MarketsService } from './markets.service';
 import { MarketAsset } from './market-asset';
 
-const btc: MarketAsset = { symbol: 'BTC', name: 'Bitcoin', type: 'crypto', price: 43000, change24h: 2 };
+const btc: MarketAsset = { id: 'bitcoin', symbol: 'BTC', name: 'Bitcoin', type: 'crypto', price: 43000, change24h: 2 };
 
 describe('MarketsService.list', () => {
   it('returns the crypto provider assets', async () => {

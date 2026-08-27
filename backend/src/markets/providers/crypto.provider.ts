@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CRYPTO_IDS, MarketAsset } from '../market-asset';
 
 interface CoinGeckoRow {
+  id: string;
   symbol: string;
   name: string;
   current_price: number;
@@ -20,6 +21,7 @@ export class CryptoProvider {
       if (!res.ok) return [];
       const rows = (await res.json()) as CoinGeckoRow[];
       return rows.map((r) => ({
+        id: r.id,
         symbol: r.symbol.toUpperCase(),
         name: r.name,
         type: 'crypto' as const,

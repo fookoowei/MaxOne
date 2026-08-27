@@ -1,4 +1,5 @@
 export interface MarketAsset {
+  id: string; // CoinGecko id, e.g. "bitcoin" (used for detail routing + charts)
   symbol: string; // "BTC"
   name: string; // "Bitcoin"
   // 'stock' is kept in the union so stocks can be re-added later as a provider swap without a
