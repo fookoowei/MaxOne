@@ -11,4 +11,12 @@ export class MarketsService {
   async list(): Promise<MarketAsset[]> {
     return this.crypto.fetchAssets();
   }
+
+  detail(id: string) {
+    return this.crypto.fetchOne(id);
+  }
+
+  chart(id: string, days: number) {
+    return this.crypto.fetchChart(id, days);
+  }
 }
