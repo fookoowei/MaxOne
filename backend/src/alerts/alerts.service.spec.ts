@@ -25,4 +25,21 @@ describe('AlertsService', () => {
     await service.remove(actor, 'a1');
     expect(deleteMany).toHaveBeenCalledWith({ where: { id: 'a1', userId: 'u1' } });
   });
+
+  it('findPending queries only alerts with triggeredAt null (all users)', async () => {
+    const findMany = jest.fn().mockResolvedValue([{ id: 'a1' }]);
+    const service = new AlertsService({ priceAlert: { findMany } } as any);
+    await service.findPending();
+    expect(findMany).toHaveBeenCalledWith({ where: { triggeredAt: null } });
+  });
+
+  it('markTriggered sets triggeredAt for the given ids', async () => {
+    const updateMany = jest.fn().mockResolvedValue({ count: 2 });
+    const service = new AlertsService({ priceAlert: { updateMany } } as any);
+    await service.markTriggered(['a1', 'a2']);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['a1', 'a2'] } },
+      data: { triggeredAt: expect.any(Date) },
+    });
+  });
 });

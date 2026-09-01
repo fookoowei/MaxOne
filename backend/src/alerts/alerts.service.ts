@@ -37,4 +37,16 @@ export class AlertsService {
   remove(actor: AuthUser, id: string) {
     return this.prisma.priceAlert.deleteMany({ where: { id, userId: actor.id } });
   }
+
+  // System-level (all users) — the background check, NOT actor-scoped.
+  findPending() {
+    return this.prisma.priceAlert.findMany({ where: { triggeredAt: null } });
+  }
+
+  markTriggered(ids: string[]) {
+    return this.prisma.priceAlert.updateMany({
+      where: { id: { in: ids } },
+      data: { triggeredAt: new Date() },
+    });
+  }
 }
