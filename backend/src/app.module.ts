@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -21,6 +22,8 @@ import { RealtimeModule } from './realtime/realtime.module';
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '../.env' }),
     // Global default: 100 requests/minute/IP (ttl is in ms). In-memory store — single instance.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    // Enables @Interval/@Cron jobs (e.g. the live price stream).
+    ScheduleModule.forRoot(),
     PrismaModule,
     UsersModule,
     WalletsModule,
