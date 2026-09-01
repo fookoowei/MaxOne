@@ -20,7 +20,9 @@ export default async function AlertsPage() {
           New alert
         </Link>
       </header>
-      <p className="text-xs text-muted-foreground">Checked when you open this page.</p>
+      <p className="text-xs text-muted-foreground">
+        Checked automatically — you&apos;ll get a toast the moment one triggers.
+      </p>
       <AlertList rows={rows} />
     </div>
   );

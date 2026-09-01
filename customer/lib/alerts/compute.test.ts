@@ -13,6 +13,13 @@ describe('computeAlerts', () => {
     const [r] = computeAlerts([{ id: 'a1', symbol: 'BTC', targetPrice: 90000, direction: 'above' }], prices);
     expect(r.triggered).toBe(false);
   });
+  it('passes triggeredAt through onto the row', () => {
+    const [r] = computeAlerts(
+      [{ id: 'a1', symbol: 'BTC', targetPrice: 80000, direction: 'above', triggeredAt: '2026-09-01T00:00:00Z' }],
+      [],
+    );
+    expect(r.triggeredAt).toBe('2026-09-01T00:00:00Z');
+  });
   it('marks a "below" alert triggered when price <= target', () => {
     const [r] = computeAlerts([{ id: 'a1', symbol: 'BTC', targetPrice: 80000, direction: 'below' }], prices);
     expect(r.triggered).toBe(true);

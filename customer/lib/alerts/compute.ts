@@ -3,6 +3,7 @@ export interface Alert {
   symbol: string;
   targetPrice: number;
   direction: 'above' | 'below';
+  triggeredAt?: string | null; // persisted server state — null/absent = pending (background one-shot)
 }
 export interface PriceInfo {
   symbol: string;

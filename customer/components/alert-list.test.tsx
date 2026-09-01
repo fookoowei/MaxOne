@@ -5,8 +5,8 @@ import { AlertList } from './alert-list';
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const rows = [
-  { id: 'a1', symbol: 'BTC', targetPrice: 70000, direction: 'above' as const, currentPrice: 78000, triggered: true },
-  { id: 'a2', symbol: 'ETH', targetPrice: 5000, direction: 'above' as const, currentPrice: 2400, triggered: false },
+  { id: 'a1', symbol: 'BTC', targetPrice: 70000, direction: 'above' as const, currentPrice: 78000, triggered: true, triggeredAt: '2026-09-01T00:00:00Z' },
+  { id: 'a2', symbol: 'ETH', targetPrice: 5000, direction: 'above' as const, currentPrice: 2400, triggered: false, triggeredAt: null },
 ];
 
 describe('AlertList', () => {

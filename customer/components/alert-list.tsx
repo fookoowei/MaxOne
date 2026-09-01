@@ -20,10 +20,10 @@ export function AlertList({ rows }: { rows: AlertRow[] }) {
           <div className="flex items-center gap-2">
             <span
               className={`rounded-full px-2 py-0.5 text-xs ${
-                r.triggered ? 'bg-emerald-100 text-emerald-700' : 'bg-muted text-muted-foreground'
+                r.triggeredAt ? 'bg-emerald-100 text-emerald-700' : 'bg-muted text-muted-foreground'
               }`}
             >
-              {r.triggered ? '🔔 Reached' : 'Pending'}
+              {r.triggeredAt ? '🔔 Reached' : 'Pending'}
             </span>
             <RemoveAlertButton id={r.id} />
           </div>
