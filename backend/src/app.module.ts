@@ -14,6 +14,7 @@ import { MarketsModule } from './markets/markets.module';
 import { WatchlistModule } from './watchlist/watchlist.module';
 import { HoldingsModule } from './holdings/holdings.module';
 import { AlertsModule } from './alerts/alerts.module';
+import { RealtimeModule } from './realtime/realtime.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { AlertsModule } from './alerts/alerts.module';
     WatchlistModule,
     HoldingsModule,
     AlertsModule,
+    RealtimeModule,
   ],
   controllers: [AppController],
   providers: [
