@@ -12,6 +12,7 @@ import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { RatesService } from '../rates/rates.service';
 import { convertMinor } from '../rates/convert-minor';
+import { RealtimeService } from '../realtime/realtime.service';
 import { AuditService } from '../audit/audit.service';
 import type { AuditAction } from '../audit/audit.actions';
 
@@ -22,6 +23,7 @@ export class WalletsService {
     private readonly users: UsersService,
     private readonly rates: RatesService,
     private readonly audit: AuditService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   createWallet(actor: AuthUser, dto: { name: string; currency: string }) {
@@ -154,7 +156,7 @@ export class WalletsService {
     // connection while holding the first — a pool-starvation deadlock under load.
     await this.assertApprovePermission(actor, await this.getSettleableType(txnId));
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // Lock the transaction row first (fixed order: txn, then wallet).
       await tx.$queryRaw`SELECT id FROM "Transaction" WHERE id = ${txnId} FOR UPDATE`;
       const txn = await tx.transaction.findUnique({ where: { id: txnId } });
@@ -201,8 +203,18 @@ export class WalletsService {
         newValue: { status: 'approved', balanceAfter: after },
       });
 
-      return updated;
+      return {
+        updated,
+        owner: { userId: wallet.userId, walletId: wallet.id, currency: wallet.currency, balance: after },
+      };
     });
+    // Emit AFTER commit — a rolled-back settle must not announce a balance change.
+    this.realtime.emitBalance(result.owner.userId, {
+      walletId: result.owner.walletId,
+      currency: result.owner.currency,
+      balance: result.owner.balance,
+    });
+    return result.updated;
   }
 
   async reject(txnId: string, actor: AuthUser, note?: string) {
@@ -250,7 +262,7 @@ export class WalletsService {
     dto: { direction: 'credit' | 'debit'; amount: number; note: string },
     actor: AuthUser,
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "Wallet" WHERE id = ${walletId} FOR UPDATE`;
       const wallet = await tx.wallet.findUnique({ where: { id: walletId } });
       if (!wallet) throw new NotFoundException('Wallet not found');
@@ -286,8 +298,17 @@ export class WalletsService {
         newValue: { balance: after, direction: dto.direction, amount: dto.amount, note: dto.note },
       });
 
-      return created;
+      return {
+        created,
+        owner: { userId: wallet.userId, walletId: wallet.id, currency: wallet.currency, balance: after },
+      };
     });
+    this.realtime.emitBalance(result.owner.userId, {
+      walletId: result.owner.walletId,
+      currency: result.owner.currency,
+      balance: result.owner.balance,
+    });
+    return result.created;
   }
 
   /**
@@ -331,7 +352,7 @@ export class WalletsService {
     // Postgres would kill one for deadlock. Sorted, both lock the same wallet first.
     const [firstLock, secondLock] = [fromWalletId, dto.toWalletId].sort();
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "Wallet" WHERE id = ${firstLock} FOR UPDATE`;
       await tx.$queryRaw`SELECT id FROM "Wallet" WHERE id = ${secondLock} FOR UPDATE`;
 
@@ -407,8 +428,24 @@ export class WalletsService {
 
       // Only the sender's row is returned: the receiver's row carries their balance,
       // which the sender has no right to see.
-      return outRow;
+      return {
+        outRow,
+        from: { userId: from.userId, walletId: from.id, currency: from.currency, balance: fromAfter },
+        to: { userId: to.userId, walletId: to.id, currency: to.currency, balance: toAfter },
+      };
     });
+    // Both parties get a live update — the sender sees the debit, the receiver sees money arrive.
+    this.realtime.emitBalance(result.from.userId, {
+      walletId: result.from.walletId,
+      currency: result.from.currency,
+      balance: result.from.balance,
+    });
+    this.realtime.emitBalance(result.to.userId, {
+      walletId: result.to.walletId,
+      currency: result.to.currency,
+      balance: result.to.balance,
+    });
+    return result.outRow;
   }
 
   /**

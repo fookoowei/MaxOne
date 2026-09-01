@@ -13,6 +13,7 @@ import type { AuthUser } from '../auth/jwt.strategy';
 import { Prisma } from '@prisma/client';
 import { RatesService } from '../rates/rates.service';
 import { AuditService } from '../audit/audit.service';
+import { RealtimeService } from '../realtime/realtime.service';
 
 const actor: AuthUser = { id: 'user-1', email: 'u1@example.com', role: 'user' };
 const other: AuthUser = { id: 'user-2', email: 'u2@example.com', role: 'user' };
@@ -22,6 +23,7 @@ function buildService(
   usersMock: any = { findByIdWithPermissions: jest.fn() },
   ratesMock: any = { getRate: jest.fn() },
   auditMock: any = { log: jest.fn() },
+  realtimeMock: any = { emitBalance: jest.fn() },
 ) {
   return Test.createTestingModule({
     providers: [
@@ -30,6 +32,7 @@ function buildService(
       { provide: UsersService, useValue: usersMock },
       { provide: RatesService, useValue: ratesMock },
       { provide: AuditService, useValue: auditMock },
+      { provide: RealtimeService, useValue: realtimeMock },
     ],
   })
     .compile()
@@ -329,6 +332,32 @@ describe('WalletsService.approve', () => {
     expect(result.reviewedBy).toBe('fin-1');
   });
 
+  it('emits balance.updated to the wallet owner after settle', async () => {
+    const emitBalance = jest.fn();
+    const txDouble = {
+      $queryRaw: jest.fn().mockResolvedValue([]),
+      transaction: {
+        findUnique: jest.fn().mockResolvedValue(pendingTxn()), // withdrawal 2000
+        update: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'txn-1', ...data })),
+      },
+      wallet: {
+        findUnique: jest.fn().mockResolvedValue(wallet({ balance: 5000 })), // user-1, wallet-1, USD
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+    };
+    const service = await buildService(txPrisma(txDouble), financeCanApprove, undefined, undefined, {
+      emitBalance,
+    });
+
+    await service.approve('txn-1', finance);
+
+    expect(emitBalance).toHaveBeenCalledWith('user-1', {
+      walletId: 'wallet-1',
+      currency: 'USD',
+      balance: 3000,
+    });
+  });
+
   it('settles a deposit by increasing the balance', async () => {
     const txDouble = {
       $queryRaw: jest.fn().mockResolvedValue([]),
@@ -467,6 +496,31 @@ describe('WalletsService.adjust', () => {
     expect(result.balanceAfter).toBe(6000);
   });
 
+  it('emits balance.updated to the wallet owner after an adjustment', async () => {
+    const emitBalance = jest.fn();
+    const txDouble = {
+      $queryRaw: jest.fn().mockResolvedValue([]),
+      wallet: {
+        findUnique: jest.fn().mockResolvedValue(wallet({ balance: 5000 })),
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      transaction: {
+        create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'adj-1', ...data })),
+      },
+    };
+    const service = await buildService(txPrisma(txDouble), undefined, undefined, undefined, {
+      emitBalance,
+    });
+
+    await service.adjust('wallet-1', { direction: 'credit', amount: 1000, note: 'bonus' }, finance);
+
+    expect(emitBalance).toHaveBeenCalledWith('user-1', {
+      walletId: 'wallet-1',
+      currency: 'USD',
+      balance: 6000,
+    });
+  });
+
   it('debits a wallet', async () => {
     const txDouble = {
       $queryRaw: jest.fn().mockResolvedValue([]),
@@ -574,6 +628,25 @@ describe('WalletsService.transfer', () => {
 
     // Only the sender's row is returned — the receiver's balance must not leak.
     expect(result.type).toBe('transfer_out');
+  });
+
+  it('emits balance.updated to BOTH the sender and receiver after a transfer', async () => {
+    const emitBalance = jest.fn();
+    const { prisma } = transferPrisma();
+    const service = await buildService(prisma, undefined, undefined, undefined, { emitBalance });
+
+    await service.transfer('wallet-1', actor, { toWalletId: 'wallet-2', amount: 2000 });
+
+    expect(emitBalance).toHaveBeenCalledWith('user-1', {
+      walletId: 'wallet-1',
+      currency: 'USD',
+      balance: 3000,
+    });
+    expect(emitBalance).toHaveBeenCalledWith('user-2', {
+      walletId: 'wallet-2',
+      currency: 'USD',
+      balance: 2100,
+    });
   });
 
   it('debits the sender and credits the receiver by the same amount', async () => {

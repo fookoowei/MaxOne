@@ -45,4 +45,11 @@ export class AuthController {
   me(@CurrentUser() user: AuthUser) {
     return user;
   }
+
+  // Short-lived ticket so the browser can open a WebSocket directly to the backend.
+  @UseGuards(JwtAuthGuard)
+  @Post('ws-ticket')
+  async wsTicket(@CurrentUser() user: AuthUser) {
+    return { ticket: await this.tokensService.issueWsTicket(user.id) };
+  }
 }

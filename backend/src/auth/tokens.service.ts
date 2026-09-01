@@ -17,6 +17,12 @@ export class TokensService {
     return createHash('sha256').update(token).digest('hex');
   }
 
+  // A short-lived, single-purpose token the browser presents when opening the WebSocket
+  // directly to the backend (the httpOnly access cookie can't ride a cross-origin socket).
+  issueWsTicket(userId: string): Promise<string> {
+    return this.jwt.signAsync({ sub: userId, purpose: 'ws' }, { expiresIn: '60s' });
+  }
+
   async issueTokens(user: { id: string; email: string; role: { name: string } }) {
     // Access token: a stateless, signed JWT (verified by signature alone, no DB).
     const accessToken = await this.jwt.signAsync({
