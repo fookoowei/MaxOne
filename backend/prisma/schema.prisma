@@ -153,6 +153,7 @@ model PriceAlert {
   targetPrice Float
   direction   String   // "above" | "below"
   createdAt   DateTime @default(now())
+  triggeredAt DateTime? // null = pending; set = fired (one-shot)
 
   @@index([userId])
 }
