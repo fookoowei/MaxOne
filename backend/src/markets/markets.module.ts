@@ -6,5 +6,6 @@ import { CryptoProvider } from './providers/crypto.provider';
 @Module({
   controllers: [MarketsController],
   providers: [MarketsService, CryptoProvider],
+  exports: [MarketsService],
 })
 export class MarketsModule {}
