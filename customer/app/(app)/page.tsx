@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { serverApi } from '@/lib/api/server';
 import { getSessionUser } from '@/lib/auth/session';
-import { BalanceCard } from '@/components/balance-card';
+import { LiveBalance } from '@/components/live-balance';
 import { WalletActions } from '@/components/wallet-actions';
 import { WalletList } from '@/components/wallet-list';
 import { TransactionList, type Transaction } from '@/components/transaction-list';
@@ -40,7 +40,7 @@ export default async function DashboardPage() {
       </header>
 
       {primary ? (
-        <BalanceCard balance={primary.balance} currency={primary.currency} />
+        <LiveBalance walletId={primary.id} currency={primary.currency} initialBalance={primary.balance} />
       ) : (
         <p className="text-sm text-muted-foreground">No wallet found for your account.</p>
       )}
