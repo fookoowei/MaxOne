@@ -8,6 +8,14 @@ export interface BalancePayload {
   balance: number;
 }
 
+export interface AlertPayload {
+  id: string;
+  symbol: string;
+  direction: string;
+  targetPrice: number;
+  price: number;
+}
+
 // Domain-facing emit API — the wallet service calls this after a settle commits.
 @Injectable()
 export class RealtimeService {
@@ -25,5 +33,10 @@ export class RealtimeService {
   // Cost guard input: the price loop skips the upstream fetch when nobody is connected.
   connectedCount(): number {
     return this.gateway.server.sockets.sockets.size;
+  }
+
+  // An alert is private → room emit (like balances), not a global broadcast.
+  emitAlert(userId: string, payload: AlertPayload): void {
+    this.gateway.server.to(`user:${userId}`).emit('alert.triggered', payload);
   }
 }

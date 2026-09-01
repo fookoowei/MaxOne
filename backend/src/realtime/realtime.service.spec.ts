@@ -31,3 +31,16 @@ describe('RealtimeService.connectedCount', () => {
     expect(buildService(3).service.connectedCount()).toBe(3);
   });
 });
+
+describe('RealtimeService.emitAlert', () => {
+  it('emits alert.triggered to the owner room', () => {
+    const emit = jest.fn();
+    const to = jest.fn().mockReturnValue({ emit });
+    const gateway = { server: { emit, to, sockets: { sockets: new Map() } } } as unknown as RealtimeGateway;
+    const service = new RealtimeService(gateway);
+    const payload = { id: 'a1', symbol: 'BTC', direction: 'above', targetPrice: 80000, price: 80120 };
+    service.emitAlert('u1', payload);
+    expect(to).toHaveBeenCalledWith('user:u1');
+    expect(emit).toHaveBeenCalledWith('alert.triggered', payload);
+  });
+});
