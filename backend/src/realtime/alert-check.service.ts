@@ -1,16 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { AlertsService } from '../alerts/alerts.service';
 import { isTriggered } from '../alerts/is-triggered';
-import { RealtimeService } from './realtime.service';
-import { PushService } from '../push/push.service';
+import { NotificationService } from './notification.service';
 
 // Runs on the price tick: finds pending alerts, fires the newly-crossed ones (one-shot).
 @Injectable()
 export class AlertCheckService {
   constructor(
     private readonly alerts: AlertsService,
-    private readonly realtime: RealtimeService,
-    private readonly push: PushService,
+    private readonly notify: NotificationService,
   ) {}
 
   // Cheap gate for the tick's cost guard.
@@ -28,16 +26,17 @@ export class AlertCheckService {
     if (fired.length === 0) return;
     // Mark before emit — a crash mid-loop can't double-fire on the next tick.
     await this.alerts.markTriggered(fired.map((a) => a.id));
+    // Alert prices are display floats (not minor units) — format inline, not with formatMinor.
+    const px = (n: number) => `$${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
     for (const a of fired) {
-      const payload = {
-        id: a.id,
-        symbol: a.symbol,
-        direction: a.direction,
-        targetPrice: a.targetPrice,
-        price: priceBySymbol.get(a.symbol)!,
-      };
-      this.realtime.emitAlert(a.userId, payload); // focused/open tabs
-      await this.push.sendToUser(a.userId, payload); // closed app (SW dedupes when focused)
+      const price = priceBySymbol.get(a.symbol)!;
+      // One call → socket toast (open tab) + Web Push (closed app); SW dedupes when focused.
+      await this.notify.notify(a.userId, {
+        title: `🔔 ${a.symbol} crossed ${a.direction} ${px(a.targetPrice)}`,
+        body: `now ${px(price)}`,
+        tag: a.id,
+        url: '/alerts',
+      });
     }
   }
 }

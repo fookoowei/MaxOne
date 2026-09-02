@@ -3,14 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import * as webpush from 'web-push';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthUser } from '../auth/jwt.strategy';
+import type { NotificationPayload } from '../realtime/realtime.service';
 
-export interface AlertPushPayload {
-  id: string;
-  symbol: string;
-  direction: string;
-  targetPrice: number;
-  price: number;
-}
 interface SubscribeInput {
   endpoint: string;
   keys: { p256dh: string; auth: string };
@@ -42,7 +36,7 @@ export class PushService {
   }
 
   // System-level (called by the alert check). Fail-soft: never throws; prunes dead endpoints.
-  async sendToUser(userId: string, payload: AlertPushPayload): Promise<void> {
+  async sendToUser(userId: string, payload: NotificationPayload): Promise<void> {
     const subs = await this.prisma.pushSubscription.findMany({ where: { userId } });
     await Promise.all(
       subs.map(async (s) => {

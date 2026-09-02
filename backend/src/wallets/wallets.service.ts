@@ -12,9 +12,11 @@ import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { RatesService } from '../rates/rates.service';
 import { convertMinor } from '../rates/convert-minor';
-import { RealtimeService } from '../realtime/realtime.service';
+import { RealtimeService, type NotificationPayload } from '../realtime/realtime.service';
+import { NotificationService } from '../realtime/notification.service';
 import { AuditService } from '../audit/audit.service';
 import type { AuditAction } from '../audit/audit.actions';
+import { formatMinor } from './format-money';
 
 @Injectable()
 export class WalletsService {
@@ -24,7 +26,17 @@ export class WalletsService {
     private readonly rates: RatesService,
     private readonly audit: AuditService,
     private readonly realtime: RealtimeService,
+    private readonly notifications: NotificationService,
   ) {}
+
+  // Delivery is best-effort — a notification failure must never fail an already-committed settle.
+  private async safeNotify(userId: string, payload: NotificationPayload): Promise<void> {
+    try {
+      await this.notifications.notify(userId, payload);
+    } catch {
+      /* best-effort */
+    }
+  }
 
   createWallet(actor: AuthUser, dto: { name: string; currency: string }) {
     return this.prisma.wallet.create({
@@ -206,6 +218,8 @@ export class WalletsService {
       return {
         updated,
         owner: { userId: wallet.userId, walletId: wallet.id, currency: wallet.currency, balance: after },
+        type: txn.type,
+        amount: txn.amount,
       };
     });
     // Emit AFTER commit — a rolled-back settle must not announce a balance change.
@@ -214,13 +228,22 @@ export class WalletsService {
       currency: result.owner.currency,
       balance: result.owner.balance,
     });
+    // Notify the owner their request settled. (type/amount come from the source txn, not the
+    // updated row, which only echoes the changed fields.)
+    const money = formatMinor(result.amount, result.owner.currency);
+    await this.safeNotify(
+      result.owner.userId,
+      result.type === 'withdrawal'
+        ? { title: 'Withdrawal sent', body: `${money} withdrawn`, tag: result.updated.id, url: '/' }
+        : { title: 'Deposit approved', body: `${money} added to your wallet`, tag: result.updated.id, url: '/' },
+    );
     return result.updated;
   }
 
   async reject(txnId: string, actor: AuthUser, note?: string) {
     await this.assertApprovePermission(actor, await this.getSettleableType(txnId));
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "Transaction" WHERE id = ${txnId} FOR UPDATE`;
       const txn = await tx.transaction.findUnique({ where: { id: txnId } });
       if (!txn) throw new NotFoundException('Transaction not found');
@@ -248,8 +271,25 @@ export class WalletsService {
         newValue: { status: 'rejected', note: note_ },
       });
 
-      return updated;
+      // Read the owner inside the txn so we can notify after commit (txn has no userId/currency).
+      const owner = await tx.wallet.findUnique({
+        where: { id: txn.walletId },
+        select: { userId: true, currency: true },
+      });
+      return { updated, owner, type: txn.type, amount: txn.amount };
     });
+
+    if (result.owner) {
+      const money = formatMinor(result.amount, result.owner.currency);
+      const kind = result.type === 'withdrawal' ? 'Withdrawal' : 'Deposit';
+      await this.safeNotify(result.owner.userId, {
+        title: `${kind} declined`,
+        body: `Your ${money} ${kind.toLowerCase()} was declined`,
+        tag: result.updated.id,
+        url: '/',
+      });
+    }
+    return result.updated;
   }
 
   /**
@@ -444,6 +484,14 @@ export class WalletsService {
       walletId: result.to.walletId,
       currency: result.to.currency,
       balance: result.to.balance,
+    });
+    // Notify the RECEIVER (the sender did the action, so they aren't notified).
+    const sender = await this.users.findById(result.from.userId).catch(() => null);
+    await this.safeNotify(result.to.userId, {
+      title: `Received ${formatMinor(credit, result.to.currency)}`,
+      body: `from @${sender?.handle ?? 'someone'}`,
+      tag: transferId,
+      url: '/',
     });
     return result.outRow;
   }

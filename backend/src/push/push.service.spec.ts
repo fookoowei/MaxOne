@@ -36,7 +36,7 @@ describe('PushService.sendToUser', () => {
     const findMany = jest.fn().mockResolvedValue([{ endpoint: 'https://e/1', p256dh: 'p', auth: 'a' }]);
     (webpush.sendNotification as jest.Mock).mockResolvedValue({});
     const svc = new PushService({ pushSubscription: { findMany } } as any, config as any);
-    await svc.sendToUser('u1', { id: 'x', symbol: 'BTC', direction: 'above', targetPrice: 80000, price: 80500 });
+    await svc.sendToUser('u1', { title: 'Deposit approved', body: '$100.00 added to your wallet' });
     expect(webpush.sendNotification).toHaveBeenCalledTimes(1);
   });
 
@@ -45,7 +45,7 @@ describe('PushService.sendToUser', () => {
     const deleteMany = jest.fn().mockResolvedValue({ count: 1 });
     (webpush.sendNotification as jest.Mock).mockRejectedValue({ statusCode: 410 });
     const svc = new PushService({ pushSubscription: { findMany, deleteMany } } as any, config as any);
-    await svc.sendToUser('u1', { id: 'x', symbol: 'BTC', direction: 'above', targetPrice: 1, price: 2 });
+    await svc.sendToUser('u1', { title: 'x', body: 'y' });
     expect(deleteMany).toHaveBeenCalledWith({ where: { endpoint: 'https://dead' } });
   });
 });

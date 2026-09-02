@@ -4,18 +4,16 @@ import { useEffect } from 'react';
 import type { Socket } from 'socket.io-client';
 import { toast } from 'sonner';
 import { connectSocket } from '@/lib/realtime/socket';
-import { formatPrice } from '@/lib/format/price';
 
-interface AlertEvent {
-  id: string;
-  symbol: string;
-  direction: string;
-  targetPrice: number;
-  price: number;
+interface NotificationEvent {
+  title: string;
+  body: string;
+  tag?: string;
+  url?: string;
 }
 
-// App-wide socket island — mounted once in the layout so an alert toast can pop on ANY page.
-export function AlertToaster() {
+// App-wide socket island — mounted once in the layout so any notification can toast on any page.
+export function NotificationToaster() {
   useEffect(() => {
     let socket: Socket | undefined;
     let cancelled = false;
@@ -26,12 +24,7 @@ export function AlertToaster() {
       const { ticket } = (await res.json()) as { ticket: string };
       if (cancelled) return;
       socket = connectSocket(ticket);
-      socket.on('alert.triggered', (p: AlertEvent) => {
-        const dir = p.direction === 'above' ? 'above' : 'below';
-        toast(`🔔 ${p.symbol} crossed ${dir} ${formatPrice(p.targetPrice)}`, {
-          description: `now ${formatPrice(p.price)}`,
-        });
-      });
+      socket.on('notification', (p: NotificationEvent) => toast(p.title, { description: p.body }));
     })();
 
     return () => {

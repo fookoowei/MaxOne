@@ -14,16 +14,21 @@ import { Prisma } from '@prisma/client';
 import { RatesService } from '../rates/rates.service';
 import { AuditService } from '../audit/audit.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { NotificationService } from '../realtime/notification.service';
 
 const actor: AuthUser = { id: 'user-1', email: 'u1@example.com', role: 'user' };
 const other: AuthUser = { id: 'user-2', email: 'u2@example.com', role: 'user' };
 
 function buildService(
   prismaMock: any,
-  usersMock: any = { findByIdWithPermissions: jest.fn() },
+  usersMock: any = {
+    findByIdWithPermissions: jest.fn(),
+    findById: jest.fn().mockResolvedValue({ handle: 'someone' }),
+  },
   ratesMock: any = { getRate: jest.fn() },
   auditMock: any = { log: jest.fn() },
   realtimeMock: any = { emitBalance: jest.fn() },
+  notificationsMock: any = { notify: jest.fn() },
 ) {
   return Test.createTestingModule({
     providers: [
@@ -33,6 +38,7 @@ function buildService(
       { provide: RatesService, useValue: ratesMock },
       { provide: AuditService, useValue: auditMock },
       { provide: RealtimeService, useValue: realtimeMock },
+      { provide: NotificationService, useValue: notificationsMock },
     ],
   })
     .compile()
@@ -345,9 +351,15 @@ describe('WalletsService.approve', () => {
         update: jest.fn().mockResolvedValue(undefined),
       },
     };
-    const service = await buildService(txPrisma(txDouble), financeCanApprove, undefined, undefined, {
-      emitBalance,
-    });
+    const notify = jest.fn();
+    const service = await buildService(
+      txPrisma(txDouble),
+      financeCanApprove,
+      undefined,
+      undefined,
+      { emitBalance },
+      { notify },
+    );
 
     await service.approve('txn-1', finance);
 
@@ -356,6 +368,11 @@ describe('WalletsService.approve', () => {
       currency: 'USD',
       balance: 3000,
     });
+    // pendingTxn() is a withdrawal → owner is notified it was sent.
+    expect(notify).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ title: 'Withdrawal sent' }),
+    );
   });
 
   it('settles a deposit by increasing the balance', async () => {
@@ -439,21 +456,34 @@ describe('WalletsService.approve', () => {
 });
 
 describe('WalletsService.reject', () => {
-  it('marks a pending request rejected without touching the balance', async () => {
+  it('marks a pending request rejected without touching the balance + notifies the owner', async () => {
     const txDouble = {
       $queryRaw: jest.fn().mockResolvedValue([]),
       transaction: {
         findUnique: jest.fn().mockResolvedValue(pendingTxn()),
         update: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'txn-1', ...data })),
       },
-      wallet: { findUnique: jest.fn(), update: jest.fn() },
+      wallet: { findUnique: jest.fn().mockResolvedValue(wallet()), update: jest.fn() },
     };
-    const service = await buildService(txPrisma(txDouble), financeCanApprove);
+    const notify = jest.fn();
+    const service = await buildService(
+      txPrisma(txDouble),
+      financeCanApprove,
+      undefined,
+      undefined,
+      undefined,
+      { notify },
+    );
 
     const result = await service.reject('txn-1', finance, 'suspicious');
 
     expect(result.status).toBe('rejected');
     expect(txDouble.wallet.update).not.toHaveBeenCalled();
+    // pendingTxn() is a withdrawal → owner is told it was declined.
+    expect(notify).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ title: 'Withdrawal declined' }),
+    );
   });
 
   it('refuses to reject a non-pending request with 409', async () => {
@@ -630,10 +660,12 @@ describe('WalletsService.transfer', () => {
     expect(result.type).toBe('transfer_out');
   });
 
-  it('emits balance.updated to BOTH the sender and receiver after a transfer', async () => {
+  it('emits balance.updated to BOTH parties + notifies the receiver after a transfer', async () => {
     const emitBalance = jest.fn();
+    const notify = jest.fn();
+    const usersMock = { findById: jest.fn().mockResolvedValue({ handle: 'alice' }) };
     const { prisma } = transferPrisma();
-    const service = await buildService(prisma, undefined, undefined, undefined, { emitBalance });
+    const service = await buildService(prisma, usersMock, undefined, undefined, { emitBalance }, { notify });
 
     await service.transfer('wallet-1', actor, { toWalletId: 'wallet-2', amount: 2000 });
 
@@ -647,6 +679,14 @@ describe('WalletsService.transfer', () => {
       currency: 'USD',
       balance: 2100,
     });
+    // Only the RECEIVER is notified (the sender did the action).
+    expect(notify).toHaveBeenCalledWith('user-2', {
+      title: 'Received $20.00',
+      body: 'from @alice',
+      tag: expect.any(String),
+      url: '/',
+    });
+    expect(notify).not.toHaveBeenCalledWith('user-1', expect.anything());
   });
 
   it('debits the sender and credits the receiver by the same amount', async () => {
@@ -854,6 +894,7 @@ describe('WalletsService audit trail', () => {
         }),
         update: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'txn-2', ...data })),
       },
+      wallet: { findUnique: jest.fn().mockResolvedValue(wallet()) },
       auditLog: { create: jest.fn() },
     };
     const prisma = txPrisma(txDouble);

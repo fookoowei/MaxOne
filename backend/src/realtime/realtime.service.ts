@@ -8,12 +8,11 @@ export interface BalancePayload {
   balance: number;
 }
 
-export interface AlertPayload {
-  id: string;
-  symbol: string;
-  direction: string;
-  targetPrice: number;
-  price: number;
+export interface NotificationPayload {
+  title: string;
+  body: string;
+  tag?: string;
+  url?: string;
 }
 
 // Domain-facing emit API — the wallet service calls this after a settle commits.
@@ -35,8 +34,8 @@ export class RealtimeService {
     return this.gateway.server.sockets.sockets.size;
   }
 
-  // An alert is private → room emit (like balances), not a global broadcast.
-  emitAlert(userId: string, payload: AlertPayload): void {
-    this.gateway.server.to(`user:${userId}`).emit('alert.triggered', payload);
+  // A notification is private → room emit (like balances), not a global broadcast.
+  emitNotification(userId: string, payload: NotificationPayload): void {
+    this.gateway.server.to(`user:${userId}`).emit('notification', payload);
   }
 }
