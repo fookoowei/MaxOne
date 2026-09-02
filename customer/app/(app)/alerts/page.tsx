@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { serverApi } from '@/lib/api/server';
 import { computeAlerts, type Alert, type PriceInfo } from '@/lib/alerts/compute';
 import { AlertList } from '@/components/alert-list';
+import { PushToggle } from '@/components/push-toggle';
 
 export default async function AlertsPage() {
   const [alertsRes, marketsRes] = await Promise.all([serverApi('/alerts'), serverApi('/markets')]);
@@ -20,9 +21,12 @@ export default async function AlertsPage() {
           New alert
         </Link>
       </header>
-      <p className="text-xs text-muted-foreground">
-        Checked automatically — you&apos;ll get a toast the moment one triggers.
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          Checked automatically — you&apos;ll get a toast the moment one triggers.
+        </p>
+        <PushToggle />
+      </div>
       <AlertList rows={rows} />
     </div>
   );
