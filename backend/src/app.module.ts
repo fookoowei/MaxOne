@@ -16,6 +16,7 @@ import { WatchlistModule } from './watchlist/watchlist.module';
 import { HoldingsModule } from './holdings/holdings.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { RealtimeModule } from './realtime/realtime.module';
+import { PushModule } from './push/push.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     HoldingsModule,
     AlertsModule,
     RealtimeModule,
+    PushModule,
   ],
   controllers: [AppController],
   providers: [
