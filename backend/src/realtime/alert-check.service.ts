@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AlertsService } from '../alerts/alerts.service';
 import { isTriggered } from '../alerts/is-triggered';
 import { RealtimeService } from './realtime.service';
+import { PushService } from '../push/push.service';
 
 // Runs on the price tick: finds pending alerts, fires the newly-crossed ones (one-shot).
 @Injectable()
@@ -9,7 +10,13 @@ export class AlertCheckService {
   constructor(
     private readonly alerts: AlertsService,
     private readonly realtime: RealtimeService,
+    private readonly push: PushService,
   ) {}
+
+  // Cheap gate for the tick's cost guard.
+  async pendingCount(): Promise<number> {
+    return (await this.alerts.findPending()).length;
+  }
 
   async check(assets: { symbol: string; price: number }[]): Promise<void> {
     const priceBySymbol = new Map(assets.map((a) => [a.symbol, a.price]));
@@ -22,13 +29,15 @@ export class AlertCheckService {
     // Mark before emit — a crash mid-loop can't double-fire on the next tick.
     await this.alerts.markTriggered(fired.map((a) => a.id));
     for (const a of fired) {
-      this.realtime.emitAlert(a.userId, {
+      const payload = {
         id: a.id,
         symbol: a.symbol,
         direction: a.direction,
         targetPrice: a.targetPrice,
         price: priceBySymbol.get(a.symbol)!,
-      });
+      };
+      this.realtime.emitAlert(a.userId, payload); // focused/open tabs
+      await this.push.sendToUser(a.userId, payload); // closed app (SW dedupes when focused)
     }
   }
 }

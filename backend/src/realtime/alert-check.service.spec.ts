@@ -13,12 +13,13 @@ function build(pendingRows: any[] = pending) {
     markTriggered: jest.fn().mockResolvedValue({ count: 0 }),
   };
   const realtime = { emitAlert: jest.fn() };
-  return { service: new AlertCheckService(alerts as any, realtime as any), alerts, realtime };
+  const push = { sendToUser: jest.fn().mockResolvedValue(undefined) };
+  return { service: new AlertCheckService(alerts as any, realtime as any, push as any), alerts, realtime, push };
 }
 
 describe('AlertCheckService.check', () => {
-  it('marks + emits only newly-crossed alerts', async () => {
-    const { service, alerts, realtime } = build();
+  it('marks + emits + pushes only newly-crossed alerts', async () => {
+    const { service, alerts, realtime, push } = build();
     await service.check([btc]);
     expect(alerts.markTriggered).toHaveBeenCalledWith(['a1']);
     expect(realtime.emitAlert).toHaveBeenCalledTimes(1);
@@ -29,6 +30,12 @@ describe('AlertCheckService.check', () => {
       targetPrice: 80000,
       price: 80120,
     });
+    expect(push.sendToUser).toHaveBeenCalledWith('u1', expect.objectContaining({ id: 'a1', symbol: 'BTC' }));
+  });
+
+  it('pendingCount returns the number of pending alerts', async () => {
+    const { service } = build([{ id: 'a1' }, { id: 'a2' }] as any);
+    expect(await service.pendingCount()).toBe(2);
   });
 
   it('does nothing when none cross', async () => {
