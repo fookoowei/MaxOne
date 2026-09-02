@@ -1,6 +1,6 @@
 import { Toaster } from 'sonner';
 import { BottomNav } from '@/components/bottom-nav';
-import { AlertToaster } from '@/components/alert-toaster';
+import { NotificationToaster } from '@/components/notification-toaster';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -8,7 +8,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {children}
       <BottomNav />
       <Toaster position="top-center" />
-      <AlertToaster />
+      <NotificationToaster />
     </div>
   );
 }
