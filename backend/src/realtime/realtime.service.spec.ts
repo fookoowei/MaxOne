@@ -32,15 +32,15 @@ describe('RealtimeService.connectedCount', () => {
   });
 });
 
-describe('RealtimeService.emitAlert', () => {
-  it('emits alert.triggered to the owner room', () => {
+describe('RealtimeService.emitNotification', () => {
+  it('emits notification to the owner room', () => {
     const emit = jest.fn();
     const to = jest.fn().mockReturnValue({ emit });
     const gateway = { server: { emit, to, sockets: { sockets: new Map() } } } as unknown as RealtimeGateway;
     const service = new RealtimeService(gateway);
-    const payload = { id: 'a1', symbol: 'BTC', direction: 'above', targetPrice: 80000, price: 80120 };
-    service.emitAlert('u1', payload);
+    const payload = { title: 'Received $50.00', body: 'from @alice', tag: 't1', url: '/' };
+    service.emitNotification('u1', payload);
     expect(to).toHaveBeenCalledWith('user:u1');
-    expect(emit).toHaveBeenCalledWith('alert.triggered', payload);
+    expect(emit).toHaveBeenCalledWith('notification', payload);
   });
 });

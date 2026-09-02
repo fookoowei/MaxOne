@@ -12,25 +12,20 @@ function build(pendingRows: any[] = pending) {
     findPending: jest.fn().mockResolvedValue(pendingRows),
     markTriggered: jest.fn().mockResolvedValue({ count: 0 }),
   };
-  const realtime = { emitAlert: jest.fn() };
-  const push = { sendToUser: jest.fn().mockResolvedValue(undefined) };
-  return { service: new AlertCheckService(alerts as any, realtime as any, push as any), alerts, realtime, push };
+  const notify = { notify: jest.fn().mockResolvedValue(undefined) };
+  return { service: new AlertCheckService(alerts as any, notify as any), alerts, notify };
 }
 
 describe('AlertCheckService.check', () => {
-  it('marks + emits + pushes only newly-crossed alerts', async () => {
-    const { service, alerts, realtime, push } = build();
+  it('marks + notifies only newly-crossed alerts', async () => {
+    const { service, alerts, notify } = build();
     await service.check([btc]);
     expect(alerts.markTriggered).toHaveBeenCalledWith(['a1']);
-    expect(realtime.emitAlert).toHaveBeenCalledTimes(1);
-    expect(realtime.emitAlert).toHaveBeenCalledWith('u1', {
-      id: 'a1',
-      symbol: 'BTC',
-      direction: 'above',
-      targetPrice: 80000,
-      price: 80120,
-    });
-    expect(push.sendToUser).toHaveBeenCalledWith('u1', expect.objectContaining({ id: 'a1', symbol: 'BTC' }));
+    expect(notify.notify).toHaveBeenCalledTimes(1);
+    expect(notify.notify).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({ title: expect.stringContaining('BTC'), url: '/alerts', tag: 'a1' }),
+    );
   });
 
   it('pendingCount returns the number of pending alerts', async () => {
@@ -39,20 +34,20 @@ describe('AlertCheckService.check', () => {
   });
 
   it('does nothing when none cross', async () => {
-    const { service, alerts, realtime } = build([
+    const { service, alerts, notify } = build([
       { id: 'a2', userId: 'u2', symbol: 'BTC', direction: 'above', targetPrice: 90000 },
     ]);
     await service.check([btc]);
     expect(alerts.markTriggered).not.toHaveBeenCalled();
-    expect(realtime.emitAlert).not.toHaveBeenCalled();
+    expect(notify.notify).not.toHaveBeenCalled();
   });
 
   it('skips a pending alert whose symbol has no price this tick', async () => {
-    const { service, alerts, realtime } = build([
+    const { service, alerts, notify } = build([
       { id: 'a3', userId: 'u3', symbol: 'DOGE', direction: 'above', targetPrice: 0.1 },
     ]);
     await service.check([btc]);
     expect(alerts.markTriggered).not.toHaveBeenCalled();
-    expect(realtime.emitAlert).not.toHaveBeenCalled();
+    expect(notify.notify).not.toHaveBeenCalled();
   });
 });
