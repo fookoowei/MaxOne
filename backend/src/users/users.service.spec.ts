@@ -107,6 +107,7 @@ describe('UsersService.updateStatus', () => {
         findUnique: jest.fn().mockResolvedValue(row('user-1')),
         update: jest.fn().mockResolvedValue({ ...row('user-1'), status: 'suspended' }),
       },
+      refreshToken: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
       auditLog: { create: jest.fn() },
     });
     const service = await buildService(prismaMock);
@@ -126,6 +127,40 @@ describe('UsersService.updateStatus', () => {
 
     await expect(service.updateStatus('admin-1', 'suspended', admin)).rejects.toThrow(ForbiddenException);
     expect(prismaMock.user.update).not.toHaveBeenCalled();
+  });
+
+  it('revokes the user refresh tokens when suspending', async () => {
+    const deleteMany = jest.fn().mockResolvedValue({ count: 1 });
+    const prismaMock = txUsersPrisma({
+      user: {
+        findUnique: jest.fn().mockResolvedValue(row('user-1')),
+        update: jest.fn().mockResolvedValue({ ...row('user-1'), status: 'suspended' }),
+      },
+      refreshToken: { deleteMany },
+      auditLog: { create: jest.fn() },
+    });
+    const service = await buildService(prismaMock);
+
+    await service.updateStatus('user-1', 'suspended', admin);
+
+    expect(deleteMany).toHaveBeenCalledWith({ where: { userId: 'user-1' } });
+  });
+
+  it('does NOT revoke tokens when un-suspending (setting active)', async () => {
+    const deleteMany = jest.fn();
+    const prismaMock = txUsersPrisma({
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ ...row('user-1'), status: 'suspended' }),
+        update: jest.fn().mockResolvedValue({ ...row('user-1'), status: 'active' }),
+      },
+      refreshToken: { deleteMany },
+      auditLog: { create: jest.fn() },
+    });
+    const service = await buildService(prismaMock);
+
+    await service.updateStatus('user-1', 'active', admin);
+
+    expect(deleteMany).not.toHaveBeenCalled();
   });
 });
 
@@ -196,6 +231,7 @@ describe('UsersService audit trail', () => {
         findUnique: jest.fn().mockResolvedValue(row('user-2')), // status: 'active'
         update: jest.fn().mockResolvedValue({ ...row('user-2'), status: 'suspended' }),
       },
+      refreshToken: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
       auditLog: { create: jest.fn() },
     };
     const prismaMock = txUsersPrisma(inner);
