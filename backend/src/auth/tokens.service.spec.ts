@@ -38,20 +38,34 @@ describe('TokensService.issueTokens family', () => {
 describe('TokensService.rotate reuse detection', () => {
   const base = { id: 'rt1', familyId: 'fam-1', expiresAt: new Date(Date.now() + 1e6), user: userRow };
 
-  it('marks the token used and reissues in the same family', async () => {
+  it('atomically claims an unused token and reissues in the same family', async () => {
     const create = jest.fn().mockResolvedValue({});
-    const update = jest.fn().mockResolvedValue({});
+    const updateMany = jest.fn().mockResolvedValue({ count: 1 });
     const findUnique = jest.fn().mockResolvedValue({ ...base, usedAt: null });
-    const { service } = tokensWith({ findUnique, update, create, delete: jest.fn(), deleteMany: jest.fn() });
+    const { service } = tokensWith({ findUnique, updateMany, create, delete: jest.fn(), deleteMany: jest.fn() });
     await service.rotate('raw');
-    expect(update).toHaveBeenCalledWith({ where: { id: 'rt1' }, data: { usedAt: expect.any(Date) } });
+    // Conditional update (usedAt: null) = the atomic claim that closes the TOCTOU race.
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: 'rt1', usedAt: null },
+      data: { usedAt: expect.any(Date) },
+    });
     expect(create.mock.calls[0][0].data.familyId).toBe('fam-1');
   });
 
-  it('revokes the whole family when an already-used token is presented (reuse)', async () => {
+  it('revokes the family when an already-used token is presented (fast-path reuse)', async () => {
     const deleteMany = jest.fn().mockResolvedValue({ count: 2 });
     const findUnique = jest.fn().mockResolvedValue({ ...base, usedAt: new Date() });
-    const { service } = tokensWith({ findUnique, deleteMany, update: jest.fn(), create: jest.fn(), delete: jest.fn() });
+    const { service } = tokensWith({ findUnique, deleteMany, updateMany: jest.fn(), create: jest.fn(), delete: jest.fn() });
+    await expect(service.rotate('raw')).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(deleteMany).toHaveBeenCalledWith({ where: { familyId: 'fam-1' } });
+  });
+
+  it('revokes the family when the atomic claim loses a race (concurrent reuse)', async () => {
+    // findUnique saw usedAt:null, but a concurrent request claimed it first → updateMany count 0.
+    const deleteMany = jest.fn().mockResolvedValue({ count: 2 });
+    const updateMany = jest.fn().mockResolvedValue({ count: 0 });
+    const findUnique = jest.fn().mockResolvedValue({ ...base, usedAt: null });
+    const { service } = tokensWith({ findUnique, updateMany, deleteMany, create: jest.fn(), delete: jest.fn() });
     await expect(service.rotate('raw')).rejects.toBeInstanceOf(UnauthorizedException);
     expect(deleteMany).toHaveBeenCalledWith({ where: { familyId: 'fam-1' } });
   });

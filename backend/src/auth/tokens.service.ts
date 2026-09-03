@@ -67,7 +67,7 @@ export class TokensService {
     // No row = unknown or revoked token.
     if (!existing) throw new UnauthorizedException('Invalid refresh token');
 
-    // Reuse: already rotated once → a replay. Revoke the whole family.
+    // Fast-path reuse: already rotated once → a replay. Revoke the whole family.
     if (existing.usedAt) {
       await this.prisma.refreshToken.deleteMany({ where: { familyId: existing.familyId } });
       throw new UnauthorizedException('Refresh token reuse detected');
@@ -79,8 +79,20 @@ export class TokensService {
       throw new UnauthorizedException('Refresh token expired');
     }
 
-    // Mark used (not delete) so a replay is detectable; reissue in the SAME family.
-    await this.prisma.refreshToken.update({ where: { id: existing.id }, data: { usedAt: new Date() } });
+    // Atomically CLAIM the token: a single conditional update (usedAt still null) closes the
+    // TOCTOU race — two simultaneous refreshes of the same token can't both win. Exactly one
+    // gets count:1; a loser gets count:0 → it means a concurrent request already claimed it →
+    // treat as reuse and revoke the family.
+    const claimed = await this.prisma.refreshToken.updateMany({
+      where: { id: existing.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+    if (claimed.count === 0) {
+      await this.prisma.refreshToken.deleteMany({ where: { familyId: existing.familyId } });
+      throw new UnauthorizedException('Refresh token reuse detected');
+    }
+
+    // Claim won → reissue in the SAME family.
     return this.issueTokens(existing.user, existing.familyId);
   }
 
