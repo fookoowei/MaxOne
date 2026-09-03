@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 
 const REFRESH_TTL_DAYS = 7;
@@ -23,7 +23,12 @@ export class TokensService {
     return this.jwt.signAsync({ sub: userId, purpose: 'ws' }, { expiresIn: '60s' });
   }
 
-  async issueTokens(user: { id: string; email: string; role: { name: string } }) {
+  async issueTokens(
+    user: { id: string; email: string; role: { name: string } },
+    // Fresh login → a new family; rotation passes the existing family so the session's
+    // tokens stay linked (reuse of any one revokes them all).
+    familyId: string = randomUUID(),
+  ) {
     // Access token: a stateless, signed JWT (verified by signature alone, no DB).
     const accessToken = await this.jwt.signAsync({
       sub: user.id,
@@ -39,6 +44,7 @@ export class TokensService {
       data: {
         tokenHash: this.hash(refreshToken),
         userId: user.id,
+        familyId,
         expiresAt,
       },
     });
@@ -47,9 +53,9 @@ export class TokensService {
   }
 
   /**
-   * Exchange a valid refresh token for a fresh pair. The presented token is
-   * single-use: it is deleted the moment it's used, so a stolen-then-reused
-   * token fails (whoever presents it second gets a 401).
+   * Exchange a valid refresh token for a fresh pair. A token is single-use: rotating it
+   * marks it `usedAt` (kept, not deleted) so that a later presentation is detectable as a
+   * REPLAY — which revokes the entire family, logging out victim and attacker alike.
    */
   async rotate(rawRefreshToken: string) {
     const tokenHash = this.hash(rawRefreshToken);
@@ -58,8 +64,14 @@ export class TokensService {
       include: { user: { include: { role: true } } },
     });
 
-    // No row = unknown, already-used, or revoked token.
+    // No row = unknown or revoked token.
     if (!existing) throw new UnauthorizedException('Invalid refresh token');
+
+    // Reuse: already rotated once → a replay. Revoke the whole family.
+    if (existing.usedAt) {
+      await this.prisma.refreshToken.deleteMany({ where: { familyId: existing.familyId } });
+      throw new UnauthorizedException('Refresh token reuse detected');
+    }
 
     // Expired: clean up the stale row and reject.
     if (existing.expiresAt.getTime() < Date.now()) {
@@ -67,9 +79,9 @@ export class TokensService {
       throw new UnauthorizedException('Refresh token expired');
     }
 
-    // Single-use: burn the presented token before minting a new pair.
-    await this.prisma.refreshToken.delete({ where: { id: existing.id } });
-    return this.issueTokens(existing.user);
+    // Mark used (not delete) so a replay is detectable; reissue in the SAME family.
+    await this.prisma.refreshToken.update({ where: { id: existing.id }, data: { usedAt: new Date() } });
+    return this.issueTokens(existing.user, existing.familyId);
   }
 
   /** Log out one device: delete its refresh-token row. Idempotent. */
