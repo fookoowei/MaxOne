@@ -105,6 +105,12 @@ export class UsersService {
         include: { role: { select: { id: true, name: true } } },
       });
 
+      // Immediate session kill: a suspended user's refresh tokens are revoked atomically
+      // with the status change (they can't renew; the JWT strategy blocks live access).
+      if (status === 'suspended') {
+        await tx.refreshToken.deleteMany({ where: { userId: id } });
+      }
+
       await this.audit.log(tx, {
         actorUserId: actor.id,
         action: 'user.status_change',

@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { UsersService } from '../users/users.service';
 
 /** The shape of our access-token payload (set in TokensService.issueTokens). */
 export interface JwtPayload {
@@ -19,7 +20,10 @@ export interface AuthUser {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    private readonly users: UsersService,
+  ) {
     super({
       // Pull the token from the "Authorization: Bearer <token>" header.
       // The BFF (Next.js) forwards the access token as a Bearer header server-side.
@@ -37,7 +41,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * Whatever we return becomes request.user. We reshape the raw payload into a
    * clean AuthUser so handlers don't deal with JWT jargon like `sub`.
    */
-  validate(payload: JwtPayload): AuthUser {
+  async validate(payload: JwtPayload): Promise<AuthUser> {
+    // Immediate revocation: a suspended (or deleted) user is rejected on the very next
+    // request — the cost of Option A is this one indexed read on the access path.
+    let user;
+    try {
+      user = await this.users.findById(payload.sub);
+    } catch {
+      throw new UnauthorizedException();
+    }
+    if (user.status !== 'active') throw new UnauthorizedException();
     return { id: payload.sub, email: payload.email, role: payload.role };
   }
 }
