@@ -44,14 +44,17 @@ model Permission {
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
-  tokenHash String   @unique // SHA-256 hex of the raw refresh token (never the raw token)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(uuid())
+  tokenHash String    @unique // SHA-256 hex of the raw refresh token (never the raw token)
+  familyId  String // all tokens minted from one login share this
+  usedAt    DateTime? // null = unused; set = already rotated (a later presentation = reuse)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
   expiresAt DateTime
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([userId])
+  @@index([familyId])
 }
 
 model Wallet {
