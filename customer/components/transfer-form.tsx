@@ -82,6 +82,10 @@ export function TransferForm({
         return;
       }
     }
+    if (res.status === 409) {
+      setError('This send may have already gone through — check your balance before trying again.');
+      return;
+    }
     if (!res.ok) {
       setError('Could not send. Check your balance and try again.');
       return;

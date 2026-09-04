@@ -40,6 +40,10 @@ export function AmountForm({
       headers: { 'content-type': 'application/json', 'idempotency-key': idem.key() },
       body: JSON.stringify({ amount, note: values.note || undefined }),
     });
+    if (res.status === 409) {
+      setServerError('This request may already have been submitted — check your history before trying again.');
+      return;
+    }
     if (!res.ok) {
       setServerError(
         mode === 'withdraw' && res.status === 400
