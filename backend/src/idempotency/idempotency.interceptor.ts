@@ -46,7 +46,9 @@ export class IdempotencyInterceptor implements NestInterceptor {
 
     const key = req.headers[IDEMPOTENCY_HEADER];
     if (!key) {
-      if (opts.required) throw new BadRequestException('Idempotency-Key header is required');
+      if (opts.required) {
+        throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_REQUIRED', message: 'Idempotency-Key header is required' });
+      }
       return next.handle();
     }
     const userId = req.user?.id;
@@ -65,12 +67,20 @@ export class IdempotencyInterceptor implements NestInterceptor {
         }
         if (r.kind === 'mismatch') {
           return throwError(
-            () => new ConflictException('Idempotency-Key was already used for a different request'),
+            () =>
+              new ConflictException({
+                code: 'IDEMPOTENCY_CONFLICT',
+                message: 'Idempotency-Key was already used for a different request',
+              }),
           );
         }
         if (r.kind === 'in_progress') {
           return throwError(
-            () => new ConflictException('A request with this Idempotency-Key is still in progress'),
+            () =>
+              new ConflictException({
+                code: 'IDEMPOTENCY_CONFLICT',
+                message: 'A request with this Idempotency-Key is still in progress',
+              }),
           );
         }
         const id = r.id;

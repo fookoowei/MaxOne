@@ -55,12 +55,12 @@ export class WalletsService {
   // full row). A 404 reveals non-existence — inherent to pay-by-identifier; auth-gated.
   async findRecipientByHandle(handle: string) {
     const user = await this.users.findByHandle(handle.toLowerCase());
-    if (!user) throw new NotFoundException('No account found with that handle');
+    if (!user) throw new NotFoundException('Account not found');
     const wallet = await this.prisma.wallet.findFirst({
       where: { userId: user.id },
       orderBy: { createdAt: 'asc' },
     });
-    if (!wallet) throw new NotFoundException('That account has no wallet');
+    if (!wallet) throw new NotFoundException('Wallet not found');
     return {
       walletId: wallet.id,
       currency: wallet.currency,
