@@ -16,7 +16,8 @@ describe('TokensService.issueWsTicket', () => {
 const userRow = { id: 'u1', email: 'u1@x.com', role: { name: 'user' } };
 function tokensWith(refreshToken: any) {
   const jwt = { signAsync: jest.fn().mockResolvedValue('access.jwt') };
-  const prisma = { refreshToken };
+  const prisma: any = { refreshToken };
+  prisma.$transaction = jest.fn().mockImplementation((cb: any) => cb(prisma)); // tx client = same mock
   return { service: new TokensService(jwt as any, prisma as any), prisma };
 }
 

@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import type { Prisma } from '@prisma/client';
 
 const REFRESH_TTL_DAYS = 7;
 
@@ -57,6 +58,8 @@ export class TokensService {
     // Fresh login → a new family; rotation passes the existing family so the session's
     // tokens stay linked (reuse of any one revokes them all).
     familyId: string = randomUUID(),
+    // Rotation passes its transaction client so the new token commits together with the claim.
+    db: Prisma.TransactionClient | PrismaService = this.prisma,
   ) {
     // Access token: a stateless, signed JWT (verified by signature alone, no DB).
     const accessToken = await this.jwt.signAsync({
@@ -69,7 +72,7 @@ export class TokensService {
     // and we store only its SHA-256 hash — never the raw value.
     const refreshToken = randomBytes(48).toString('hex');
     const expiresAt = new Date(Date.now() + REFRESH_TTL_DAYS * 24 * 60 * 60 * 1000);
-    await this.prisma.refreshToken.create({
+    await db.refreshToken.create({
       data: {
         tokenHash: this.hash(refreshToken),
         userId: user.id,
@@ -109,20 +112,25 @@ export class TokensService {
     }
 
     // Atomically CLAIM the token: a single conditional update (usedAt still null) closes the
-    // TOCTOU race — two simultaneous refreshes of the same token can't both win. Exactly one
-    // gets count:1; a loser gets count:0 → it means a concurrent request already claimed it →
-    // treat as reuse and revoke the family.
-    const claimed = await this.prisma.refreshToken.updateMany({
-      where: { id: existing.id, usedAt: null },
-      data: { usedAt: new Date() },
+    // TOCTOU race — two simultaneous refreshes of the same token can't both win. The claim and
+    // the NEW token are committed in ONE transaction: a concurrent loser's updateMany waits on
+    // the row lock until this commits, so its family-revoke below always sees (and deletes)
+    // the winner's fresh token too — a raced rotation leaves NO live token behind.
+    // (Found by the M15b real-DB test: without the transaction the loser's revoke could run
+    // before the winner's create, leaving one token alive.)
+    const issued = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.refreshToken.updateMany({
+        where: { id: existing.id, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+      if (claimed.count === 0) return null; // loser — handled (and committed) outside the tx
+      return this.issueTokens(existing.user, existing.familyId, tx);
     });
-    if (claimed.count === 0) {
+    if (!issued) {
       await this.prisma.refreshToken.deleteMany({ where: { familyId: existing.familyId } });
       throw new UnauthorizedException('Refresh token reuse detected');
     }
-
-    // Claim won → reissue in the SAME family.
-    return this.issueTokens(existing.user, existing.familyId);
+    return issued;
   }
 
   /** Log out one device: delete its refresh-token row. Idempotent. */
