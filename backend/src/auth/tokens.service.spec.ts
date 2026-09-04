@@ -108,3 +108,20 @@ describe('TokensService 2FA challenge', () => {
     await expect(service.verify2faChallenge('t')).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
+
+describe('TokensService step-up grant', () => {
+  it('issues a 5-minute step-up-purpose grant', async () => {
+    const jwt = { signAsync: jest.fn().mockResolvedValue('grant.jwt') };
+    const service = new TokensService(jwt as any, {} as any);
+    expect(await service.issueStepUpGrant('u1')).toBe('grant.jwt');
+    expect(jwt.signAsync).toHaveBeenCalledWith({ sub: 'u1', purpose: 'step-up' }, { expiresIn: '5m' });
+  });
+  it('verifies a grant and returns the user id', async () => {
+    const jwt = { verifyAsync: jest.fn().mockResolvedValue({ sub: 'u1', purpose: 'step-up' }) };
+    expect(await new TokensService(jwt as any, {} as any).verifyStepUpGrant('t')).toBe('u1');
+  });
+  it('rejects a 2fa challenge presented as a step-up grant (purpose mismatch)', async () => {
+    const jwt = { verifyAsync: jest.fn().mockResolvedValue({ sub: 'u1', purpose: '2fa' }) };
+    await expect(new TokensService(jwt as any, {} as any).verifyStepUpGrant('t')).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+});

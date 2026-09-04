@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -17,10 +17,39 @@ export class TokensService {
     return createHash('sha256').update(token).digest('hex');
   }
 
-  // A short-lived, single-purpose token the browser presents when opening the WebSocket
-  // directly to the backend (the httpOnly access cookie can't ride a cross-origin socket).
+  // ── Short-lived, single-purpose JWTs. One helper, three uses: the WS ticket (open a socket
+  // directly to the backend), the 2FA login challenge, and the step-up grant. A `purpose`
+  // claim means none of them can ever be presented as an access token — and none can be
+  // presented as each other. ──
+  private issuePurpose(
+    userId: string,
+    purpose: string,
+    expiresIn: JwtSignOptions['expiresIn'],
+  ): Promise<string> {
+    return this.jwt.signAsync({ sub: userId, purpose }, { expiresIn });
+  }
+
+  private async verifyPurpose(token: string, purpose: string): Promise<string> {
+    try {
+      const p = await this.jwt.verifyAsync<{ sub: string; purpose?: string }>(token);
+      if (p.purpose !== purpose) throw new Error('wrong purpose');
+      return p.sub;
+    } catch {
+      throw new UnauthorizedException(`Invalid or expired ${purpose} token`);
+    }
+  }
+
   issueWsTicket(userId: string): Promise<string> {
-    return this.jwt.signAsync({ sub: userId, purpose: 'ws' }, { expiresIn: '60s' });
+    return this.issuePurpose(userId, 'ws', '60s');
+  }
+
+  // Step-up grant: proves the second factor was re-verified moments ago (for sensitive actions).
+  issueStepUpGrant(userId: string): Promise<string> {
+    return this.issuePurpose(userId, 'step-up', '5m');
+  }
+
+  verifyStepUpGrant(token: string): Promise<string> {
+    return this.verifyPurpose(token, 'step-up');
   }
 
   async issueTokens(
@@ -103,19 +132,12 @@ export class TokensService {
     });
   }
 
-  // 2FA challenge: proves "password already verified" for the second login step. Short-lived
-  // and single-purpose (like the WS ticket) — it can never be used as an access token.
+  // 2FA challenge: proves "password already verified" for the second login step.
   issue2faChallenge(userId: string): Promise<string> {
-    return this.jwt.signAsync({ sub: userId, purpose: '2fa' }, { expiresIn: '5m' });
+    return this.issuePurpose(userId, '2fa', '5m');
   }
 
-  async verify2faChallenge(token: string): Promise<string> {
-    try {
-      const p = await this.jwt.verifyAsync<{ sub: string; purpose?: string }>(token);
-      if (p.purpose !== '2fa') throw new Error('wrong purpose');
-      return p.sub;
-    } catch {
-      throw new UnauthorizedException('Invalid or expired 2FA challenge');
-    }
+  verify2faChallenge(token: string): Promise<string> {
+    return this.verifyPurpose(token, '2fa');
   }
 }
