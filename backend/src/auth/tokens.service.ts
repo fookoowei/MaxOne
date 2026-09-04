@@ -140,4 +140,25 @@ export class TokensService {
   verify2faChallenge(token: string): Promise<string> {
     return this.verifyPurpose(token, '2fa');
   }
+
+  // WebAuthn ceremonies: the challenge must survive between the *options* call and the
+  // *verify* call. We sign it into a short-lived JWT instead of storing it — stateless, like
+  // every other purpose token here. `userId` is set for registration/step-up (bound to the
+  // caller) and absent for usernameless login.
+  issueWebAuthnChallenge(challenge: string, userId?: string): Promise<string> {
+    return this.jwt.signAsync(
+      { ...(userId ? { sub: userId } : {}), purpose: 'webauthn', challenge },
+      { expiresIn: '5m' },
+    );
+  }
+
+  async verifyWebAuthnChallenge(token: string): Promise<{ challenge: string; userId?: string }> {
+    try {
+      const p = await this.jwt.verifyAsync<{ sub?: string; purpose?: string; challenge?: string }>(token);
+      if (p.purpose !== 'webauthn' || !p.challenge) throw new Error('bad challenge token');
+      return { challenge: p.challenge, userId: p.sub };
+    } catch {
+      throw new UnauthorizedException('Invalid or expired WebAuthn challenge');
+    }
+  }
 }
