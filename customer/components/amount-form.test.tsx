@@ -36,6 +36,7 @@ describe('AmountForm', () => {
     const [url, init] = fetchSpy.mock.calls[0];
     expect(url).toBe('/api/wallets/w1/deposits');
     expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({ amount: 5050 });
+    expect((init as RequestInit).headers).toMatchObject({ 'idempotency-key': expect.stringMatching(/^[0-9a-f-]{36}$/) });
   });
 
   it('surfaces an insufficient-funds error on a 400 withdrawal without redirecting', async () => {

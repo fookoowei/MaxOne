@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { parseAmountToMinor } from '@/lib/format/parse-amount';
 import { stepUpWithPasskey } from '@/lib/passkeys/client';
+import { useIdempotencyKey } from '@/lib/idempotency/key';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +25,7 @@ export function TransferForm({
   prefillHandle?: string;
 }) {
   const router = useRouter();
+  const idem = useIdempotencyKey();
   const [handle, setHandle] = useState(prefillHandle);
   const [recipient, setRecipient] = useState<Recipient | null>(null);
   const [amount, setAmount] = useState('');
@@ -67,6 +69,7 @@ export function TransferForm({
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        'idempotency-key': idem.key(),
         ...(stepUpToken ? { 'x-step-up-token': stepUpToken } : {}),
       },
       body: JSON.stringify({ toWalletId: recipient.walletId, amount: minor, note: note || undefined }),
@@ -83,6 +86,7 @@ export function TransferForm({
       setError('Could not send. Check your balance and try again.');
       return;
     }
+    idem.reset();
     router.push('/');
   }
 

@@ -193,3 +193,20 @@ model Passkey {
 
   @@index([userId])
 }
+
+// Idempotency store (M15a). A client-chosen key per attempt; the row is RESERVED (unique
+// insert) before the handler runs, so a concurrent duplicate can never run twice. Only
+// successful responses are stored and replayed; a failed handler releases the reservation.
+model IdempotencyKey {
+  id           String   @id @default(uuid())
+  userId       String
+  key          String
+  fingerprint  String // sha256(method + path + body): the key means THIS exact request
+  status       String   @default("pending") // pending | completed
+  statusCode   Int?
+  responseBody Json?
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([createdAt])
+}
