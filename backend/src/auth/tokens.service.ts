@@ -102,4 +102,20 @@ export class TokensService {
       where: { tokenHash: this.hash(rawRefreshToken) },
     });
   }
+
+  // 2FA challenge: proves "password already verified" for the second login step. Short-lived
+  // and single-purpose (like the WS ticket) — it can never be used as an access token.
+  issue2faChallenge(userId: string): Promise<string> {
+    return this.jwt.signAsync({ sub: userId, purpose: '2fa' }, { expiresIn: '5m' });
+  }
+
+  async verify2faChallenge(token: string): Promise<string> {
+    try {
+      const p = await this.jwt.verifyAsync<{ sub: string; purpose?: string }>(token);
+      if (p.purpose !== '2fa') throw new Error('wrong purpose');
+      return p.sub;
+    } catch {
+      throw new UnauthorizedException('Invalid or expired 2FA challenge');
+    }
+  }
 }

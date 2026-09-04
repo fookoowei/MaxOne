@@ -84,3 +84,27 @@ describe('TokensService.rotate reuse detection', () => {
     await expect(service.rotate('raw')).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
+
+describe('TokensService 2FA challenge', () => {
+  it('issues a 5-minute 2fa-purpose challenge', async () => {
+    const jwt = { signAsync: jest.fn().mockResolvedValue('challenge.jwt') };
+    const service = new TokensService(jwt as any, {} as any);
+    expect(await service.issue2faChallenge('u1')).toBe('challenge.jwt');
+    expect(jwt.signAsync).toHaveBeenCalledWith({ sub: 'u1', purpose: '2fa' }, { expiresIn: '5m' });
+  });
+  it('verifies a challenge and returns the user id', async () => {
+    const jwt = { verifyAsync: jest.fn().mockResolvedValue({ sub: 'u1', purpose: '2fa' }) };
+    const service = new TokensService(jwt as any, {} as any);
+    expect(await service.verify2faChallenge('t')).toBe('u1');
+  });
+  it('rejects a token with the wrong purpose (e.g. a ws ticket)', async () => {
+    const jwt = { verifyAsync: jest.fn().mockResolvedValue({ sub: 'u1', purpose: 'ws' }) };
+    const service = new TokensService(jwt as any, {} as any);
+    await expect(service.verify2faChallenge('t')).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+  it('rejects an invalid/expired token', async () => {
+    const jwt = { verifyAsync: jest.fn().mockRejectedValue(new Error('expired')) };
+    const service = new TokensService(jwt as any, {} as any);
+    await expect(service.verify2faChallenge('t')).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+});

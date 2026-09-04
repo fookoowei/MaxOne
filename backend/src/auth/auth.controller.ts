@@ -8,12 +8,16 @@ import type { AuthUser } from './jwt.strategy';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
+import { TwoFactorService } from './two-factor.service';
+import { TwoFactorCodeDto } from './dto/two-factor-code.dto';
+import { Login2faDto } from './dto/login-2fa.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly tokensService: TokensService,
+    private readonly twoFactor: TwoFactorService,
   ) {}
 
   @Post('register')
@@ -27,6 +31,13 @@ export class AuthController {
   login(@Body() dto: LoginDto) {
     // Returns { user, tokens } — the BFF sets cookies from tokens and returns user.
     return this.authService.login(dto);
+  }
+
+  // Second login step (2FA on): challenge + TOTP/recovery code → the real tokens. Throttled like login.
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('login/2fa')
+  login2fa(@Body() dto: Login2faDto) {
+    return this.authService.login2fa(dto.challengeToken, dto.code);
   }
 
   @Post('refresh')
@@ -51,5 +62,31 @@ export class AuthController {
   @Post('ws-ticket')
   async wsTicket(@CurrentUser() user: AuthUser) {
     return { ticket: await this.tokensService.issueWsTicket(user.id) };
+  }
+
+  // ── 2FA management (authed) ──
+  @UseGuards(JwtAuthGuard)
+  @Post('2fa/setup')
+  setup2fa(@CurrentUser() user: AuthUser) {
+    return this.twoFactor.setup(user.id, user.email);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('2fa/verify')
+  verify2fa(@CurrentUser() user: AuthUser, @Body() dto: TwoFactorCodeDto) {
+    return this.twoFactor.verifyAndEnable(user.id, dto.code); // → { recoveryCodes } once
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('2fa/disable')
+  @HttpCode(204)
+  async disable2fa(@CurrentUser() user: AuthUser, @Body() dto: TwoFactorCodeDto): Promise<void> {
+    await this.twoFactor.disable(user.id, dto.code);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('2fa/status')
+  status2fa(@CurrentUser() user: AuthUser) {
+    return this.twoFactor.status(user.id);
   }
 }
