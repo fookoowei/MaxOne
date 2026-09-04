@@ -54,6 +54,10 @@ export function ConvertForm({ wallets }: { wallets: WalletSummary[] }) {
       body: JSON.stringify({ toWalletId: toId, amount: minor }),
     });
     setBusy(false);
+    if (res.status === 409) {
+      setError('This conversion may have already gone through — check your balances before trying again.');
+      return;
+    }
     if (!res.ok) {
       setError('Conversion failed. Check your balance and try again.');
       return;

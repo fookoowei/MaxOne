@@ -163,4 +163,22 @@ describe('TransferForm', () => {
     expect(k1).toMatch(/^[0-9a-f-]{36}$/);
     expect(k2).toBe(k1); // same logical operation → same key → the server can never double-charge
   });
+
+  it('a 409 (key already used) tells the user the send may have already gone through', async () => {
+    mockFetch((url) => {
+      if (url.includes('/api/wallets/lookup')) {
+        return new Response(JSON.stringify({ walletId: 'w2', currency: 'USD', recipientName: 'Alice Lee' }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ message: 'Idempotency-Key was already used for a different request' }), { status: 409 });
+    });
+    render(<TransferForm myWalletId="w1" myCurrency="USD" />);
+    await userEvent.type(screen.getByLabelText(/handle/i), 'alice');
+    await userEvent.click(screen.getByRole('button', { name: /find/i }));
+    await screen.findByText(/alice lee/i);
+    await userEvent.type(screen.getByLabelText(/amount/i), '50');
+    await userEvent.click(screen.getByRole('button', { name: /^send$/i }));
+
+    expect(await screen.findByText(/may have already gone through/i)).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+  });
 });
