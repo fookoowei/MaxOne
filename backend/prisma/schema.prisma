@@ -174,3 +174,22 @@ model PushSubscription {
 
   @@index([userId])
 }
+
+// A registered passkey (WebAuthn credential). We store ONLY the public key — the private key
+// lives in the user's device/secure enclave and never leaves it; no biometric data is ever
+// stored here. `counter` lets us detect a cloned authenticator (a replayed old count).
+model Passkey {
+  id           String    @id @default(uuid())
+  userId       String
+  credentialId String    @unique // base64url, the authenticator's credential ID
+  publicKey    Bytes // COSE-encoded public key
+  counter      Int       @default(0)
+  transports   String[]  @default([]) // e.g. ["internal"], ["hybrid"]
+  deviceType   String? // "singleDevice" | "multiDevice"
+  backedUp     Boolean   @default(false)
+  label        String? // user-facing name, e.g. "MacBook Touch ID"
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+
+  @@index([userId])
+}
