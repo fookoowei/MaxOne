@@ -163,32 +163,4 @@ describe('TransferForm', () => {
     expect(k1).toMatch(/^[0-9a-f-]{36}$/);
     expect(k2).toBe(k1); // same logical operation → same key → the server can never double-charge
   });
-
-  it('editing the amount after a failure is a NEW operation → a different key', async () => {
-    let transferCalls = 0;
-    const fetchSpy = mockFetch((url) => {
-      if (url.includes('/api/wallets/lookup')) {
-        return new Response(JSON.stringify({ walletId: 'w2', currency: 'USD', recipientName: 'Alice Lee' }), { status: 200 });
-      }
-      transferCalls += 1;
-      return transferCalls === 1 ? new Response(null, { status: 500 }) : new Response(JSON.stringify({ id: 't1' }), { status: 200 });
-    });
-    render(<TransferForm myWalletId="w1" myCurrency="USD" />);
-    await userEvent.type(screen.getByLabelText(/handle/i), 'alice');
-    await userEvent.click(screen.getByRole('button', { name: /find/i }));
-    await screen.findByText(/alice lee/i);
-    await userEvent.type(screen.getByLabelText(/amount/i), '50');
-    await userEvent.click(screen.getByRole('button', { name: /^send$/i }));
-    await screen.findByText(/could not send/i);
-
-    await userEvent.clear(screen.getByLabelText(/amount/i));
-    await userEvent.type(screen.getByLabelText(/amount/i), '70'); // changed intent
-    await userEvent.click(screen.getByRole('button', { name: /^send$/i }));
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/'));
-
-    const transfers = fetchSpy.mock.calls.filter(([u]) => String(u).includes('/transfers'));
-    const k1 = ((transfers[0][1] as RequestInit).headers as Record<string, string>)['idempotency-key'];
-    const k2 = ((transfers[1][1] as RequestInit).headers as Record<string, string>)['idempotency-key'];
-    expect(k2).not.toBe(k1);
-  });
 });

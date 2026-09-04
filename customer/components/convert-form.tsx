@@ -12,13 +12,13 @@ import type { WalletSummary } from '@/components/wallet-list';
 
 export function ConvertForm({ wallets }: { wallets: WalletSummary[] }) {
   const router = useRouter();
+  const idem = useIdempotencyKey();
   const [fromId, setFromId] = useState(wallets[0]?.id ?? '');
   const [toId, setToId] = useState(wallets[1]?.id ?? '');
   const [amount, setAmount] = useState('');
   const [quote, setQuote] = useState<{ converted: number; rate: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const idem = useIdempotencyKey([fromId, toId, amount]); // edit any → new operation
 
   const from = wallets.find((w) => w.id === fromId);
   const to = wallets.find((w) => w.id === toId);

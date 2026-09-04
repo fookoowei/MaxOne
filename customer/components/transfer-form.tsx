@@ -25,11 +25,11 @@ export function TransferForm({
   prefillHandle?: string;
 }) {
   const router = useRouter();
+  const idem = useIdempotencyKey();
   const [handle, setHandle] = useState(prefillHandle);
   const [recipient, setRecipient] = useState<Recipient | null>(null);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
-  const idem = useIdempotencyKey([recipient?.walletId, amount, note]); // edit any → new operation
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // M14c step-up: a 2FA user must re-prove their factor right before sending.
