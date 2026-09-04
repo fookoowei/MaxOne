@@ -1,4 +1,13 @@
-import { Body, Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Post,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { TokensService } from './tokens.service';
@@ -88,5 +97,17 @@ export class AuthController {
   @Get('2fa/status')
   status2fa(@CurrentUser() user: AuthUser) {
     return this.twoFactor.status(user.id);
+  }
+
+  // Step-up: re-prove the second factor right before a sensitive action → a 5-min grant the
+  // StepUpGuard accepts (sent back as the x-step-up-token header).
+  @UseGuards(JwtAuthGuard)
+  @Post('step-up')
+  async stepUp(@CurrentUser() user: AuthUser, @Body() dto: TwoFactorCodeDto) {
+    if (!user.totpEnabled) throw new BadRequestException('2FA is not enabled');
+    if (!(await this.twoFactor.verifyForLogin(user.id, dto.code))) {
+      throw new UnauthorizedException('Invalid code');
+    }
+    return { stepUpToken: await this.tokensService.issueStepUpGrant(user.id) };
   }
 }
