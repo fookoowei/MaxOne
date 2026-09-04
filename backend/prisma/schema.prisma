@@ -18,6 +18,9 @@ model User {
   firstName    String
   lastName     String
   status       String   @default("active") // active | suspended
+  totpSecret         String? // TOTP shared secret (pending until totpEnabled)
+  totpEnabled        Boolean  @default(false)
+  totpRecoveryHashes String[] @default([]) // sha256 of one-time recovery codes
   role         Role     @relation(fields: [roleId], references: [id])
   roleId       String
   refreshTokens RefreshToken[]
