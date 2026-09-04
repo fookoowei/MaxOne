@@ -12,6 +12,10 @@ import { Label } from '@/components/ui/label';
 export function LoginForm() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
+  // 2FA: when the password step returns a challenge, we swap to the code step.
+  const [challenge, setChallenge] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+  const [verifying, setVerifying] = useState(false);
   const {
     register,
     handleSubmit,
@@ -30,11 +34,59 @@ export function LoginForm() {
       setServerError(error);
       return;
     }
+    const data = await res.json();
+    if (data.requires2fa) {
+      setChallenge(data.challengeToken); // → code step; no cookies were set yet
+      return;
+    }
     router.push('/');
   }
 
+  async function onSubmitCode(e: React.FormEvent) {
+    e.preventDefault();
+    setServerError(null);
+    setVerifying(true);
+    const res = await fetch('/api/auth/login/2fa', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ challengeToken: challenge, code }),
+    });
+    setVerifying(false);
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'Invalid code.' }));
+      setServerError(error);
+      return;
+    }
+    router.push('/');
+  }
+
+  if (challenge) {
+    return (
+      <form key="2fa-step" onSubmit={onSubmitCode} className="space-y-4" noValidate>
+        <div className="space-y-1">
+          <Label htmlFor="code">Authentication code</Label>
+          <Input
+            id="code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="6-digit code or a recovery code"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            From your authenticator app — or use one of your recovery codes.
+          </p>
+        </div>
+        {serverError && <p className="text-sm text-destructive">{serverError}</p>}
+        <Button type="submit" className="w-full" disabled={verifying || !code}>
+          {verifying ? 'Verifying…' : 'Verify'}
+        </Button>
+      </form>
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+    <form key="password-step" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="space-y-1">
         <Label htmlFor="email">Email</Label>
         <Input id="email" type="email" {...register('email')} />
