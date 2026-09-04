@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
@@ -10,6 +10,7 @@ import { UsersModule } from './users/users.module';
 import { WalletsModule } from './wallets/wallets.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
+import { HttpExceptionFilter } from './common/http-exception.filter';
 import { AuditModule } from './audit/audit.module';
 import { MarketsModule } from './markets/markets.module';
 import { WatchlistModule } from './watchlist/watchlist.module';
@@ -43,6 +44,8 @@ import { PushModule } from './push/push.module';
     AppService,
     // Apply the throttler to every route (unless a route overrides its limit).
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // One error shape for every response (M15c): { statusCode, code, message, path, timestamp }.
+    { provide: APP_FILTER, useClass: HttpExceptionFilter },
   ],
 })
 export class AppModule {}
