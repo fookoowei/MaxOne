@@ -125,3 +125,24 @@ describe('TokensService step-up grant', () => {
     await expect(new TokensService(jwt as any, {} as any).verifyStepUpGrant('t')).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
+
+describe('TokensService WebAuthn challenge', () => {
+  it('signs the challenge (and the user, when given) as a 5-minute webauthn-purpose token', async () => {
+    const jwt = { signAsync: jest.fn().mockResolvedValue('c.jwt') };
+    const service = new TokensService(jwt as any, {} as any);
+    expect(await service.issueWebAuthnChallenge('CHAL', 'u1')).toBe('c.jwt');
+    expect(jwt.signAsync).toHaveBeenCalledWith({ sub: 'u1', purpose: 'webauthn', challenge: 'CHAL' }, { expiresIn: '5m' });
+    await service.issueWebAuthnChallenge('CHAL2'); // usernameless login: no sub
+    expect(jwt.signAsync).toHaveBeenLastCalledWith({ purpose: 'webauthn', challenge: 'CHAL2' }, { expiresIn: '5m' });
+  });
+  it('verifies and returns { challenge, userId }', async () => {
+    const jwt = { verifyAsync: jest.fn().mockResolvedValue({ sub: 'u1', purpose: 'webauthn', challenge: 'CHAL' }) };
+    expect(await new TokensService(jwt as any, {} as any).verifyWebAuthnChallenge('t')).toEqual({ challenge: 'CHAL', userId: 'u1' });
+  });
+  it('rejects the wrong purpose or a missing challenge', async () => {
+    const wrong = { verifyAsync: jest.fn().mockResolvedValue({ sub: 'u1', purpose: 'step-up', challenge: 'CHAL' }) };
+    await expect(new TokensService(wrong as any, {} as any).verifyWebAuthnChallenge('t')).rejects.toBeInstanceOf(UnauthorizedException);
+    const noChal = { verifyAsync: jest.fn().mockResolvedValue({ sub: 'u1', purpose: 'webauthn' }) };
+    await expect(new TokensService(noChal as any, {} as any).verifyWebAuthnChallenge('t')).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+});

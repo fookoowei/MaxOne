@@ -101,4 +101,12 @@ export class AuthService {
     const tokens = await this.tokens.issueTokens(user);
     return { user: this.toPublic(user), tokens };
   }
+
+  // Passkey sign-in: possession + biometric/PIN is a stronger factor than TOTP, so no 2-step.
+  async loginWithPasskey(userId: string) {
+    const user = await this.users.findByIdRaw(userId);
+    if (!user || user.status !== 'active') throw new UnauthorizedException('Invalid credentials');
+    const tokens = await this.tokens.issueTokens(user);
+    return { user: this.toPublic(user), tokens };
+  }
 }

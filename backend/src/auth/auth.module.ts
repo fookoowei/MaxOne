@@ -9,6 +9,7 @@ import { TokensService } from './tokens.service';
 import { JwtStrategy } from './jwt.strategy';
 import { TwoFactorService } from './two-factor.service';
 import { StepUpGuard } from './step-up.guard';
+import { PasskeysService } from './passkeys.service';
 
 @Module({
   imports: [
@@ -26,7 +27,7 @@ import { StepUpGuard } from './step-up.guard';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, TokensService, JwtStrategy, TwoFactorService, StepUpGuard],
+  providers: [AuthService, TokensService, JwtStrategy, TwoFactorService, StepUpGuard, PasskeysService],
   exports: [TokensService, StepUpGuard],
 })
 export class AuthModule {}

@@ -221,3 +221,21 @@ describe('AuthService.login2fa', () => {
     expect(tokensMock.issueTokens).not.toHaveBeenCalled();
   });
 });
+
+describe('AuthService.loginWithPasskey', () => {
+  const raw = { id: 'u1', email: 'a@b.c', role: { name: 'user' }, firstName: 'A', lastName: 'B', handle: 'a', status: 'active', totpEnabled: true };
+  it('issues tokens directly — a passkey needs no TOTP step', async () => {
+    const usersMock = { findByIdRaw: jest.fn().mockResolvedValue(raw) };
+    const tokensMock = { issueTokens: jest.fn().mockResolvedValue({ accessToken: 'a', refreshToken: 'r' }), issue2faChallenge: jest.fn() };
+    const service = await buildService(usersMock, tokensMock);
+    const res = await service.loginWithPasskey('u1');
+    expect(res.tokens).toEqual({ accessToken: 'a', refreshToken: 'r' });
+    expect(res.user).toEqual({ id: 'u1', email: 'a@b.c', role: 'user', firstName: 'A', lastName: 'B', handle: 'a' });
+    expect(tokensMock.issue2faChallenge).not.toHaveBeenCalled();
+  });
+  it('rejects a suspended user', async () => {
+    const usersMock = { findByIdRaw: jest.fn().mockResolvedValue({ ...raw, status: 'suspended' }) };
+    const service = await buildService(usersMock, { issueTokens: jest.fn() });
+    await expect(service.loginWithPasskey('u1')).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+});
