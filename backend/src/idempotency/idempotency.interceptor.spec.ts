@@ -16,6 +16,10 @@ describe('IdempotencyInterceptor', () => {
   it('400 when the key is missing on a required route', () => {
     const { interceptor, ctx, handler } = build(true, null);
     expect(() => interceptor.intercept(ctx, handler)).toThrow(BadRequestException);
+    // Stable machine-readable code (M15c): clients branch on this, never on the message text.
+    expect(() => interceptor.intercept(ctx, handler)).toThrow(
+      expect.objectContaining({ response: expect.objectContaining({ code: 'IDEMPOTENCY_KEY_REQUIRED' }) }),
+    );
   });
   it('runs normally when the key is missing on an optional route', async () => {
     const { interceptor, ctx, handler, idem } = build(false, null);
@@ -30,7 +34,9 @@ describe('IdempotencyInterceptor', () => {
   });
   it('409 on a fingerprint mismatch', async () => {
     const { interceptor, ctx, handler } = build(true, { kind: 'mismatch' }, { [IDEMPOTENCY_HEADER]: 'k1' });
-    await expect(lastValueFrom(interceptor.intercept(ctx, handler))).rejects.toBeInstanceOf(ConflictException);
+    const err: unknown = await lastValueFrom(interceptor.intercept(ctx, handler)).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ConflictException);
+    expect((err as ConflictException).getResponse()).toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
   });
   it('409 while the first request is still in progress', async () => {
     const { interceptor, ctx, handler } = build(true, { kind: 'in_progress' }, { [IDEMPOTENCY_HEADER]: 'k1' });
