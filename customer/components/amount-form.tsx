@@ -22,12 +22,15 @@ export function AmountForm({
 }) {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
-  const idem = useIdempotencyKey();
+
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<AmountInput>({ resolver: zodResolver(amountSchema) });
+  const [amountValue, noteValue] = watch(['amount', 'note']);
+  const idem = useIdempotencyKey([amountValue, noteValue]); // edit any → new operation
 
   const endpoint = mode === 'deposit' ? 'deposits' : 'withdrawals';
   const cta = mode === 'deposit' ? 'Request deposit' : 'Request withdrawal';

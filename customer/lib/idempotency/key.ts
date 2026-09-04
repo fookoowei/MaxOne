@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 function uuid(): string {
   const c = globalThis.crypto as Crypto & { randomUUID?: () => string };
@@ -15,9 +15,15 @@ function uuid(): string {
 
 // One Idempotency-Key per LOGICAL money operation: minted on first use, REUSED across a
 // failed/retried submit of the same operation (so a retry can never double-charge), and
-// cleared after success so the next submit is a new operation.
-export function useIdempotencyKey() {
+// cleared after success so the next submit is a new operation. Pass the inputs that DEFINE
+// the operation (amount, recipient…): if the user edits any of them, that's a new intent →
+// the key is dropped and the next submit mints a fresh one. An unchanged retry keeps it.
+export function useIdempotencyKey(deps: unknown[] = []) {
   const ref = useRef<string | null>(null);
+  const inputs = JSON.stringify(deps);
+  useEffect(() => {
+    ref.current = null; // inputs changed (or first mount) → next submit is a new operation
+  }, [inputs]);
   const key = useCallback(() => (ref.current ??= uuid()), []);
   const reset = useCallback(() => {
     ref.current = null;
