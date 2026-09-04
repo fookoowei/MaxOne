@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { parseAmountToMinor } from '@/lib/format/parse-amount';
+import { useIdempotencyKey } from '@/lib/idempotency/key';
 import { formatMoney } from '@/lib/format/money';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ import type { WalletSummary } from '@/components/wallet-list';
 
 export function ConvertForm({ wallets }: { wallets: WalletSummary[] }) {
   const router = useRouter();
+  const idem = useIdempotencyKey();
   const [fromId, setFromId] = useState(wallets[0]?.id ?? '');
   const [toId, setToId] = useState(wallets[1]?.id ?? '');
   const [amount, setAmount] = useState('');
@@ -48,7 +50,7 @@ export function ConvertForm({ wallets }: { wallets: WalletSummary[] }) {
     const minor = parseAmountToMinor(amount);
     const res = await fetch(`/api/wallets/${fromId}/transfers`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'idempotency-key': idem.key() },
       body: JSON.stringify({ toWalletId: toId, amount: minor }),
     });
     setBusy(false);
@@ -56,6 +58,7 @@ export function ConvertForm({ wallets }: { wallets: WalletSummary[] }) {
       setError('Conversion failed. Check your balance and try again.');
       return;
     }
+    idem.reset();
     router.push('/');
   }
 

@@ -9,11 +9,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .json()
     .catch(() => ({}) as { toWalletId?: string; amount?: number; note?: string });
   const stepUp = request.headers.get('x-step-up-token');
+  const idem = request.headers.get('idempotency-key');
   const res = await serverApiWithRefresh(`/wallets/${id}/transfers`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       ...(stepUp ? { 'x-step-up-token': stepUp } : {}),
+      ...(idem ? { 'idempotency-key': idem } : {}),
     },
     body: JSON.stringify({ toWalletId: b.toWalletId, amount: b.amount, note: b.note }),
   });

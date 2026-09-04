@@ -9,6 +9,7 @@ import { parseAmountToMinor } from '@/lib/format/parse-amount';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useIdempotencyKey } from '@/lib/idempotency/key';
 
 export function AmountForm({
   mode,
@@ -21,6 +22,7 @@ export function AmountForm({
 }) {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
+  const idem = useIdempotencyKey();
   const {
     register,
     handleSubmit,
@@ -35,7 +37,7 @@ export function AmountForm({
     const amount = parseAmountToMinor(values.amount);
     const res = await fetch(`/api/wallets/${walletId}/${endpoint}`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'idempotency-key': idem.key() },
       body: JSON.stringify({ amount, note: values.note || undefined }),
     });
     if (!res.ok) {
@@ -46,6 +48,7 @@ export function AmountForm({
       );
       return;
     }
+    idem.reset();
     router.push('/');
   }
 
