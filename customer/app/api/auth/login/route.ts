@@ -19,7 +19,13 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Invalid email or password.' }, { status: res.status });
   }
 
-  const { user, tokens } = await res.json();
+  const data = await res.json();
+  // 2FA on: the backend returned a challenge instead of tokens. Pass it through — NO cookies
+  // yet; the browser finishes the login at /api/auth/login/2fa.
+  if (data.requires2fa) {
+    return Response.json({ requires2fa: true, challengeToken: data.challengeToken });
+  }
+  const { user, tokens } = data;
   await setAuthCookies(user, tokens);
   return Response.json({ user });
 }

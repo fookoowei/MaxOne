@@ -8,7 +8,7 @@ const tabs = [
   { label: 'Home', icon: Home, href: '/' },
   { label: 'Pay', icon: Send, href: '/pay' },
   { label: 'Markets', icon: TrendingUp, href: '/markets' },
-  { label: 'Profile', icon: User, href: null },
+  { label: 'Profile', icon: User, href: '/profile' },
 ];
 
 // Bottom tab bar. Home + Pay are live; Cards/Profile stay disabled placeholders (later slices).

@@ -161,4 +161,41 @@ export class UsersService {
       return toSafeUser(user);
     });
   }
+
+  // ── 2FA persistence. findByIdRaw is NOT safe-stripped (carries the TOTP secret + recovery
+  // hashes) — internal use only; never return it from a route. ──
+  findByIdRaw(id: string) {
+    return this.prisma.user.findUnique({ where: { id }, include: { role: true } });
+  }
+
+  setTotpPending(id: string, secret: string) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { totpSecret: secret, totpEnabled: false, totpRecoveryHashes: [] },
+    });
+  }
+
+  enableTotp(id: string, recoveryHashes: string[]) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { totpEnabled: true, totpRecoveryHashes: recoveryHashes },
+    });
+  }
+
+  disableTotp(id: string) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { totpSecret: null, totpEnabled: false, totpRecoveryHashes: [] },
+    });
+  }
+
+  // One-time: remove the used recovery-code hash.
+  async consumeRecoveryHash(id: string, hash: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { totpRecoveryHashes: true },
+    });
+    const remaining = (user?.totpRecoveryHashes ?? []).filter((h) => h !== hash);
+    return this.prisma.user.update({ where: { id }, data: { totpRecoveryHashes: remaining } });
+  }
 }

@@ -3,6 +3,7 @@ import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { RolesService } from '../users/roles.service';
 import { TokensService } from './tokens.service';
+import { TwoFactorService } from './two-factor.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
@@ -17,7 +18,23 @@ export class AuthService {
     private readonly users: UsersService,
     private readonly roles: RolesService,
     private readonly tokens: TokensService,
+    private readonly twoFactor: TwoFactorService,
   ) {}
+
+  // The non-sensitive user shape every auth response returns.
+  private toPublic(user: {
+    id: string; email: string; role: { name: string };
+    firstName: string; lastName: string; handle: string | null;
+  }) {
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      handle: user.handle,
+    };
+  }
 
   async register(dto: RegisterDto) {
     const existing = await this.users.findByEmail(dto.email);
@@ -44,14 +61,7 @@ export class AuthService {
 
     const tokens = await this.tokens.issueTokens(user);
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role.name,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        handle: user.handle,
-      },
+      user: this.toPublic(user),
       tokens,
     };
   }
@@ -68,17 +78,27 @@ export class AuthService {
     );
     if (!user || !passwordMatches) throw new UnauthorizedException('Invalid credentials');
 
+    // 2FA on → do NOT issue tokens yet. Hand back a short-lived challenge that proves
+    // "password verified"; the real tokens come from login2fa once a code is presented.
+    if (user.totpEnabled) {
+      return { requires2fa: true as const, challengeToken: await this.tokens.issue2faChallenge(user.id) };
+    }
+
     const tokens = await this.tokens.issueTokens(user);
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role.name,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        handle: user.handle,
-      },
+      user: this.toPublic(user),
       tokens,
     };
+  }
+
+  // Second login step: challenge (from login) + a TOTP or recovery code → the real tokens.
+  async login2fa(challengeToken: string, code: string) {
+    const userId = await this.tokens.verify2faChallenge(challengeToken);
+    const user = await this.users.findByIdRaw(userId);
+    if (!user || !(await this.twoFactor.verifyForLogin(userId, code))) {
+      throw new UnauthorizedException('Invalid code');
+    }
+    const tokens = await this.tokens.issueTokens(user);
+    return { user: this.toPublic(user), tokens };
   }
 }

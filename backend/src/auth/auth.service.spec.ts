@@ -5,6 +5,7 @@ import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { RolesService } from '../users/roles.service';
 import { TokensService } from './tokens.service';
+import { TwoFactorService } from './two-factor.service';
 import { RegisterDto } from './dto/register.dto';
 
 const dto: RegisterDto = {
@@ -23,6 +24,7 @@ function buildService(
   rolesMock: any = {
     findByNameOrThrow: jest.fn().mockResolvedValue({ id: 'role-user', name: 'user' }),
   },
+  twoFactorMock: any = { verifyForLogin: jest.fn() },
 ) {
   return Test.createTestingModule({
     providers: [
@@ -30,6 +32,7 @@ function buildService(
       { provide: UsersService, useValue: usersMock },
       { provide: RolesService, useValue: rolesMock },
       { provide: TokensService, useValue: tokensMock },
+      { provide: TwoFactorService, useValue: twoFactorMock },
     ],
   })
     .compile()
@@ -166,6 +169,55 @@ describe('AuthService.login', () => {
     const service = await buildService(usersMock, tokensMock);
 
     await expect(service.login(credentials)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(tokensMock.issueTokens).not.toHaveBeenCalled();
+  });
+});
+
+describe('AuthService.login with 2FA enabled', () => {
+  it('returns a challenge and NO tokens when the user has TOTP enabled', async () => {
+    const passwordHash = bcrypt.hashSync('Password123', 4);
+    const usersMock = {
+      findByEmailWithRole: jest.fn().mockResolvedValue({
+        id: 'u1', email: 'a@b.c', passwordHash, totpEnabled: true,
+        role: { name: 'user' }, firstName: 'A', lastName: 'B', handle: 'a',
+      }),
+    };
+    const tokensMock = { issueTokens: jest.fn(), issue2faChallenge: jest.fn().mockResolvedValue('challenge.jwt') };
+    const service = await buildService(usersMock, tokensMock);
+
+    const res = await service.login({ email: 'a@b.c', password: 'Password123' });
+
+    expect(res).toEqual({ requires2fa: true, challengeToken: 'challenge.jwt' });
+    expect(tokensMock.issueTokens).not.toHaveBeenCalled();
+  });
+});
+
+describe('AuthService.login2fa', () => {
+  const raw = { id: 'u1', email: 'a@b.c', role: { name: 'user' }, firstName: 'A', lastName: 'B', handle: 'a', totpEnabled: true };
+
+  it('issues tokens when the challenge + code are valid', async () => {
+    const usersMock = { findByIdRaw: jest.fn().mockResolvedValue(raw) };
+    const tokensMock = {
+      verify2faChallenge: jest.fn().mockResolvedValue('u1'),
+      issueTokens: jest.fn().mockResolvedValue({ accessToken: 'a', refreshToken: 'r' }),
+    };
+    const twoFactor = { verifyForLogin: jest.fn().mockResolvedValue(true) };
+    const service = await buildService(usersMock, tokensMock, undefined, twoFactor);
+
+    const res = await service.login2fa('challenge.jwt', '123456');
+
+    expect(twoFactor.verifyForLogin).toHaveBeenCalledWith('u1', '123456');
+    expect(res.tokens).toEqual({ accessToken: 'a', refreshToken: 'r' });
+    expect(res.user).toEqual({ id: 'u1', email: 'a@b.c', role: 'user', firstName: 'A', lastName: 'B', handle: 'a' });
+  });
+
+  it('rejects a wrong code without issuing tokens', async () => {
+    const usersMock = { findByIdRaw: jest.fn().mockResolvedValue(raw) };
+    const tokensMock = { verify2faChallenge: jest.fn().mockResolvedValue('u1'), issueTokens: jest.fn() };
+    const twoFactor = { verifyForLogin: jest.fn().mockResolvedValue(false) };
+    const service = await buildService(usersMock, tokensMock, undefined, twoFactor);
+
+    await expect(service.login2fa('challenge.jwt', '000000')).rejects.toBeInstanceOf(UnauthorizedException);
     expect(tokensMock.issueTokens).not.toHaveBeenCalled();
   });
 });
