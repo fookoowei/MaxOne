@@ -18,6 +18,20 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    # M16a: cache-aside store for external public data (markets/FX). The app is fail-soft
+    # without it — Redis is an optimisation, never a dependency.
+    image: redis:7-alpine
+    container_name: wallet_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   backend:
     build: ./backend
     container_name: wallet_backend
