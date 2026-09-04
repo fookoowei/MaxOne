@@ -10,6 +10,7 @@ import { MoneyAmountDto } from './dto/money-amount.dto';
 import { AdjustmentDto } from './dto/adjustment.dto';
 import { TransferDto } from './dto/transfer.dto';
 import { StepUpGuard } from '../auth/step-up.guard';
+import { Idempotent } from '../idempotency/idempotent.decorator';
 import { LookupQueryDto } from './dto/lookup-query.dto';
 
 // JwtAuthGuard only: there is no *permission* a customer holds to read their own
@@ -46,6 +47,7 @@ export class WalletsController {
   }
 
   @Post(':id/deposits')
+  @Idempotent({ required: true })
   requestDeposit(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() actor: AuthUser,
@@ -55,6 +57,7 @@ export class WalletsController {
   }
 
   @Post(':id/withdrawals')
+  @Idempotent({ required: true })
   requestWithdrawal(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() actor: AuthUser,
@@ -67,6 +70,7 @@ export class WalletsController {
   // move your own money. The destination is deliberately NOT ownership-checked.
   // Sensitive: a 2FA user must have re-proved their factor moments ago (M14c step-up).
   @Post(':id/transfers')
+  @Idempotent({ required: true })
   @UseGuards(StepUpGuard)
   transfer(
     @Param('id', ParseUUIDPipe) id: string,
@@ -79,6 +83,7 @@ export class WalletsController {
   // Finance-only: adjust ANY wallet (no ownership check — permission-gated, not owner-gated).
   // A method-level @UseGuards runs *in addition to* the class-level JwtAuthGuard.
   @Post(':id/adjustments')
+  @Idempotent({ required: false })
   @UseGuards(PermissionsGuard)
   @RequirePermissions('wallet.adjust')
   adjust(
