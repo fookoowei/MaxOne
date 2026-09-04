@@ -120,7 +120,7 @@ export function TwoFactorSetup({ initialEnabled }: { initialEnabled: boolean }) 
   if (phase === 'disabling') {
     return (
       <form onSubmit={disable} className="space-y-4" noValidate>
-        <p className="text-sm">Enter a current code to turn 2FA off.</p>
+        <p className="text-sm">Enter a current code — or one of your recovery codes — to turn 2FA off.</p>
         {codeField('disable-code')}
         {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="flex gap-2">

@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { authenticator } from 'otplib';
 import * as QRCode from 'qrcode';
 import { createHash, randomBytes } from 'crypto';
@@ -17,6 +17,13 @@ export class TwoFactorService {
 
   // Step 1: mint a secret, store it PENDING, hand back the otpauth URI + QR to scan.
   async setup(userId: string, email: string) {
+    // Never silently downgrade: setup on an already-enabled account would reset it to pending
+    // (2FA off) with NO code asked — anyone holding a live session could bypass the factor.
+    // Changing the factor requires proving it: disable first (which needs a code).
+    const existing = await this.users.findByIdRaw(userId);
+    if (existing?.totpEnabled) {
+      throw new ConflictException('2FA is already enabled — turn it off first');
+    }
     const secret = authenticator.generateSecret();
     await this.users.setTotpPending(userId, secret);
     const otpauthUrl = authenticator.keyuri(email, ISSUER, secret);
@@ -35,9 +42,26 @@ export class TwoFactorService {
     return { recoveryCodes }; // plaintext, shown ONCE
   }
 
+  // Prove the factor: a live TOTP code OR an unused recovery code (consumed on use).
+  // Shared by login and disable — so a lost-phone user can still turn 2FA off with a
+  // recovery code and re-enroll on a new device (no dead-end).
+  private async proveFactor(
+    user: { id: string; totpSecret: string | null; totpRecoveryHashes: string[] },
+    code: string,
+  ): Promise<boolean> {
+    const c = normalize(code);
+    if (user.totpSecret && authenticator.check(c, user.totpSecret)) return true;
+    const h = sha256(c);
+    if (user.totpRecoveryHashes.includes(h)) {
+      await this.users.consumeRecoveryHash(user.id, h);
+      return true;
+    }
+    return false;
+  }
+
   async disable(userId: string, code: string) {
     const user = await this.users.findByIdRaw(userId);
-    if (!user?.totpEnabled || !user.totpSecret || !authenticator.check(normalize(code), user.totpSecret)) {
+    if (!user?.totpEnabled || !(await this.proveFactor(user, code))) {
       throw new UnauthorizedException('Invalid code');
     }
     await this.users.disableTotp(userId);
@@ -48,17 +72,10 @@ export class TwoFactorService {
     return { enabled: !!user?.totpEnabled };
   }
 
-  // Login step: a live TOTP code OR an unused recovery code (consumed on use).
+  // Login step: TOTP code or recovery code (see proveFactor).
   async verifyForLogin(userId: string, code: string): Promise<boolean> {
     const user = await this.users.findByIdRaw(userId);
-    if (!user?.totpEnabled || !user.totpSecret) return false;
-    const c = normalize(code);
-    if (authenticator.check(c, user.totpSecret)) return true;
-    const h = sha256(c);
-    if (user.totpRecoveryHashes.includes(h)) {
-      await this.users.consumeRecoveryHash(userId, h);
-      return true;
-    }
-    return false;
+    if (!user?.totpEnabled) return false;
+    return this.proveFactor(user, code);
   }
 }
