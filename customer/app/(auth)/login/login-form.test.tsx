@@ -5,6 +5,8 @@ import { LoginForm } from './login-form';
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
+const loginWithPasskey = vi.fn();
+vi.mock('@/lib/passkeys/client', () => ({ loginWithPasskey: () => loginWithPasskey() }));
 
 beforeEach(() => {
   push.mockReset();
@@ -38,5 +40,12 @@ describe('LoginForm 2FA step', () => {
       challengeToken: 'chal-1',
       code: '123456',
     });
+  });
+
+  it('signs in with a passkey (no password) and redirects', async () => {
+    loginWithPasskey.mockResolvedValue(true);
+    render(<LoginForm />);
+    await userEvent.click(screen.getByRole('button', { name: /sign in with passkey/i }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/'));
   });
 });

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { parseAmountToMinor } from '@/lib/format/parse-amount';
+import { stepUpWithPasskey } from '@/lib/passkeys/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -105,6 +106,25 @@ export function TransferForm({
     await send(stepUpToken); // retry the transfer with the fresh grant
   }
 
+  // Alternative step-up: a passkey (Face/Touch ID) instead of typing a code.
+  async function passkeyStepUp() {
+    setError(null);
+    setBusy(true);
+    try {
+      const grant = await stepUpWithPasskey();
+      setBusy(false);
+      if (!grant) {
+        setError('Passkey verification failed.');
+        return;
+      }
+      setStepUp(false);
+      await send(grant);
+    } catch {
+      setBusy(false);
+      setError('Passkey verification was cancelled.');
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="space-y-1">
@@ -146,6 +166,9 @@ export function TransferForm({
           </div>
           <Button type="submit" className="w-full" disabled={busy || !code}>
             {busy ? 'Verifying…' : 'Verify & send'}
+          </Button>
+          <Button type="button" variant="outline" className="w-full" onClick={passkeyStepUp} disabled={busy}>
+            Use passkey instead
           </Button>
         </form>
       )}

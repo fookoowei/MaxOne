@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { loginSchema, type LoginInput } from '@/lib/schemas/auth';
+import { loginWithPasskey } from '@/lib/passkeys/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +17,7 @@ export function LoginForm() {
   const [challenge, setChallenge] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [verifying, setVerifying] = useState(false);
+  const [pkBusy, setPkBusy] = useState(false);
   const {
     register,
     handleSubmit,
@@ -60,6 +62,21 @@ export function LoginForm() {
     router.push('/');
   }
 
+  // Usernameless passkey sign-in — no password, and a passkey needs no TOTP step.
+  async function passkeyLogin() {
+    setServerError(null);
+    setPkBusy(true);
+    try {
+      const ok = await loginWithPasskey();
+      if (ok) router.push('/');
+      else setServerError('Passkey sign-in failed. Try your password instead.');
+    } catch {
+      setServerError('Passkey sign-in was cancelled.');
+    } finally {
+      setPkBusy(false);
+    }
+  }
+
   if (challenge) {
     return (
       <form key="2fa-step" onSubmit={onSubmitCode} className="space-y-4" noValidate>
@@ -100,6 +117,9 @@ export function LoginForm() {
       {serverError && <p className="text-sm text-destructive">{serverError}</p>}
       <Button type="submit" className="w-full" disabled={isSubmitting}>
         {isSubmitting ? 'Logging in…' : 'Log in'}
+      </Button>
+      <Button type="button" variant="outline" className="w-full" onClick={passkeyLogin} disabled={pkBusy}>
+        {pkBusy ? 'Waiting for your device…' : 'Sign in with passkey'}
       </Button>
     </form>
   );
