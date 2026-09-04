@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { createHash } from 'crypto';
 import { authenticator } from 'otplib';
 import { TwoFactorService } from './two-factor.service';
@@ -13,7 +13,7 @@ const check = authenticator.check as jest.Mock;
 
 function build(userRow: any) {
   const users = {
-    findByIdRaw: jest.fn().mockResolvedValue(userRow),
+    findByIdRaw: jest.fn().mockResolvedValue(userRow && { id: 'u1', ...userRow }),
     setTotpPending: jest.fn().mockResolvedValue({}),
     enableTotp: jest.fn().mockResolvedValue({}),
     disableTotp: jest.fn().mockResolvedValue({}),
@@ -25,6 +25,11 @@ function build(userRow: any) {
 beforeEach(() => check.mockReset());
 
 describe('TwoFactorService.setup', () => {
+  it('refuses when 2FA is already enabled (no silent downgrade)', async () => {
+    const { svc, users } = build({ totpSecret: 'SECRET', totpEnabled: true, totpRecoveryHashes: [] });
+    await expect(svc.setup('u1', 'a@b.c')).rejects.toBeInstanceOf(ConflictException);
+    expect(users.setTotpPending).not.toHaveBeenCalled();
+  });
   it('stores a pending secret and returns the otpauth URI + QR', async () => {
     const { svc, users } = build(null);
     const out = await svc.setup('u1', 'a@b.c');
@@ -72,6 +77,13 @@ describe('TwoFactorService.verifyForLogin', () => {
 });
 
 describe('TwoFactorService.disable', () => {
+  it('accepts a recovery code (consumed) so a lost-phone user can turn 2FA off and re-enroll', async () => {
+    check.mockReturnValue(false); // no authenticator anymore
+    const { svc, users } = build({ id: 'u1', totpSecret: 'SECRET', totpEnabled: true, totpRecoveryHashes: [sha('abcdef1234')] });
+    await svc.disable('u1', 'ABCDEF1234');
+    expect(users.consumeRecoveryHash).toHaveBeenCalledWith('u1', sha('abcdef1234'));
+    expect(users.disableTotp).toHaveBeenCalledWith('u1');
+  });
   it('requires a valid current code, then clears', async () => {
     check.mockReturnValue(true);
     const { svc, users } = build({ totpSecret: 'SECRET', totpEnabled: true, totpRecoveryHashes: [] });

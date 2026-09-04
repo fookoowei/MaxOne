@@ -16,6 +16,7 @@ export interface AuthUser {
   id: string;
   email: string;
   role: string;
+  totpEnabled?: boolean; // set per request by JwtStrategy (M14c step-up reads it — zero extra queries)
 }
 
 @Injectable()
@@ -51,6 +52,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException();
     }
     if (user.status !== 'active') throw new UnauthorizedException();
-    return { id: payload.sub, email: payload.email, role: payload.role };
+    return { id: payload.sub, email: payload.email, role: payload.role, totpEnabled: !!user.totpEnabled };
   }
 }

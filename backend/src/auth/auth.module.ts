@@ -8,6 +8,7 @@ import { AuthService } from './auth.service';
 import { TokensService } from './tokens.service';
 import { JwtStrategy } from './jwt.strategy';
 import { TwoFactorService } from './two-factor.service';
+import { StepUpGuard } from './step-up.guard';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { TwoFactorService } from './two-factor.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, TokensService, JwtStrategy, TwoFactorService],
+  providers: [AuthService, TokensService, JwtStrategy, TwoFactorService, StepUpGuard],
+  exports: [TokensService, StepUpGuard],
 })
 export class AuthModule {}

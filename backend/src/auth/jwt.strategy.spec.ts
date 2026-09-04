@@ -8,7 +8,7 @@ describe('JwtStrategy.validate', () => {
   it('returns the AuthUser for an active user', async () => {
     const users = { findById: jest.fn().mockResolvedValue({ id: 'u1', status: 'active' }) };
     const strategy = new JwtStrategy(config, users as any);
-    await expect(strategy.validate(payload)).resolves.toEqual({ id: 'u1', email: 'u1@x.com', role: 'user' });
+    await expect(strategy.validate(payload)).resolves.toEqual({ id: 'u1', email: 'u1@x.com', role: 'user', totpEnabled: false });
   });
   it('rejects a suspended user', async () => {
     const users = { findById: jest.fn().mockResolvedValue({ id: 'u1', status: 'suspended' }) };

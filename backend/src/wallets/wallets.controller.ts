@@ -9,6 +9,7 @@ import { CreateWalletDto } from './dto/create-wallet.dto';
 import { MoneyAmountDto } from './dto/money-amount.dto';
 import { AdjustmentDto } from './dto/adjustment.dto';
 import { TransferDto } from './dto/transfer.dto';
+import { StepUpGuard } from '../auth/step-up.guard';
 import { LookupQueryDto } from './dto/lookup-query.dto';
 
 // JwtAuthGuard only: there is no *permission* a customer holds to read their own
@@ -64,7 +65,9 @@ export class WalletsController {
 
   // Ownership-gated only, like the other customer routes: no permission is required to
   // move your own money. The destination is deliberately NOT ownership-checked.
+  // Sensitive: a 2FA user must have re-proved their factor moments ago (M14c step-up).
   @Post(':id/transfers')
+  @UseGuards(StepUpGuard)
   transfer(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() actor: AuthUser,

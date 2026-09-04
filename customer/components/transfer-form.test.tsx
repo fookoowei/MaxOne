@@ -69,4 +69,40 @@ describe('TransferForm', () => {
 
     expect(await screen.findByText(/no one found/i)).toBeInTheDocument();
   });
+
+  it('step-up: a 403 STEP_UP_REQUIRED prompts for a code, then retries with the grant', async () => {
+    let transferCalls = 0;
+    const fetchSpy = mockFetch((url) => {
+      if (url.includes('/api/wallets/lookup')) {
+        return new Response(JSON.stringify({ walletId: 'w2', currency: 'USD', recipientName: 'Alice Lee' }), { status: 200 });
+      }
+      if (url.includes('/api/auth/step-up')) {
+        return new Response(JSON.stringify({ stepUpToken: 'grant-1' }), { status: 200 });
+      }
+      transferCalls += 1;
+      return transferCalls === 1
+        ? new Response(JSON.stringify({ code: 'STEP_UP_REQUIRED' }), { status: 403 })
+        : new Response(JSON.stringify({ id: 't1' }), { status: 200 });
+    });
+    render(<TransferForm myWalletId="w1" myCurrency="USD" />);
+
+    await userEvent.type(screen.getByLabelText(/handle/i), 'alice');
+    await userEvent.click(screen.getByRole('button', { name: /find/i }));
+    await screen.findByText(/alice lee/i);
+    await userEvent.type(screen.getByLabelText(/amount/i), '50');
+    await userEvent.click(screen.getByRole('button', { name: /^send$/i }));
+
+    // First attempt is refused → the code prompt appears, no redirect yet.
+    const codeInput = await screen.findByLabelText(/authentication code/i);
+    expect(push).not.toHaveBeenCalled();
+
+    await userEvent.type(codeInput, '123456');
+    await userEvent.click(screen.getByRole('button', { name: /verify & send/i }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/'));
+    const transfers = fetchSpy.mock.calls.filter(([u]) => String(u).includes('/transfers'));
+    expect(transfers).toHaveLength(2);
+    expect((transfers[1][1] as RequestInit).headers).toMatchObject({ 'x-step-up-token': 'grant-1' });
+    expect((transfers[0][1] as RequestInit).headers).not.toHaveProperty('x-step-up-token');
+  });
 });
