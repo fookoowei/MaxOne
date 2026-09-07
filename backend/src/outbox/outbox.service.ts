@@ -36,9 +36,9 @@ export class OutboxService {
   ) {}
 
   /** Inside the caller's transaction: the ONLY way an event enters the system. */
-  enqueue(tx: Prisma.TransactionClient, routingKey: string, event: { id: string } & Record<string, unknown>) {
+  enqueue<T extends { id: string }>(tx: Prisma.TransactionClient, routingKey: string, event: T) {
     return tx.outboxEvent.create({
-      data: { id: event.id, routingKey, payload: event as Prisma.InputJsonValue },
+      data: { id: event.id, routingKey, payload: event as unknown as Prisma.InputJsonValue },
     });
   }
 

@@ -1,24 +1,29 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { Prisma } from '@prisma/client';
 import { RealtimeService, type NotificationPayload } from './realtime.service';
-import { QueueService } from '../queue/queue.service';
+import { OutboxService } from '../outbox/outbox.service';
 import { ROUTING_KEYS, type NotificationPushEvent } from '../queue/events';
 
 /**
- * One delivery call → socket toast NOW (in-process, no I/O) + Web Push LATER (queued; the worker
- * sends it). The HTTP request no longer waits on Google/Apple push servers, and a push the broker
- * accepted survives an API crash. Broker down → publish returns false, socket still fired, push
- * dropped (logged once by QueueService) — M16d's outbox is the fix for that gap.
+ * Two halves that mirror before-commit / after-commit (M16d):
+ *  - enqueue(tx, …): INSIDE the caller's Postgres transaction — the event row commits with the money.
+ *  - dispatch(event): AFTER commit — socket toast now (in-process) + publish-now via the outbox.
+ * If the broker is down, dispatch's publish fails softly and the 2s relay picks the row up later.
+ * Nothing is lost, only delayed. The worker never changed.
  */
 @Injectable()
 export class NotificationService {
   constructor(
     private readonly realtime: RealtimeService,
-    private readonly queue: QueueService,
+    private readonly outbox: OutboxService,
   ) {}
 
-  async notify(userId: string, payload: NotificationPayload): Promise<void> {
-    this.realtime.emitNotification(userId, payload);
+  async enqueue(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    payload: NotificationPayload,
+  ): Promise<NotificationPushEvent> {
     const event: NotificationPushEvent = {
       id: randomUUID(),
       type: ROUTING_KEYS.notificationPush,
@@ -26,6 +31,17 @@ export class NotificationService {
       userId,
       payload,
     };
-    this.queue.publish(ROUTING_KEYS.notificationPush, event);
+    await this.outbox.enqueue(tx, ROUTING_KEYS.notificationPush, event);
+    return event;
+  }
+
+  /** After commit. Never throws — a delivery hiccup must never fail an already-settled request. */
+  async dispatch(event: NotificationPushEvent): Promise<void> {
+    try {
+      this.realtime.emitNotification(event.userId, event.payload);
+    } catch {
+      /* socket emit is best-effort */
+    }
+    await this.outbox.publishNow({ id: event.id, routingKey: ROUTING_KEYS.notificationPush, payload: event });
   }
 }

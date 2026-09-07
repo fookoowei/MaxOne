@@ -14,7 +14,7 @@ export interface TestRedis {
 
 // Every mutable table, children first. Role/Permission are seed data and are NOT touched.
 const MUTABLE = [
-  'IdempotencyKey', 'RefreshToken', 'Passkey', 'PushSubscription', 'PriceAlert', 'Holding',
+  'OutboxEvent', 'IdempotencyKey', 'RefreshToken', 'Passkey', 'PushSubscription', 'PriceAlert', 'Holding',
   'WatchlistItem', 'AuditLog', 'Transaction', 'Wallet', 'User',
 ];
 
