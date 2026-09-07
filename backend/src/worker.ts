@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { Logger as PinoLogger } from 'nestjs-pino';
 import { WorkerModule } from './worker/worker.module';
 import { QueueService } from './queue/queue.service';
 import { NotificationConsumer } from './worker/notification.consumer';
@@ -12,7 +13,8 @@ import { NotificationConsumer } from './worker/notification.consumer';
  */
 async function bootstrap() {
   const log = new Logger('Worker');
-  const app = await NestFactory.createApplicationContext(WorkerModule);
+  const app = await NestFactory.createApplicationContext(WorkerModule, { bufferLogs: true });
+  app.useLogger(app.get(PinoLogger));
   const queue = app.get(QueueService);
   const consumer = app.get(NotificationConsumer);
 

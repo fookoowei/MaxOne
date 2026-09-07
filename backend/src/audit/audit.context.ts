@@ -1,7 +1,8 @@
 import { AsyncLocalStorage } from 'async_hooks';
 
-/** What the HTTP edge captures for the audit trail. */
+/** What the HTTP edge captures for the audit trail (+ the request id, M17). */
 export interface AuditContext {
+  requestId: string; // M17: correlation id — logged on every line, stamped onto outbox events
   ipAddress: string | null;
   userAgent: string | null;
 }
@@ -18,5 +19,5 @@ export const auditContext = new AsyncLocalStorage<AuditContext>();
  * context, and an audit entry with a null IP is far better than a failed money movement.
  */
 export function getAuditContext(): AuditContext {
-  return auditContext.getStore() ?? { ipAddress: null, userAgent: null };
+  return auditContext.getStore() ?? { requestId: '', ipAddress: null, userAgent: null };
 }

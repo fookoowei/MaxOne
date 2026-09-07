@@ -68,7 +68,7 @@ export class NotificationConsumer {
 
       const doneKey = `mq:done:${event.id}`;
       if (await this.cache.get(doneKey)) {
-        this.log.log(`duplicate, skipping id=${event.id}`);
+        this.log.log(`duplicate, skipping id=${event.id} req=${event.requestId ?? '-'}`);
         this.queue.ack(msg);
         return;
       }
@@ -82,7 +82,7 @@ export class NotificationConsumer {
 
       await this.cache.set(doneKey, 1, DONE_TTL_S); // mark AFTER success: a crash mid-send → retry, not skip
       this.queue.ack(msg);
-      this.log.log(`push sent id=${event.id} user=${event.userId}`);
+      this.log.log(`push sent id=${event.id} user=${event.userId} req=${event.requestId ?? '-'}`);
     } finally {
       this.inFlight -= 1;
     }

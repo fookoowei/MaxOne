@@ -14,6 +14,7 @@ import { HttpExceptionFilter } from './common/http-exception.filter';
 import { CacheModule } from './cache/cache.module';
 import { QueueModule } from './queue/queue.module';
 import { OutboxModule } from './outbox/outbox.module';
+import { LoggingModule } from './logging/logging.module';
 import { AuditModule } from './audit/audit.module';
 import { MarketsModule } from './markets/markets.module';
 import { WatchlistModule } from './watchlist/watchlist.module';
@@ -25,6 +26,7 @@ import { PushModule } from './push/push.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '../.env' }),
+    LoggingModule, // M17: pino JSON logs + request id
     // Global default: 100 requests/minute/IP (ttl is in ms). In-memory store — single instance.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     // Enables @Interval/@Cron jobs (e.g. the live price stream).
