@@ -6,8 +6,11 @@ import { RatesService } from './rates.service';
 const fakeResponse = (body: any, ok = true) =>
   ({ ok, json: () => Promise.resolve(body) }) as unknown as Response;
 
+/** Pass-through cache: always a miss, stores nothing — the fetch path is what these tests cover. */
+const noCache = { wrap: (_k: string, _t: number, fn: () => Promise<unknown>) => fn() } as any;
+
 describe('RatesService', () => {
-  const service = new RatesService();
+  const service = new RatesService(noCache);
 
   afterEach(() => jest.restoreAllMocks());
 
@@ -37,6 +40,17 @@ describe('RatesService', () => {
   it('throws 503 when the pair is absent from the response', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(fakeResponse({ rates: {} }));
     await expect(service.getRate('USD', 'XYZ')).rejects.toThrow(ServiceUnavailableException);
+  });
+
+  it('serves a cached rate as a Decimal without touching the network (60s under rates:<from>:<to>)', async () => {
+    const wrap = jest.fn().mockResolvedValue('0.9234'); // a hit: the stored string form
+    const cached = new RatesService({ wrap } as any);
+    const spy = jest.spyOn(global, 'fetch');
+    const rate = await cached.getRate('USD', 'EUR');
+    expect(rate).toBeInstanceOf(Prisma.Decimal);
+    expect(rate.toString()).toBe('0.9234');
+    expect(spy).not.toHaveBeenCalled();
+    expect(wrap).toHaveBeenCalledWith('rates:USD:EUR', 60, expect.any(Function));
   });
 
   it('quotes a cross-currency conversion', async () => {
