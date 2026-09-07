@@ -32,6 +32,23 @@ services:
       timeout: 3s
       retries: 10
 
+  rabbitmq:
+    # M16b: message broker for work handed off the HTTP request (first consumer: Web Push).
+    # Unlike Redis this GETS a volume — a queued message is work, not a copy of anything.
+    image: rabbitmq:4-management
+    container_name: wallet_rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"   # AMQP (the app)
+      - "15672:15672" # management UI (http://localhost:15672, guest/guest)
+    volumes:
+      - wallet_rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   backend:
     build: ./backend
     container_name: wallet_backend
@@ -39,9 +56,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # Everything from the root .env (VAPID_*, JWT_*, …); explicit entries below override it with
+    # in-network hosts (compose service names via Docker DNS, not localhost).
+    env_file: .env
     environment:
-      # host is the compose service name `db`, resolved by Docker's internal DNS (not localhost)
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       PORT: 3100
@@ -58,3 +79,4 @@ services:
 
 volumes:
   wallet_pgdata:
+  wallet_rabbitmq:
