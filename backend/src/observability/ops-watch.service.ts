@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { Gauge, Registry, collectDefaultMetrics } from 'prom-client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -26,7 +26,7 @@ export interface OpsSnapshot {
  *  - oldest pending outbox > 60s → events aren't reaching the broker (broker down / relay stuck)
  */
 @Injectable()
-export class OpsWatchService {
+export class OpsWatchService implements OnModuleInit {
   private readonly log = new Logger(OpsWatchService.name);
   readonly registry = new Registry();
   private readonly gauges = {
@@ -44,6 +44,11 @@ export class OpsWatchService {
     private readonly cache: CacheService,
   ) {
     collectDefaultMetrics({ register: this.registry, prefix: 'maxone_node_' });
+  }
+
+  // First refresh at boot: /metrics must not read all-zero until the first 30s tick.
+  onModuleInit(): void {
+    void this.refresh();
   }
 
   async snapshot(): Promise<OpsSnapshot> {

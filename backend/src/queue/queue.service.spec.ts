@@ -3,7 +3,8 @@ import { QueueService } from './queue.service';
 import { EXCHANGES, QUEUES, RETRY_DELAYS_MS, ROUTING_KEYS } from './events';
 import { brokenConnect, fakeAmqp } from '../../test/fakes/fake-amqp';
 
-const config = { get: () => 'amqp://guest:guest@localhost:5672/' } as unknown as ConfigService;
+const url = 'amqp://guest:guest@localhost:5672/';
+const config = { get: () => url, getOrThrow: () => url } as unknown as ConfigService;
 
 describe('QueueService', () => {
   it('asserts the topology on init: exchange, queue, binding', async () => {

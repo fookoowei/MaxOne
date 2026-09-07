@@ -9,7 +9,8 @@ jest.mock('@simplewebauthn/server', () => ({
   verifyAuthenticationResponse: jest.fn(),
 }));
 
-const config = { get: (k: string) => ({ WEBAUTHN_RP_ID: 'localhost', WEBAUTHN_RP_NAME: 'MaxOne', WEBAUTHN_ORIGIN: 'http://localhost:3300' })[k] };
+const vals: Record<string, string> = { WEBAUTHN_RP_ID: 'localhost', WEBAUTHN_RP_NAME: 'MaxOne', WEBAUTHN_ORIGIN: 'http://localhost:3300' };
+const config = { get: (k: string) => vals[k], getOrThrow: (k: string) => vals[k] };
 function build(passkey: any = {}, tokens: any = {}) {
   const prisma = { passkey: { findMany: jest.fn().mockResolvedValue([]), findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), deleteMany: jest.fn(), ...passkey } };
   const tok = { issueWebAuthnChallenge: jest.fn().mockResolvedValue('chal.jwt'), verifyWebAuthnChallenge: jest.fn(), ...tokens };

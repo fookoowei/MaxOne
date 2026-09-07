@@ -150,7 +150,8 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
 
   private async open(): Promise<void> {
     try {
-      const url = this.config.get<string>('RABBITMQ_URL') ?? 'amqp://guest:guest@localhost:5672/';
+      // M17: no localhost fallback — RABBITMQ_URL is required (dev in .env; prod = CloudAMQP amqps://).
+      const url = this.config.getOrThrow<string>('RABBITMQ_URL');
       const conn = await this.connect(url);
       const channel = await conn.createChannel();
       // Idempotent: asserting existing objects with the SAME options is a no-op on the broker.

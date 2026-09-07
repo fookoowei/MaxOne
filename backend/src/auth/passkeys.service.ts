@@ -26,9 +26,10 @@ export class PasskeysService {
     private readonly tokens: TokensService,
     config: ConfigService,
   ) {
-    this.rpID = config.get<string>('WEBAUTHN_RP_ID') ?? 'localhost';
+    // M17: no localhost fallbacks — a passkey bound to the wrong RP ID/origin is silently unusable.
+    this.rpID = config.getOrThrow<string>('WEBAUTHN_RP_ID');
     this.rpName = config.get<string>('WEBAUTHN_RP_NAME') ?? 'MaxOne';
-    this.origin = config.get<string>('WEBAUTHN_ORIGIN') ?? 'http://localhost:3300';
+    this.origin = config.getOrThrow<string>('WEBAUTHN_ORIGIN');
   }
 
   // ── Registration ──
