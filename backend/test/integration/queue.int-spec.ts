@@ -51,7 +51,7 @@ describe('QueueService against a real RabbitMQ', () => {
     expect(received[0].fields.routingKey).toBe(ROUTING_KEYS.notificationPush);
   });
 
-  it('NotificationService.notify → one notification.push event reaches the queue; API sends no push itself', async () => {
+  it('NotificationService enqueue+dispatch → one notification.push event reaches the queue; API sends no push itself', async () => {
     const pushSpy = jest.spyOn(app.get(PushService), 'sendToUser');
     const received: unknown[] = [];
     await queue.consume(async (msg) => {
@@ -59,7 +59,10 @@ describe('QueueService against a real RabbitMQ', () => {
       queue.ack(msg);
     });
     const payload = { title: 'Deposit approved', body: '$100.00 added', tag: 'tx1', url: '/wallet' };
-    await app.get(NotificationService).notify('user-1', payload);
+    // M16d: enqueue inside a transaction (outbox row), then dispatch (socket + publish-now).
+    const notifications = app.get(NotificationService);
+    const event = await prisma.$transaction((tx) => notifications.enqueue(tx, 'user-1', payload));
+    await notifications.dispatch(event);
     await waitFor(() => received.length === 1);
     expect(received[0]).toEqual({
       id: expect.stringMatching(/^[0-9a-f-]{36}$/),

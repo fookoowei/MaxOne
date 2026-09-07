@@ -38,7 +38,9 @@ cd backend && npm run prisma:seed
   broker, management UI at http://localhost:15672, guest/guest), `backend` (API :3100), `worker`
   (consumes `notifications.push` and sends Web Push — off the HTTP request; failed pushes retry via
   `notifications.push.retry.{1,2,3}` (5s/30s/120s) then park in `notifications.push.dead` for a
-  human; redeliveries are deduped on the event id via Redis).
+  human; redeliveries are deduped on the event id via Redis). Events are written to an **outbox
+  table in the same DB transaction** as the ledger row and relayed to the broker, so a broker
+  outage delays a notification instead of losing it.
 
 **Useful commands:**
 ```bash

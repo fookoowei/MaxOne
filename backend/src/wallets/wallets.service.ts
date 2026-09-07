@@ -12,8 +12,9 @@ import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { RatesService } from '../rates/rates.service';
 import { convertMinor } from '../rates/convert-minor';
-import { RealtimeService, type NotificationPayload } from '../realtime/realtime.service';
+import { RealtimeService } from '../realtime/realtime.service';
 import { NotificationService } from '../realtime/notification.service';
+import type { NotificationPushEvent } from '../queue/events';
 import { AuditService } from '../audit/audit.service';
 import type { AuditAction } from '../audit/audit.actions';
 import { formatMinor } from './format-money';
@@ -28,15 +29,6 @@ export class WalletsService {
     private readonly realtime: RealtimeService,
     private readonly notifications: NotificationService,
   ) {}
-
-  // Delivery is best-effort — a notification failure must never fail an already-committed settle.
-  private async safeNotify(userId: string, payload: NotificationPayload): Promise<void> {
-    try {
-      await this.notifications.notify(userId, payload);
-    } catch {
-      /* best-effort */
-    }
-  }
 
   createWallet(actor: AuthUser, dto: { name: string; currency: string }) {
     return this.prisma.wallet.create({
@@ -215,11 +207,21 @@ export class WalletsService {
         newValue: { status: 'approved', balanceAfter: after },
       });
 
+      // M16d: the notification event commits WITH the settlement (transactional outbox). If the
+      // broker is down or we die right after commit, the relay publishes it later — never lost.
+      const money = formatMinor(txn.amount, wallet.currency);
+      const event = await this.notifications.enqueue(
+        tx,
+        wallet.userId,
+        txn.type === 'withdrawal'
+          ? { title: 'Withdrawal sent', body: `${money} withdrawn`, tag: updated.id, url: '/' }
+          : { title: 'Deposit approved', body: `${money} added to your wallet`, tag: updated.id, url: '/' },
+      );
+
       return {
         updated,
         owner: { userId: wallet.userId, walletId: wallet.id, currency: wallet.currency, balance: after },
-        type: txn.type,
-        amount: txn.amount,
+        event,
       };
     });
     // Emit AFTER commit — a rolled-back settle must not announce a balance change.
@@ -228,15 +230,8 @@ export class WalletsService {
       currency: result.owner.currency,
       balance: result.owner.balance,
     });
-    // Notify the owner their request settled. (type/amount come from the source txn, not the
-    // updated row, which only echoes the changed fields.)
-    const money = formatMinor(result.amount, result.owner.currency);
-    await this.safeNotify(
-      result.owner.userId,
-      result.type === 'withdrawal'
-        ? { title: 'Withdrawal sent', body: `${money} withdrawn`, tag: result.updated.id, url: '/' }
-        : { title: 'Deposit approved', body: `${money} added to your wallet`, tag: result.updated.id, url: '/' },
-    );
+    // Socket toast now + publish-now (fail-soft; the outbox relay is the backstop).
+    await this.notifications.dispatch(result.event);
     return result.updated;
   }
 
@@ -271,24 +266,26 @@ export class WalletsService {
         newValue: { status: 'rejected', note: note_ },
       });
 
-      // Read the owner inside the txn so we can notify after commit (txn has no userId/currency).
+      // Owner read inside the txn (txn has no userId/currency); the event commits with the rejection.
       const owner = await tx.wallet.findUnique({
         where: { id: txn.walletId },
         select: { userId: true, currency: true },
       });
-      return { updated, owner, type: txn.type, amount: txn.amount };
+      let event: NotificationPushEvent | null = null;
+      if (owner) {
+        const money = formatMinor(txn.amount, owner.currency);
+        const kind = txn.type === 'withdrawal' ? 'Withdrawal' : 'Deposit';
+        event = await this.notifications.enqueue(tx, owner.userId, {
+          title: `${kind} declined`,
+          body: `Your ${money} ${kind.toLowerCase()} was declined`,
+          tag: updated.id,
+          url: '/',
+        });
+      }
+      return { updated, event };
     });
 
-    if (result.owner) {
-      const money = formatMinor(result.amount, result.owner.currency);
-      const kind = result.type === 'withdrawal' ? 'Withdrawal' : 'Deposit';
-      await this.safeNotify(result.owner.userId, {
-        title: `${kind} declined`,
-        body: `Your ${money} ${kind.toLowerCase()} was declined`,
-        tag: result.updated.id,
-        url: '/',
-      });
-    }
+    if (result.event) await this.notifications.dispatch(result.event);
     return result.updated;
   }
 
@@ -387,6 +384,10 @@ export class WalletsService {
     }
 
     const transferId = randomUUID();
+    // The receiver's notification names the sender. Read the handle BEFORE the locks (immutable-ish,
+    // and an extra query must not run while holding two wallet rows). Sender == actor (ownership
+    // was asserted above).
+    const sender = await this.users.findById(actor.id).catch(() => null);
     // Deterministic lock order. NOT sender-then-receiver: if it were, Alice->Bob and
     // Bob->Alice running concurrently would each hold the row the other needs, and
     // Postgres would kill one for deadlock. Sorted, both lock the same wallet first.
@@ -466,12 +467,21 @@ export class WalletsService {
         },
       });
 
+      // M16d: notify the RECEIVER (the sender did the action) — event commits with the transfer.
+      const event = await this.notifications.enqueue(tx, to.userId, {
+        title: `Received ${formatMinor(credit, to.currency)}`,
+        body: `from @${sender?.handle ?? 'someone'}`,
+        tag: transferId,
+        url: '/',
+      });
+
       // Only the sender's row is returned: the receiver's row carries their balance,
       // which the sender has no right to see.
       return {
         outRow,
         from: { userId: from.userId, walletId: from.id, currency: from.currency, balance: fromAfter },
         to: { userId: to.userId, walletId: to.id, currency: to.currency, balance: toAfter },
+        event,
       };
     });
     // Both parties get a live update — the sender sees the debit, the receiver sees money arrive.
@@ -485,14 +495,7 @@ export class WalletsService {
       currency: result.to.currency,
       balance: result.to.balance,
     });
-    // Notify the RECEIVER (the sender did the action, so they aren't notified).
-    const sender = await this.users.findById(result.from.userId).catch(() => null);
-    await this.safeNotify(result.to.userId, {
-      title: `Received ${formatMinor(credit, result.to.currency)}`,
-      body: `from @${sender?.handle ?? 'someone'}`,
-      tag: transferId,
-      url: '/',
-    });
+    await this.notifications.dispatch(result.event);
     return result.outRow;
   }
 

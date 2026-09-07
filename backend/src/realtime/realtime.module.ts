@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MarketsModule } from '../markets/markets.module';
 import { AlertsModule } from '../alerts/alerts.module';
+import { OutboxModule } from '../outbox/outbox.module';
 import { RealtimeGateway } from './realtime.gateway';
 import { RealtimeService } from './realtime.service';
 import { NotificationService } from './notification.service';
@@ -22,6 +23,7 @@ import { AlertCheckService } from './alert-check.service';
     }),
     MarketsModule,
     AlertsModule,
+    OutboxModule, // M16d: NotificationService enqueues/publishes through the outbox
   ],
   providers: [RealtimeGateway, RealtimeService, NotificationService, PriceStreamService, AlertCheckService],
   exports: [RealtimeService, NotificationService],

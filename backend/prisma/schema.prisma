@@ -210,3 +210,18 @@ model IdempotencyKey {
   @@unique([userId, key])
   @@index([createdAt])
 }
+
+// M16d: transactional outbox. Written in the SAME transaction as the ledger row; relayed to
+// RabbitMQ by OutboxService (publish-now after commit + 2s poller backstop). id = message id.
+model OutboxEvent {
+  id          String    @id @default(uuid())
+  routingKey  String
+  payload     Json
+  status      String    @default("pending") // pending | published
+  attempts    Int       @default(0)
+  lastError   String?
+  createdAt   DateTime  @default(now())
+  publishedAt DateTime?
+
+  @@index([status, createdAt])
+}

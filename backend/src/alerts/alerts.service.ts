@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import type { AuthUser } from '../auth/jwt.strategy';
 
 interface AlertInput {
@@ -43,8 +44,9 @@ export class AlertsService {
     return this.prisma.priceAlert.findMany({ where: { triggeredAt: null } });
   }
 
-  markTriggered(ids: string[]) {
-    return this.prisma.priceAlert.updateMany({
+  // M16d: accepts a transaction client so the mark commits together with the outbox events.
+  markTriggered(ids: string[], db: Prisma.TransactionClient | PrismaService = this.prisma) {
+    return db.priceAlert.updateMany({
       where: { id: { in: ids } },
       data: { triggeredAt: new Date() },
     });

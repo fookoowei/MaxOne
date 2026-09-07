@@ -28,7 +28,7 @@ function buildService(
   ratesMock: any = { getRate: jest.fn() },
   auditMock: any = { log: jest.fn() },
   realtimeMock: any = { emitBalance: jest.fn() },
-  notificationsMock: any = { notify: jest.fn() },
+  notificationsMock: any = notifications(),
 ) {
   return Test.createTestingModule({
     providers: [
@@ -43,6 +43,14 @@ function buildService(
   })
     .compile()
     .then((moduleRef) => moduleRef.get(WalletsService));
+}
+
+// M16d: enqueue(tx, userId, payload) returns the event; dispatch(event) is called after commit.
+function notifications() {
+  return {
+    enqueue: jest.fn(async (_tx: unknown, userId: string, payload: unknown) => ({ id: 'evt', userId, payload })),
+    dispatch: jest.fn().mockResolvedValue(undefined),
+  };
 }
 
 const wallet = (over: Partial<any> = {}) => ({
@@ -351,14 +359,14 @@ describe('WalletsService.approve', () => {
         update: jest.fn().mockResolvedValue(undefined),
       },
     };
-    const notify = jest.fn();
+    const notif = notifications();
     const service = await buildService(
       txPrisma(txDouble),
       financeCanApprove,
       undefined,
       undefined,
       { emitBalance },
-      { notify },
+      notif,
     );
 
     await service.approve('txn-1', finance);
@@ -368,11 +376,10 @@ describe('WalletsService.approve', () => {
       currency: 'USD',
       balance: 3000,
     });
-    // pendingTxn() is a withdrawal → owner is notified it was sent.
-    expect(notify).toHaveBeenCalledWith(
-      'user-1',
-      expect.objectContaining({ title: 'Withdrawal sent' }),
-    );
+    // pendingTxn() is a withdrawal → owner is notified it was sent: enqueued INSIDE the tx (with the
+    // tx client), then dispatched after commit.
+    expect(notif.enqueue).toHaveBeenCalledWith(txDouble, 'user-1', expect.objectContaining({ title: 'Withdrawal sent' }));
+    expect(notif.dispatch).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user-1' }));
   });
 
   it('settles a deposit by increasing the balance', async () => {
@@ -465,25 +472,23 @@ describe('WalletsService.reject', () => {
       },
       wallet: { findUnique: jest.fn().mockResolvedValue(wallet()), update: jest.fn() },
     };
-    const notify = jest.fn();
+    const notif = notifications();
     const service = await buildService(
       txPrisma(txDouble),
       financeCanApprove,
       undefined,
       undefined,
       undefined,
-      { notify },
+      notif,
     );
 
     const result = await service.reject('txn-1', finance, 'suspicious');
 
     expect(result.status).toBe('rejected');
     expect(txDouble.wallet.update).not.toHaveBeenCalled();
-    // pendingTxn() is a withdrawal → owner is told it was declined.
-    expect(notify).toHaveBeenCalledWith(
-      'user-1',
-      expect.objectContaining({ title: 'Withdrawal declined' }),
-    );
+    // pendingTxn() is a withdrawal → owner is told it was declined (enqueued in-tx, dispatched after).
+    expect(notif.enqueue).toHaveBeenCalledWith(txDouble, 'user-1', expect.objectContaining({ title: 'Withdrawal declined' }));
+    expect(notif.dispatch).toHaveBeenCalledTimes(1);
   });
 
   it('refuses to reject a non-pending request with 409', async () => {
@@ -662,10 +667,10 @@ describe('WalletsService.transfer', () => {
 
   it('emits balance.updated to BOTH parties + notifies the receiver after a transfer', async () => {
     const emitBalance = jest.fn();
-    const notify = jest.fn();
+    const notif = notifications();
     const usersMock = { findById: jest.fn().mockResolvedValue({ handle: 'alice' }) };
     const { prisma } = transferPrisma();
-    const service = await buildService(prisma, usersMock, undefined, undefined, { emitBalance }, { notify });
+    const service = await buildService(prisma, usersMock, undefined, undefined, { emitBalance }, notif);
 
     await service.transfer('wallet-1', actor, { toWalletId: 'wallet-2', amount: 2000 });
 
@@ -679,14 +684,15 @@ describe('WalletsService.transfer', () => {
       currency: 'USD',
       balance: 2100,
     });
-    // Only the RECEIVER is notified (the sender did the action).
-    expect(notify).toHaveBeenCalledWith('user-2', {
+    // Only the RECEIVER is notified (the sender did the action): enqueued in-tx, dispatched after.
+    expect(notif.enqueue).toHaveBeenCalledTimes(1);
+    expect(notif.enqueue).toHaveBeenCalledWith(expect.anything(), 'user-2', {
       title: 'Received $20.00',
       body: 'from @alice',
       tag: expect.any(String),
       url: '/',
     });
-    expect(notify).not.toHaveBeenCalledWith('user-1', expect.anything());
+    expect(notif.dispatch).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user-2' }));
   });
 
   it('debits the sender and credits the receiver by the same amount', async () => {
