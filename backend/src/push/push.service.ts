@@ -35,9 +35,13 @@ export class PushService {
     return this.prisma.pushSubscription.deleteMany({ where: { endpoint, userId: actor.id } });
   }
 
-  // System-level (called by the alert check). Fail-soft: never throws; prunes dead endpoints.
+  // System-level (called by the worker's consumer). Tries EVERY subscription, then:
+  //  - 410/404 = the browser unsubscribed → prune the row silently (permanent, not a failure)
+  //  - anything else (5xx, network) is transient → THROW after the loop so the queue retries.
+  // (M16b swallowed everything; M16c needs the failure to surface or a retry can never happen.)
   async sendToUser(userId: string, payload: NotificationPayload): Promise<void> {
     const subs = await this.prisma.pushSubscription.findMany({ where: { userId } });
+    const transient: string[] = [];
     await Promise.all(
       subs.map(async (s) => {
         try {
@@ -46,12 +50,17 @@ export class PushService {
             JSON.stringify(payload),
           );
         } catch (err: unknown) {
-          const code = (err as { statusCode?: number }).statusCode;
-          if (code === 410 || code === 404) {
+          const e = err as { statusCode?: number; message?: string };
+          if (e.statusCode === 410 || e.statusCode === 404) {
             await this.prisma.pushSubscription.deleteMany({ where: { endpoint: s.endpoint } });
+          } else {
+            transient.push(`${e.statusCode ?? 'network'}: ${e.message ?? 'send failed'}`);
           }
         }
       }),
     );
+    if (transient.length > 0) {
+      throw new Error(`push failed for ${transient.length}/${subs.length} subscription(s): ${transient[0]}`);
+    }
   }
 }
