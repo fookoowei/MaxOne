@@ -29,29 +29,31 @@ if (!/\/test$/.test(mqUrl)) {
 }
 process.env.RABBITMQ_URL = mqUrl;
 
-// Create the vhost (+ guest permissions on it) through the management HTTP API if it's missing.
-// Idempotent: PUT on an existing vhost/permission is a no-op.
-async function ensureTestVhost() {
+// Recreate the vhost (+ guest permissions) through the management HTTP API on EVERY run.
+// M16c: queue ARGUMENTS are immutable (adding a DLX/TTL to an existing queue → PRECONDITION_FAILED),
+// so a fresh vhost per run means the app can always assert its current topology.
+async function recreateTestVhost() {
   const mgmt = process.env.RABBITMQ_MANAGEMENT_URL ?? 'http://localhost:15672';
   const auth = 'Basic ' + Buffer.from('guest:guest').toString('base64');
-  const put = async (path, body) => {
+  const call = async (method, path, body) => {
     const res = await fetch(`${mgmt}/api${path}`, {
-      method: 'PUT',
+      method,
       headers: { Authorization: auth, 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined,
     });
-    if (!res.ok && res.status !== 204) {
-      throw new Error(`RabbitMQ management ${path} → ${res.status} ${await res.text()}`);
+    if (!res.ok && res.status !== 204 && !(method === 'DELETE' && res.status === 404)) {
+      throw new Error(`RabbitMQ management ${method} ${path} → ${res.status} ${await res.text()}`);
     }
   };
-  await put('/vhosts/test');
-  await put('/permissions/test/guest', { configure: '.*', write: '.*', read: '.*' });
+  await call('DELETE', '/vhosts/test');
+  await call('PUT', '/vhosts/test');
+  await call('PUT', '/permissions/test/guest', { configure: '.*', write: '.*', read: '.*' });
 }
 
 const run = (cmd) => execSync(cmd, { stdio: 'inherit', env: process.env });
 
 (async () => {
-  await ensureTestVhost();
+  await recreateTestVhost();
   run('npx prisma migrate deploy');
   run('npx ts-node prisma/seed.ts');
   run('npx jest --config test/jest-integration.json --runInBand');
