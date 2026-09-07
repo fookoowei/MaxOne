@@ -11,8 +11,8 @@ Backend-for-Frontend (BFF) auth tier. A customer-facing app is planned (one API,
 
 ## Run the backend with Docker
 
-The backend is containerized; `docker compose up` runs the API **and** Postgres together. The
-backend applies database migrations automatically on boot.
+The backend is containerized; `docker compose up` runs the API, the **worker**, Postgres, Redis and
+RabbitMQ together. The backend applies database migrations automatically on boot.
 
 ```bash
 # 1. Environment: copy the template and fill in real values (DB creds + JWT secrets)
@@ -32,12 +32,17 @@ cd backend && npm run prisma:seed
 - Backend runs as a **non-root** user; migrations apply automatically on boot.
 - **Security headers** (`helmet`) on every response; **rate limiting** (100 req/min/IP globally,
   5 login attempts/min/IP).
-- Postgres data persists in the `wallet_pgdata` volume across restarts.
+- Postgres data persists in the `wallet_pgdata` volume across restarts; queued messages persist in
+  `wallet_rabbitmq`. Redis is a cache only (no volume — the app runs unchanged without it).
+- **Services:** `db` (Postgres), `redis` (cache-aside for market/FX data), `rabbitmq` (message
+  broker, management UI at http://localhost:15672, guest/guest), `backend` (API :3100), `worker`
+  (consumes `notifications.push` and sends Web Push — off the HTTP request).
 
 **Useful commands:**
 ```bash
 docker compose ps              # service status + health
 docker compose logs -f backend # follow backend logs
+docker compose logs -f worker  # follow the queue consumer
 docker compose down            # stop (keeps the DB volume/data)
 docker compose down -v         # stop AND wipe the DB volume (clean slate)
 ```
@@ -45,8 +50,9 @@ docker compose down -v         # stop AND wipe the DB volume (clean slate)
 ## Local development (without Docker)
 
 ```bash
-docker start wallet_db 2>/dev/null || docker compose up -d db   # just Postgres
+docker compose up -d db redis rabbitmq   # Postgres + Redis + RabbitMQ (the API tolerates the last two being down)
 cd backend  && npm install && npm run prisma:migrate && npm run prisma:seed && npm run start:dev  # :3100
+cd backend  && npm run start:worker                                                                # queue consumer (needs RabbitMQ)
 cd frontend && npm install && npm run dev                                                          # :3200
 ```
 
