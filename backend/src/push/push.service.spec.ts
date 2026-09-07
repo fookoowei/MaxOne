@@ -48,4 +48,24 @@ describe('PushService.sendToUser', () => {
     await svc.sendToUser('u1', { title: 'x', body: 'y' });
     expect(deleteMany).toHaveBeenCalledWith({ where: { endpoint: 'https://dead' } });
   });
+
+  it('throws after trying every subscription when a send fails transiently (5xx/network) — so the queue retries', async () => {
+    const prisma = {
+      pushSubscription: {
+        findMany: jest.fn().mockResolvedValue([
+          { endpoint: 'https://push/a', p256dh: 'k', auth: 'a' },
+          { endpoint: 'https://push/b', p256dh: 'k', auth: 'a' },
+        ]),
+        deleteMany: jest.fn(),
+      },
+    };
+    const svc = new PushService(prisma as any, config as any);
+    (webpush.sendNotification as jest.Mock).mockReset(); // earlier tests leave calls + defaults behind
+    (webpush.sendNotification as jest.Mock)
+      .mockRejectedValueOnce({ statusCode: 503, message: 'Service Unavailable' })
+      .mockResolvedValueOnce(undefined);
+    await expect(svc.sendToUser('u1', { title: 'x', body: 'y' })).rejects.toThrow(/push failed for 1\/2/);
+    expect(webpush.sendNotification).toHaveBeenCalledTimes(2); // the second one was still attempted
+    expect(prisma.pushSubscription.deleteMany).not.toHaveBeenCalled(); // 503 is not a prune
+  });
 });

@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PushModule } from '../push/push.module';
 import { QueueModule } from '../queue/queue.module';
+import { CacheModule } from '../cache/cache.module';
 import { NotificationConsumer } from './notification.consumer';
 
 /**
@@ -15,6 +16,7 @@ import { NotificationConsumer } from './notification.consumer';
     PrismaModule,
     PushModule,
     QueueModule,
+    CacheModule, // M16c: dedupe marks (mq:done:<id>) live in Redis
   ],
   providers: [NotificationConsumer],
 })

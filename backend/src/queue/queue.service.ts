@@ -5,9 +5,10 @@ import {
   type AmqpChannelLike,
   type AmqpConnect,
   type AmqpConnectionLike,
+  type AmqpHeaders,
   type AmqpMessage,
 } from './amqp.types';
-import { EXCHANGE, QUEUES, ROUTING_KEYS } from './events';
+import { EXCHANGES, QUEUES, RETRY_DELAYS_MS, ROUTING_KEYS } from './events';
 
 const RECONNECT_CAP_MS = 10_000;
 
@@ -58,15 +59,16 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
   }
 
   /** Fire-and-forget. `false` means "not published" — callers never see a throw. */
-  publish(routingKey: string, message: unknown): boolean {
+  publish(routingKey: string, message: unknown, opts: { headers?: AmqpHeaders } = {}): boolean {
     if (!this.channel) {
       this.warn(new Error('not connected'));
       return false;
     }
     try {
-      return this.channel.publish(EXCHANGE, routingKey, Buffer.from(JSON.stringify(message)), {
+      return this.channel.publish(EXCHANGES.events, routingKey, Buffer.from(JSON.stringify(message)), {
         persistent: true, // survives a broker restart (the queue is durable too)
         contentType: 'application/json',
+        ...(opts.headers ? { headers: opts.headers } : {}),
       });
     } catch (e) {
       this.warn(e);
@@ -103,6 +105,12 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     this.consumerTag = undefined;
   }
 
+  /** Test support: pull ONE message from any queue (ack'd immediately), or false if empty. */
+  async peek(queue: string): Promise<AmqpMessage | false> {
+    if (!this.channel) return false;
+    return this.channel.get(queue, { noAck: true });
+  }
+
   /** Test support: empty the queue (the integration lane runs this per test on vhost "test"). */
   async purge(): Promise<void> {
     await this.channel?.purgeQueue(QUEUES.notificationsPush);
@@ -113,17 +121,47 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
       const url = this.config.get<string>('RABBITMQ_URL') ?? 'amqp://guest:guest@localhost:5672/';
       const conn = await this.connect(url);
       const channel = await conn.createChannel();
-      // Idempotent: asserting existing objects with the same options is a no-op on the broker.
-      await channel.assertExchange(EXCHANGE, 'topic', { durable: true });
-      await channel.assertQueue(QUEUES.notificationsPush, { durable: true });
-      await channel.bindQueue(QUEUES.notificationsPush, EXCHANGE, ROUTING_KEYS.notificationPush);
+      // Idempotent: asserting existing objects with the SAME options is a no-op on the broker.
+      // (Queue ARGUMENTS are immutable — changing them needs delete + recreate. See M16c notes.)
+      await channel.assertExchange(EXCHANGES.events, 'topic', { durable: true });
+      // M16c: dead-letter exchange + the problem tray. Nothing consumes the dead queue; a person does.
+      await channel.assertExchange(EXCHANGES.dlx, 'direct', { durable: true });
+      await channel.assertQueue(QUEUES.notificationsPushDead, { durable: true });
+      await channel.bindQueue(QUEUES.notificationsPushDead, EXCHANGES.dlx, ROUTING_KEYS.notificationPushDead);
+      // Main queue: what the consumer nacks (no requeue) is routed to the DLX instead of dropped.
+      await channel.assertQueue(QUEUES.notificationsPush, {
+        durable: true,
+        arguments: {
+          'x-dead-letter-exchange': EXCHANGES.dlx,
+          'x-dead-letter-routing-key': ROUTING_KEYS.notificationPushDead,
+        },
+      });
+      await channel.bindQueue(QUEUES.notificationsPush, EXCHANGES.events, ROUTING_KEYS.notificationPush);
+      // Retry queues: no consumer; a message parks until the queue TTL, then is dead-lettered BACK
+      // into wallet.events with the main key — i.e. it reappears on the main queue. One per delay.
+      for (let i = 0; i < RETRY_DELAYS_MS.length; i++) {
+        const n = i + 1;
+        await channel.assertQueue(QUEUES.notificationsPushRetry(n), {
+          durable: true,
+          arguments: {
+            'x-message-ttl': RETRY_DELAYS_MS[i],
+            'x-dead-letter-exchange': EXCHANGES.events,
+            'x-dead-letter-routing-key': ROUTING_KEYS.notificationPush,
+          },
+        });
+        await channel.bindQueue(
+          QUEUES.notificationsPushRetry(n),
+          EXCHANGES.events,
+          ROUTING_KEYS.notificationPushRetry(n),
+        );
+      }
       conn.on('error', () => undefined); // 'close' always follows; an unhandled 'error' would crash Node
       conn.on('close', () => this.onConnectionClosed());
       this.conn = conn;
       this.channel = channel;
       this.attempt = 0;
       this.lastWarned = undefined;
-      this.log.log(`Connected to RabbitMQ — exchange ${EXCHANGE}, queue ${QUEUES.notificationsPush}`);
+      this.log.log(`Connected to RabbitMQ — exchange ${EXCHANGES.events}, queue ${QUEUES.notificationsPush}`);
     } catch (e) {
       this.warn(e);
       this.scheduleReconnect();
