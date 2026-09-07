@@ -1,16 +1,22 @@
-import type { AmqpChannelLike, AmqpConnectionLike, AmqpMessage } from '../../src/queue/amqp.types';
+import type {
+  AmqpChannelLike,
+  AmqpConnectionLike,
+  AmqpHeaders,
+  AmqpMessage,
+} from '../../src/queue/amqp.types';
 
 export interface PublishedRecord {
   exchange: string;
   routingKey: string;
   body: unknown;
-  opts: { persistent: boolean; contentType: string };
+  opts: { persistent: boolean; contentType: string; headers?: AmqpHeaders };
 }
 
 /** In-memory amqplib stand-in: records topology calls + publishes, lets a test push messages in. */
 export function fakeAmqp() {
   const published: PublishedRecord[] = [];
   const asserted: string[] = [];
+  const queueArgs: Record<string, Record<string, unknown> | undefined> = {};
   const acked: AmqpMessage[] = [];
   const nacked: { msg: AmqpMessage; requeue: boolean }[] = [];
   const closeListeners: (() => void)[] = [];
@@ -23,8 +29,9 @@ export function fakeAmqp() {
     assertExchange: async (name) => {
       asserted.push(`exchange:${name}`);
     },
-    assertQueue: async (name) => {
+    assertQueue: async (name, opts) => {
       asserted.push(`queue:${name}`);
+      queueArgs[name] = opts.arguments;
     },
     bindQueue: async (q, ex, key) => {
       asserted.push(`bind:${q}<-${ex}:${key}`);
@@ -49,6 +56,7 @@ export function fakeAmqp() {
     nack: (msg, _all, requeue) => {
       nacked.push({ msg, requeue });
     },
+    get: async () => false,
     purgeQueue: async () => {
       purged++;
     },
@@ -68,6 +76,7 @@ export function fakeAmqp() {
     channel,
     published,
     asserted,
+    queueArgs,
     acked,
     nacked,
     get prefetch() {
@@ -80,7 +89,7 @@ export function fakeAmqp() {
       return purged;
     },
     /** Simulate the broker delivering one message to the registered consumer. */
-    deliver(body: unknown): AmqpMessage {
+    deliver(body: unknown, headers: AmqpHeaders = {}): AmqpMessage {
       const msg: AmqpMessage = {
         content: Buffer.from(typeof body === 'string' ? body : JSON.stringify(body)),
         fields: {
@@ -88,7 +97,7 @@ export function fakeAmqp() {
           redelivered: false,
           routingKey: 'notification.push',
         },
-        properties: { contentType: 'application/json' },
+        properties: { contentType: 'application/json', headers },
       };
       if (!onMessage) throw new Error('no consumer registered');
       onMessage(msg);

@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { QueueService } from './queue.service';
-import { EXCHANGE, QUEUES, ROUTING_KEYS } from './events';
+import { EXCHANGES, QUEUES, RETRY_DELAYS_MS, ROUTING_KEYS } from './events';
 import { brokenConnect, fakeAmqp } from '../../test/fakes/fake-amqp';
 
 const config = { get: () => 'amqp://guest:guest@localhost:5672/' } as unknown as ConfigService;
@@ -12,10 +12,51 @@ describe('QueueService', () => {
     await svc.onModuleInit();
     expect(svc.isConnected()).toBe(true);
     expect(amqp.asserted).toEqual([
-      `exchange:${EXCHANGE}`,
+      `exchange:${EXCHANGES.events}`,
+      `exchange:${EXCHANGES.dlx}`,
+      `queue:${QUEUES.notificationsPushDead}`,
+      `bind:${QUEUES.notificationsPushDead}<-${EXCHANGES.dlx}:${ROUTING_KEYS.notificationPushDead}`,
       `queue:${QUEUES.notificationsPush}`,
-      `bind:${QUEUES.notificationsPush}<-${EXCHANGE}:${ROUTING_KEYS.notificationPush}`,
+      `bind:${QUEUES.notificationsPush}<-${EXCHANGES.events}:${ROUTING_KEYS.notificationPush}`,
+      `queue:${QUEUES.notificationsPushRetry(1)}`,
+      `bind:${QUEUES.notificationsPushRetry(1)}<-${EXCHANGES.events}:${ROUTING_KEYS.notificationPushRetry(1)}`,
+      `queue:${QUEUES.notificationsPushRetry(2)}`,
+      `bind:${QUEUES.notificationsPushRetry(2)}<-${EXCHANGES.events}:${ROUTING_KEYS.notificationPushRetry(2)}`,
+      `queue:${QUEUES.notificationsPushRetry(3)}`,
+      `bind:${QUEUES.notificationsPushRetry(3)}<-${EXCHANGES.events}:${ROUTING_KEYS.notificationPushRetry(3)}`,
     ]);
+    await svc.onModuleDestroy();
+  });
+
+  it('M16c topology: main queue dead-letters to wallet.dlx; retry queues have TTL + dead-letter back to wallet.events', async () => {
+    const amqp = fakeAmqp();
+    const svc = new QueueService(amqp.connect, config);
+    await svc.onModuleInit();
+    expect(amqp.queueArgs[QUEUES.notificationsPush]).toEqual({
+      'x-dead-letter-exchange': EXCHANGES.dlx,
+      'x-dead-letter-routing-key': ROUTING_KEYS.notificationPushDead,
+    });
+    expect(amqp.queueArgs[QUEUES.notificationsPushDead]).toBeUndefined();
+    RETRY_DELAYS_MS.forEach((ttl, i) => {
+      expect(amqp.queueArgs[QUEUES.notificationsPushRetry(i + 1)]).toEqual({
+        'x-message-ttl': ttl,
+        'x-dead-letter-exchange': EXCHANGES.events,
+        'x-dead-letter-routing-key': ROUTING_KEYS.notificationPush,
+      });
+    });
+    await svc.onModuleDestroy();
+  });
+
+  it('publish forwards headers (used by the consumer to carry the retry count)', async () => {
+    const amqp = fakeAmqp();
+    const svc = new QueueService(amqp.connect, config);
+    await svc.onModuleInit();
+    svc.publish(ROUTING_KEYS.notificationPushRetry(1), { a: 1 }, { headers: { 'x-retry-count': 1 } });
+    expect(amqp.published[0].opts).toEqual({
+      persistent: true,
+      contentType: 'application/json',
+      headers: { 'x-retry-count': 1 },
+    });
     await svc.onModuleDestroy();
   });
 
@@ -26,7 +67,7 @@ describe('QueueService', () => {
     expect(svc.publish(ROUTING_KEYS.notificationPush, { a: 1 })).toBe(true);
     expect(amqp.published).toEqual([
       {
-        exchange: EXCHANGE,
+        exchange: EXCHANGES.events,
         routingKey: ROUTING_KEYS.notificationPush,
         body: { a: 1 },
         opts: { persistent: true, contentType: 'application/json' },
