@@ -59,7 +59,11 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
   }
 
   /** Fire-and-forget. `false` means "not published" — callers never see a throw. */
-  publish(routingKey: string, message: unknown, opts: { headers?: AmqpHeaders } = {}): boolean {
+  publish(
+    routingKey: string,
+    message: unknown,
+    opts: { headers?: AmqpHeaders; messageId?: string } = {},
+  ): boolean {
     if (!this.channel) {
       this.warn(new Error('not connected'));
       return false;
@@ -69,6 +73,7 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
         persistent: true, // survives a broker restart (the queue is durable too)
         contentType: 'application/json',
         ...(opts.headers ? { headers: opts.headers } : {}),
+        ...(opts.messageId ? { messageId: opts.messageId } : {}), // M16d: = outbox row id
       });
     } catch (e) {
       this.warn(e);
@@ -103,6 +108,22 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
   async cancel(): Promise<void> {
     if (this.channel && this.consumerTag) await this.channel.cancel(this.consumerTag);
     this.consumerTag = undefined;
+  }
+
+  /** Test support: simulate "broker unreachable" — drop the connection WITHOUT scheduling a reconnect. */
+  async disconnectForTest(): Promise<void> {
+    this.closing = true;
+    await this.cancel().catch(() => undefined);
+    await this.channel?.close().catch(() => undefined);
+    await this.conn?.close().catch(() => undefined);
+    this.channel = undefined;
+    this.conn = undefined;
+    this.closing = false;
+  }
+
+  /** Test support: the broker is "back". */
+  async reconnectForTest(): Promise<void> {
+    await this.open();
   }
 
   /** Test support: pull ONE message from any queue (ack'd immediately), or false if empty. */

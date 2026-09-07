@@ -9,7 +9,7 @@ export interface PublishedRecord {
   exchange: string;
   routingKey: string;
   body: unknown;
-  opts: { persistent: boolean; contentType: string; headers?: AmqpHeaders };
+  opts: { persistent: boolean; contentType: string; headers?: AmqpHeaders; messageId?: string };
 }
 
 /** In-memory amqplib stand-in: records topology calls + publishes, lets a test push messages in. */
