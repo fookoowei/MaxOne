@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { REDIS_CLIENT } from '../../src/cache/cache.service';
+import { QueueService } from '../../src/queue/queue.service';
 
 /** The two Redis commands the harness needs (ioredis has them; keeps the type narrow). */
 export interface TestRedis {
@@ -17,26 +18,40 @@ const MUTABLE = [
   'WatchlistItem', 'AuditLog', 'Transaction', 'Wallet', 'User',
 ];
 
-// Wipe test data between tests (one TRUNCATE, CASCADE handles FKs); pass `redis` to also empty
-// the cache (db index 1 only — guarded in run.js) so a cached value can't leak across tests.
-export async function resetDb(prisma: PrismaService, redis?: TestRedis): Promise<void> {
+// Wipe test data between tests (one TRUNCATE, CASCADE handles FKs); pass `redis` to also empty the
+// cache (db index 1 — guarded in run.js) and `queue` to purge notifications.push (vhost "test").
+export async function resetDb(prisma: PrismaService, redis?: TestRedis, queue?: QueueService): Promise<void> {
   const tables = MUTABLE.map((t) => `"${t}"`).join(', ');
   await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} RESTART IDENTITY CASCADE`);
   if (redis) await redis.flushdb();
+  if (queue) await queue.purge();
 }
 
 // Boot the REAL app (real Prisma, guards, interceptors) against the test DB, with the same
 // global ValidationPipe main.ts uses, so HTTP tests behave like production.
-export async function bootApp(): Promise<{ app: INestApplication; prisma: PrismaService; redis: TestRedis }> {
+export async function bootApp(): Promise<{
+  app: INestApplication;
+  prisma: PrismaService;
+  redis: TestRedis;
+  queue: QueueService;
+}> {
   if (!/_test/.test(process.env.DATABASE_URL ?? '')) {
     throw new Error('Integration tests must run via `npm run test:integration` (test DB only)');
   }
   if (!/\/1$/.test(process.env.REDIS_URL ?? '')) {
     throw new Error('Integration tests must use Redis db index 1 (REDIS_URL=...:6379/1)');
   }
+  if (!/\/test$/.test(process.env.RABBITMQ_URL ?? '')) {
+    throw new Error('Integration tests must use RabbitMQ vhost "test" (RABBITMQ_URL=amqp://…/test)');
+  }
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const app = moduleRef.createNestApplication();
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   await app.init();
-  return { app, prisma: app.get(PrismaService), redis: app.get<TestRedis>(REDIS_CLIENT) };
+  return {
+    app,
+    prisma: app.get(PrismaService),
+    redis: app.get<TestRedis>(REDIS_CLIENT),
+    queue: app.get(QueueService),
+  };
 }

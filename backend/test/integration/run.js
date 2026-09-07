@@ -19,8 +19,43 @@ if (!/\/1$/.test(redisUrl)) {
   throw new Error(`Refusing to run: TEST_REDIS_URL must use Redis db index 1 (got ${redisUrl})`);
 }
 process.env.REDIS_URL = redisUrl;
+
+// M16b: same idea for RabbitMQ — the lane uses vhost "test" (purged per test), never the app's "/".
+// A vhost is a namespace inside one broker (exchanges/queues/bindings are per-vhost).
+const mqUrl = process.env.TEST_RABBITMQ_URL;
+if (!mqUrl) throw new Error('TEST_RABBITMQ_URL is not set (add it to the root .env)');
+if (!/\/test$/.test(mqUrl)) {
+  throw new Error(`Refusing to run: TEST_RABBITMQ_URL must use vhost "test" (got ${mqUrl})`);
+}
+process.env.RABBITMQ_URL = mqUrl;
+
+// Create the vhost (+ guest permissions on it) through the management HTTP API if it's missing.
+// Idempotent: PUT on an existing vhost/permission is a no-op.
+async function ensureTestVhost() {
+  const mgmt = process.env.RABBITMQ_MANAGEMENT_URL ?? 'http://localhost:15672';
+  const auth = 'Basic ' + Buffer.from('guest:guest').toString('base64');
+  const put = async (path, body) => {
+    const res = await fetch(`${mgmt}/api${path}`, {
+      method: 'PUT',
+      headers: { Authorization: auth, 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok && res.status !== 204) {
+      throw new Error(`RabbitMQ management ${path} → ${res.status} ${await res.text()}`);
+    }
+  };
+  await put('/vhosts/test');
+  await put('/permissions/test/guest', { configure: '.*', write: '.*', read: '.*' });
+}
+
 const run = (cmd) => execSync(cmd, { stdio: 'inherit', env: process.env });
 
-run('npx prisma migrate deploy');
-run('npx ts-node prisma/seed.ts');
-run('npx jest --config test/jest-integration.json --runInBand');
+(async () => {
+  await ensureTestVhost();
+  run('npx prisma migrate deploy');
+  run('npx ts-node prisma/seed.ts');
+  run('npx jest --config test/jest-integration.json --runInBand');
+})().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
