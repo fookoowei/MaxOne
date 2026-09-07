@@ -77,6 +77,25 @@ services:
       timeout: 5s
       retries: 5
 
+  worker:
+    # M16b: the consumer. Same image as the API, different entrypoint, no port. Needs the broker
+    # (fail-fast) and the DB (push subscriptions). Scale with `docker compose up -d --scale worker=3`
+    # (drop container_name first).
+    build: ./backend
+    container_name: wallet_worker
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      NODE_ENV: production
+    command: ["node", "dist/src/worker"]
+
 volumes:
   wallet_pgdata:
   wallet_rabbitmq:

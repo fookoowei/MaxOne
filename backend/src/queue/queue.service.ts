@@ -134,11 +134,10 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     this.channel = undefined;
     this.conn = undefined;
     this.consumerTag = undefined;
+    if (this.closing) return; // our own onModuleDestroy — not a loss, nobody needs telling
     this.closeListeners.forEach((l) => l());
-    if (!this.closing) {
-      this.warn(new Error('connection closed'));
-      this.scheduleReconnect();
-    }
+    this.warn(new Error('connection closed'));
+    this.scheduleReconnect();
   }
 
   private scheduleReconnect(): void {

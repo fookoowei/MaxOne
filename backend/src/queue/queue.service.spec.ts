@@ -83,6 +83,17 @@ describe('QueueService', () => {
     await svc.onModuleDestroy();
   });
 
+  it('onClose listeners do NOT fire for our own shutdown (a graceful stop must exit 0)', async () => {
+    const amqp = fakeAmqp();
+    const svc = new QueueService(amqp.connect, config);
+    await svc.onModuleInit();
+    const seen = jest.fn();
+    svc.onClose(seen);
+    await svc.onModuleDestroy();
+    amqp.dropConnection(); // the broker reports the close we asked for
+    expect(seen).not.toHaveBeenCalled();
+  });
+
   it('consume sets prefetch and hands messages to the handler; ack/nack/cancel/purge reach the channel', async () => {
     const amqp = fakeAmqp();
     const svc = new QueueService(amqp.connect, config);
