@@ -12,6 +12,7 @@ import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { HttpExceptionFilter } from './common/http-exception.filter';
 import { CacheModule } from './cache/cache.module';
+import { QueueModule } from './queue/queue.module';
 import { AuditModule } from './audit/audit.module';
 import { MarketsModule } from './markets/markets.module';
 import { WatchlistModule } from './watchlist/watchlist.module';
@@ -40,6 +41,7 @@ import { PushModule } from './push/push.module';
     RealtimeModule,
     PushModule,
     CacheModule, // M16a: global, fail-soft Redis cache-aside
+    QueueModule, // M16b: global, fail-soft RabbitMQ publisher (the worker consumes)
   ],
   controllers: [AppController],
   providers: [
