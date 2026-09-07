@@ -52,8 +52,9 @@ jobs:
       WEBAUTHN_RP_ID: localhost
       WEBAUTHN_RP_NAME: MaxOne
       WEBAUTHN_ORIGIN: http://localhost:3300
-      VAPID_PUBLIC_KEY: BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_KKKcRqHlpxWDT8mY3FQHrDf6h8jMc1E9pCiAxRLOLSf0w_lZE
-      VAPID_PRIVATE_KEY: tBHItJI5svbpez7KI4CCXg
+      # Throwaway VAPID keypair (web-push validates key lengths at boot; never used to send).
+      VAPID_PUBLIC_KEY: BAa_qm1XlRXo9nEvO_WWLYfozY2PoEgrtpGRN6GNIHDOaU_-nha0RnhguLgnHcY-y-gX0jtmd_X0P0R4BtpZ9fU
+      VAPID_PRIVATE_KEY: -s2SiGW6y0QHWj_8yLx4OskqtyBktSfI80zXWAe8gA0
       VAPID_SUBJECT: mailto:ci@example.com
     steps:
       - uses: actions/checkout@v4
