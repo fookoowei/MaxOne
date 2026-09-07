@@ -9,7 +9,7 @@ on:
 
 jobs:
   backend:
-    name: Backend — type-check + unit + integration
+    name: Backend — type-check + tests
     runs-on: ubuntu-latest
     defaults:
       run:
