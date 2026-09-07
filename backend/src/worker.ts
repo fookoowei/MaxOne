@@ -4,6 +4,7 @@ import { Logger as PinoLogger } from 'nestjs-pino';
 import { WorkerModule } from './worker/worker.module';
 import { QueueService } from './queue/queue.service';
 import { NotificationConsumer } from './worker/notification.consumer';
+import { initSentry } from './observability/sentry';
 
 /**
  * Second entrypoint, same codebase: no HTTP server, just the consume loop.
@@ -12,6 +13,7 @@ import { NotificationConsumer } from './worker/notification.consumer';
  * to consume would hide a broken broker.
  */
 async function bootstrap() {
+  initSentry('worker');
   const log = new Logger('Worker');
   const app = await NestFactory.createApplicationContext(WorkerModule, { bufferLogs: true });
   app.useLogger(app.get(PinoLogger));

@@ -126,6 +126,17 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     await this.open();
   }
 
+  /** M17 health/metrics: messages sitting in a queue, or null when disconnected. Never throws. */
+  async depth(queue: string): Promise<number | null> {
+    if (!this.channel) return null;
+    try {
+      return (await this.channel.checkQueue(queue)).messageCount;
+    } catch (e) {
+      this.warn(e);
+      return null;
+    }
+  }
+
   /** Test support: pull ONE message from any queue (ack'd immediately), or false if empty. */
   async peek(queue: string): Promise<AmqpMessage | false> {
     if (!this.channel) return false;

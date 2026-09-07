@@ -5,8 +5,10 @@ import helmet from 'helmet';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { auditContextMiddleware } from './audit/audit.middleware';
+import { initSentry } from './observability/sentry';
 
 async function bootstrap() {
+  initSentry('api'); // M17: before anything can throw; no-op without SENTRY_DSN
   // bufferLogs: hold boot logs until pino is attached, so even startup lines are structured.
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(PinoLogger));

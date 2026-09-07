@@ -12,7 +12,16 @@ export const LoggingModule = LoggerModule.forRoot({
   pinoHttp: {
     level: process.env.LOG_LEVEL ?? 'info',
     genReqId: (req) => (req as { id?: string }).id ?? randomUUID(),
-    redact: ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-cookie"]'],
+    // Compact: method/url/id in, status out. The defaults dump every header on every line.
+    serializers: {
+      req: (req: { id?: string; method?: string; url?: string; remoteAddress?: string }) => ({
+        id: req.id,
+        method: req.method,
+        url: req.url,
+        ip: req.remoteAddress,
+      }),
+      res: (res: { statusCode?: number }) => ({ statusCode: res.statusCode }),
+    },
     customProps: () => ({ service: process.env.SERVICE_NAME ?? 'api' }),
     autoLogging: {
       ignore: (req) => req.url === '/health' || req.url === '/metrics', // probes would drown everything

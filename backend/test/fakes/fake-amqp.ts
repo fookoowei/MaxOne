@@ -57,6 +57,7 @@ export function fakeAmqp() {
       nacked.push({ msg, requeue });
     },
     get: async () => false,
+    checkQueue: async () => ({ messageCount: 0 }),
     purgeQueue: async () => {
       purged++;
     },

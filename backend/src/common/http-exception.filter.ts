@@ -1,6 +1,7 @@
 import { ArgumentsHost, Catch, ExceptionFilter, Logger } from '@nestjs/common';
 import { BaseWsExceptionFilter } from '@nestjs/websockets';
 import { toErrorBody } from './http-error';
+import { captureException } from '../observability/sentry';
 
 /**
  * Global catch-all (registered via APP_FILTER in AppModule): every error leaves the API as the
@@ -22,6 +23,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const body = toErrorBody(exception, req.originalUrl ?? req.url);
     if (body.statusCode >= 500) {
       this.log.error(`${body.code} ${body.path}`, exception instanceof Error ? exception.stack : String(exception));
+      captureException(exception, { path: body.path, code: body.code }); // M17: no-op without SENTRY_DSN
     }
     res.status(body.statusCode).json(body);
   }
