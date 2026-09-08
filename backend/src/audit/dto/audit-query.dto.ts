@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDate, IsIn, IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsDate, IsIn, IsInt, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
 
 /**
  * Query-string filters. Everything is optional; `@Type` conversions are what let the global
@@ -27,6 +27,12 @@ export class AuditQueryDto {
   @IsOptional()
   @IsString()
   action?: string;
+
+  // M18b: free text — matches the action name or the start of an entity id.
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  q?: string;
 
   @IsOptional()
   @Type(() => Date)

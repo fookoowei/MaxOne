@@ -1,31 +1,33 @@
 import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/auth/session';
-import { Nav } from '@/components/nav';
-import { Topbar } from '@/components/topbar';
+import { roleHasPermission } from '@/lib/auth/permissions';
+import { serverApi } from '@/lib/api/server';
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/sonner';
+import { AppSidebar } from '@/components/shell/app-sidebar';
+import { PageBar } from '@/components/shell/page-bar';
 
-// The shell every dashboard page shares. It reads the identity mirror server-
-// side (no /me call during render) and renders the role-aware nav + topbar.
-// The proxy already blocks logged-out users; the redirect here is belt-and-
-// suspenders in case this layout is ever reached without a session.
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+// The shell every console page shares: sidebar (full / rail / sheet), page bar, content column.
+// Identity comes from the cookie mirror (no /me call); the pending count for the Approvals badge
+// is one extra read for roles that can see the queue. The proxy already blocks logged-out users.
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
   if (!user) redirect('/login');
 
+  let pendingCount = 0;
+  if (roleHasPermission(user.role, 'transaction.view_all')) {
+    const res = await serverApi('/admin/overview').catch(() => null);
+    if (res?.ok) pendingCount = ((await res.json()) as { pending: { count: number } }).pending.count;
+  }
+
   return (
-    <div className="flex min-h-full flex-col">
-      <Topbar user={user} />
-      <div className="flex flex-1">
-        <aside className="w-56 shrink-0 border-r">
-          <Nav role={user.role} />
-        </aside>
-        <main className="flex-1 p-6">{children}</main>
-      </div>
+    <SidebarProvider>
+      <AppSidebar user={user} pendingCount={pendingCount} />
+      <SidebarInset>
+        <PageBar />
+        <main className="mx-auto w-full max-w-7xl flex-1 p-4 md:p-6 lg:p-8">{children}</main>
+      </SidebarInset>
       <Toaster position="top-right" richColors closeButton />
-    </div>
+    </SidebarProvider>
   );
 }

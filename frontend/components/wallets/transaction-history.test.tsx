@@ -17,6 +17,6 @@ describe('TransactionHistory', () => {
 
   it('shows an empty state when there are no transactions', () => {
     render(<TransactionHistory rows={[]} currency="USD" />);
-    expect(screen.getByText(/no transactions/i)).toBeInTheDocument();
+    expect(screen.getByText(/no transactions yet/i)).toBeInTheDocument();
   });
 });

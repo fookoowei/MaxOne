@@ -27,6 +27,6 @@ describe('ApprovalsTable', () => {
 
   it('shows an empty state when there are no pending rows', () => {
     render(<ApprovalsTable rows={[]} role="finance" />);
-    expect(screen.getByText(/no pending transactions/i)).toBeInTheDocument();
+    expect(screen.getByText(/nothing waiting/i)).toBeInTheDocument();
   });
 });
