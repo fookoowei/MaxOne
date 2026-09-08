@@ -83,5 +83,8 @@ export const config = {
   // Run on everything EXCEPT Next internals, static assets, favicon, and /api.
   // /api is excluded so the BFF auth routes (login/refresh/logout) stay reachable
   // while logged out — they do their own cookie checks.
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  // Static, unauthenticated assets the browser fetches on its own (M18a icons/manifest, the push
+  // service worker) must never be redirected to /login — a redirect there returns HTML where the
+  // browser expects JSON/JS. (Found by reading the browser console, not the server log.)
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|icon.svg|apple-icon.png|icons/|sw.js).*)'],
 };

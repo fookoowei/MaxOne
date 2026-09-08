@@ -1,4 +1,4 @@
-import { PageHeaderSkeleton, ListSkeleton } from '@/components/skeletons';
+import { PageHeaderSkeleton, ListSkeleton } from '@/components/layout/skeletons';
 import { Skeleton } from '@/components/ui/skeleton';
 export default function Loading() {
   return (

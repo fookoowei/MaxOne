@@ -1,0 +1,30 @@
+import { formatPrice } from '@/lib/format/price';
+import { RemoveAlertButton } from '@/components/alerts/remove-alert-button';
+import type { AlertRow } from '@/lib/alerts/compute';
+
+export function AlertList({ rows }: { rows: AlertRow[] }) {
+  if (rows.length === 0) {
+    return <p className="py-8 text-center text-sm text-muted-foreground">Set your first alert.</p>;
+  }
+  return (
+    <ul className="divide-y divide-border">
+      {rows.map((r) => (
+        <li key={r.id} className="flex items-center justify-between py-3">
+          <div>
+            <p className="text-sm font-medium">{r.symbol}</p>
+            <p className="text-xs text-muted-foreground">
+              {r.direction === 'above' ? 'Above' : 'Below'} {formatPrice(r.targetPrice)}
+              {r.currentPrice !== null && <> · now {formatPrice(r.currentPrice)}</>}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex h-5 items-center rounded-full px-2 text-xs font-medium ${r.triggeredAt ? 'bg-status-approved/12 text-status-approved' : 'bg-muted text-muted-foreground'}`}>
+              {r.triggeredAt ? 'Reached' : 'Watching'}
+            </span>
+            <RemoveAlertButton id={r.id} symbol={r.symbol} />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}

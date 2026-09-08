@@ -51,5 +51,8 @@ describe('toastApiError', () => {
     expect(toastError).toHaveBeenLastCalledWith('Transaction already reviewed', { description: undefined });
     toastApiError({ status: 409, code: 'ALREADY_REVIEWED', message: 'x' }, { ALREADY_REVIEWED: 'Someone else got there first.' });
     expect(toastError).toHaveBeenLastCalledWith('Someone else got there first.', { description: undefined });
+    // status fallback: an override keyed HTTP_409 applies whatever code the API used
+    toastApiError({ status: 409, code: 'IDEMPOTENCY_KEY_REUSED', message: 'x' }, { HTTP_409: 'May already have gone through.' });
+    expect(toastError).toHaveBeenLastCalledWith('May already have gone through.', { description: undefined });
   });
 });

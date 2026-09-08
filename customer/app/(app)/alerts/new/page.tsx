@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { serverApi } from '@/lib/api/server';
-import { AddAlertForm } from '@/components/add-alert-form';
+import { AddAlertForm } from '@/components/alerts/add-alert-form';
 
 interface Asset {
   symbol: string;
@@ -14,7 +14,7 @@ export default async function NewAlertPage() {
   const assets = res.ok ? ((await res.json()) as Asset[]) : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-[720px]">
       <header className="space-y-1">
         <Link href="/alerts" className="text-sm text-muted-foreground">
           ← Back

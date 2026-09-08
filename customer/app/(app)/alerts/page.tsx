@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { serverApi } from '@/lib/api/server';
 import { computeAlerts, type Alert, type PriceInfo } from '@/lib/alerts/compute';
-import { AlertList } from '@/components/alert-list';
-import { PushToggle } from '@/components/push-toggle';
+import { AlertList } from '@/components/alerts/alert-list';
+import { PushToggle } from '@/components/alerts/push-toggle';
 
 export default async function AlertsPage() {
   const [alertsRes, marketsRes] = await Promise.all([serverApi('/alerts'), serverApi('/markets')]);
@@ -14,7 +14,7 @@ export default async function AlertsPage() {
   const rows = computeAlerts(alerts, prices);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-[720px]">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Price alerts</h1>
         <Link href="/alerts/new" className="text-sm text-primary underline">

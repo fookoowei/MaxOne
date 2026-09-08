@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import { QrScanner } from '@/components/qr-scanner';
+import { QrScanner } from '@/components/pay/qr-scanner';
 
 export default function ScanPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-[720px]">
       <header>
         <Link href="/pay" className="text-sm text-muted-foreground">
           ← Back

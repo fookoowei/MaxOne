@@ -19,7 +19,7 @@ const cfg = {
   customer: {
     base: 'http://localhost:3300',
     login: { email: process.env.CUST_EMAIL, password: process.env.CUST_PASSWORD },
-    routes: ['/', '/markets', '/pay', '/deposit', '/profile'],
+    routes: ['/', '/markets', '/pay', '/pay/send', '/deposit', '/activity', '/profile'],
     sizes: [[390, 844], [768, 1024], [1440, 900]],
   },
 }[which];

@@ -1,31 +1,20 @@
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import { serverApi } from '@/lib/api/server';
-import { AmountForm } from '@/components/amount-form';
+import { PageHeader } from '@/components/layout/page-header';
+import { MoneyRequestWizard } from '@/components/wallet/money-request-wizard';
 
-interface Wallet {
-  id: string;
-  currency: string;
-  balance: number;
-}
+interface Wallet { id: string; currency: string; balance: number }
 
-export default async function DepositPage() {
+export default async function Page() {
   const res = await serverApi('/wallets');
   if (res.status === 401) redirect('/login');
   const wallets = (await res.json()) as Wallet[];
   const primary = wallets[0];
   if (!primary) redirect('/');
-
   return (
-    <div className="space-y-6">
-      <header className="space-y-1">
-        <Link href="/" className="text-sm text-muted-foreground">
-          ← Back
-        </Link>
-        <h1 className="text-xl font-semibold">Add money</h1>
-        <p className="text-sm text-muted-foreground">Request a deposit into your wallet.</p>
-      </header>
-      <AmountForm mode="deposit" walletId={primary.id} currency={primary.currency} />
+    <div className="space-y-6 lg:max-w-[560px]">
+      <PageHeader title="Add money" description="Request a deposit into your wallet." back={{ href: '/', label: 'Back' }} />
+      <MoneyRequestWizard mode="deposit" walletId={primary.id} currency={primary.currency} balance={primary.balance} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { serverApi } from '@/lib/api/server';
-import { AddWalletForm } from '@/components/add-wallet-form';
+import { AddWalletForm } from '@/components/wallet/add-wallet-form';
 
 interface Wallet {
   currency: string;
@@ -13,7 +13,7 @@ export default async function NewWalletPage() {
   const wallets = (await res.json()) as Wallet[];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-[720px]">
       <header className="space-y-1">
         <Link href="/" className="text-sm text-muted-foreground">
           ← Back

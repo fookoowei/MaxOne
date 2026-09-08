@@ -1,4 +1,4 @@
-import type { MarketAsset } from '@/components/market-list';
+import type { MarketAsset } from '@/components/markets/market-list';
 
 // Overlay live prices onto the SSR catalog by symbol. The catalog (which coins exist) is fixed by
 // the server render; only the numbers tick, so unmatched/extra incoming symbols are ignored.

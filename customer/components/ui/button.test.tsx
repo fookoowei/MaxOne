@@ -19,3 +19,10 @@ describe('Button pending', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 });
+
+describe('Button size="xl" (touch CTA)', () => {
+  it('is 44px tall', () => {
+    render(<Button size="xl">Continue</Button>);
+    expect(screen.getByRole('button', { name: 'Continue' }).className).toMatch(/h-11/);
+  });
+});

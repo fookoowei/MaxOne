@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import { serverApi } from '@/lib/api/server';
 import { getSessionUser } from '@/lib/auth/session';
-import { TwoFactorSetup } from '@/components/two-factor-setup';
-import { PasskeyManager, type PasskeySummary } from '@/components/passkey-manager';
+import { TwoFactorSetup } from '@/components/security/two-factor-setup';
+import { PasskeyManager, type PasskeySummary } from '@/components/security/passkey-manager';
 
 export default async function ProfilePage() {
   const session = await getSessionUser();
@@ -13,7 +13,7 @@ export default async function ProfilePage() {
   const passkeys = pkRes.ok ? ((await pkRes.json()) as PasskeySummary[]) : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-[720px]">
       <header>
         <h1 className="text-xl font-semibold">Profile</h1>
         <p className="text-sm text-muted-foreground">

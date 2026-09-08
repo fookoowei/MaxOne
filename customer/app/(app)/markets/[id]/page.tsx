@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { serverApi } from '@/lib/api/server';
-import { AssetHeader, type AssetDetail } from '@/components/asset-header';
-import { PriceChart } from '@/components/price-chart';
+import { AssetHeader, type AssetDetail } from '@/components/markets/asset-header';
+import { PriceChart } from '@/components/markets/price-chart';
 
 interface ChartData {
   points: number[];
@@ -22,7 +22,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
   const chart = chartRes.ok ? ((await chartRes.json()) as ChartData) : { points: [], labels: [] };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-[720px]">
       <Link href="/markets" className="text-sm text-muted-foreground">
         ← Markets
       </Link>

@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { serverApi } from '@/lib/api/server';
-import { ConvertForm } from '@/components/convert-form';
-import type { WalletSummary } from '@/components/wallet-list';
+import { ConvertForm } from '@/components/wallet/convert-form';
+import type { WalletSummary } from '@/components/wallet/wallet-list';
 
 export default async function ConvertPage() {
   const res = await serverApi('/wallets');
@@ -11,7 +11,7 @@ export default async function ConvertPage() {
 
   if (wallets.length < 2) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 lg:max-w-[720px]">
         <header className="space-y-1">
           <Link href="/" className="text-sm text-muted-foreground">
             ← Back
