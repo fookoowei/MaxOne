@@ -51,8 +51,8 @@ export function ApprovalsTable({ rows, role }: { rows: PendingTransaction[]; rol
         </div>
         <div className="flex gap-1" role="group" aria-label="Sort">
           {(['oldest', 'newest', 'largest'] as Sort[]).map((s) => (
-            <Button key={s} size="sm" variant={sort === s ? 'secondary' : 'ghost'} aria-pressed={sort === s} onClick={() => setSort(s)} className="capitalize">
-              {s} first
+            <Button key={s} size="sm" variant={sort === s ? 'secondary' : 'ghost'} aria-pressed={sort === s} onClick={() => setSort(s)}>
+              {s === 'oldest' ? 'Oldest first' : s === 'newest' ? 'Newest first' : 'Largest first'}
             </Button>
           ))}
         </div>

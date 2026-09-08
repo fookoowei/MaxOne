@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
 import { DataTable, DataTablePagination, DataTableToolbar, type Column } from '@/components/data-table';
-import type { TableConfig } from '@/lib/table/params';
+import { USERS_TABLE } from '@/lib/table/configs';
 import { UserRowActions, type Role } from './user-row-actions';
 
 export interface StaffUser {
@@ -19,8 +19,6 @@ export interface StaffUser {
   role: { id: string; name: string };
 }
 
-// Mirrors ListUsersQueryDto on the API.
-export const USERS_TABLE: TableConfig = { sortFields: ['createdAt', 'email', 'status'], defaultSort: 'createdAt:desc', filterKeys: ['role', 'status'] };
 
 export function UsersTable({ users, total, roles, currentUserId, currentUserRole }: { users: StaffUser[]; total: number; roles: Role[]; currentUserId: string; currentUserRole: string }) {
   const columns: Column<StaffUser>[] = [
@@ -50,8 +48,8 @@ export function UsersTable({ users, total, roles, currentUserId, currentUserRole
         cfg={USERS_TABLE}
         searchPlaceholder="Search name, email or handle"
         filters={[
-          { key: 'role', label: 'Role', options: roles.map((r) => ({ value: r.name, label: r.name.replace('_', ' ') })) },
-          { key: 'status', label: 'Status', options: [{ value: 'active', label: 'Active' }, { value: 'suspended', label: 'Suspended' }] },
+          { key: 'role', label: 'Role', allLabel: 'All roles', options: roles.map((r) => ({ value: r.name, label: r.name.replace('_', ' ') })) },
+          { key: 'status', label: 'Status', allLabel: 'All statuses', options: [{ value: 'active', label: 'Active' }, { value: 'suspended', label: 'Suspended' }] },
         ]}
       />
       <DataTable columns={columns} rows={users} getRowId={(u) => u.id} cfg={USERS_TABLE} caption="Users" emptyState={<EmptyState icon={Users} title="No users match" description="Try another name, email, role or status." />} />

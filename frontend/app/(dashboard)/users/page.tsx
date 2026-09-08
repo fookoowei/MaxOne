@@ -4,7 +4,8 @@ import { roleHasPermission } from '@/lib/auth/permissions';
 import { serverApi } from '@/lib/api/server';
 import { apiQuery, parseTableParams } from '@/lib/table/params';
 import { PageHeader } from '@/components/page-header';
-import { UsersTable, USERS_TABLE, type StaffUser } from '@/components/users/users-table';
+import { USERS_TABLE } from '@/lib/table/configs';
+import { UsersTable, type StaffUser } from '@/components/users/users-table';
 import type { Role } from '@/components/users/user-row-actions';
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {

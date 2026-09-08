@@ -12,8 +12,10 @@ import { useTableParams } from './use-table-params';
 export interface FilterDef {
   key: string;
   label: string; // "Currency"
+  allLabel?: string; // "All currencies" — pass it; English plurals are not `label + 's'`
   options: { value: string; label: string }[];
 }
+const allLabel = (f: FilterDef) => f.allLabel ?? `All ${f.label.toLowerCase()}s`;
 
 const ALL = '__all__';
 
@@ -52,13 +54,13 @@ export function DataTableToolbar({ cfg, searchPlaceholder, filters = [] }: { cfg
             key={f.key}
             value={params.filters[f.key] ?? ALL}
             onValueChange={(v) => set({ filters: { [f.key]: v === ALL || v == null ? undefined : String(v) } })}
-            items={{ [ALL]: `All ${f.label.toLowerCase()}s`, ...Object.fromEntries(f.options.map((o) => [o.value, o.label])) }}
+            items={{ [ALL]: allLabel(f), ...Object.fromEntries(f.options.map((o) => [o.value, o.label])) }}
           >
             <SelectTrigger aria-label={f.label} className="w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>All {f.label.toLowerCase()}s</SelectItem>
+              <SelectItem value={ALL}>{allLabel(f)}</SelectItem>
               {f.options.map((o) => (
                 <SelectItem key={o.value} value={o.value}>
                   {o.label}

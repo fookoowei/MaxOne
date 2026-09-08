@@ -4,7 +4,8 @@ import { roleHasPermission } from '@/lib/auth/permissions';
 import { serverApi } from '@/lib/api/server';
 import { apiQuery, parseTableParams } from '@/lib/table/params';
 import { PageHeader } from '@/components/page-header';
-import { WalletsTable, WALLETS_TABLE, type StaffWallet } from '@/components/wallets/wallets-table';
+import { WALLETS_TABLE } from '@/lib/table/configs';
+import { WalletsTable, type StaffWallet } from '@/components/wallets/wallets-table';
 
 // Server Component: the URL is the table state. Parse it, ask the API for exactly that page
 // (Postgres sorts/filters/paginates), render. A shared link reproduces the same view.

@@ -36,8 +36,8 @@ export function NeedsDecision({ rows, total, role }: { rows: PendingTransaction[
                 <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-md', r.type === 'deposit' ? 'bg-status-approved/12 text-status-approved' : 'bg-status-pending/12 text-status-pending')}>
                   <Icon className="size-4" aria-hidden />
                 </span>
-                <span className="grid min-w-0 flex-1 leading-tight">
-                  <span className="truncate">
+                <span className="grid min-w-0 flex-1 basis-48 leading-tight">
+                  <span className="sm:truncate">
                     <span className="font-medium capitalize">{r.type}</span> <MoneyText amountMinor={r.amount} currency={r.wallet.currency} className="font-medium" />
                     <span className="text-muted-foreground"> · {r.wallet.user.email}</span>
                   </span>

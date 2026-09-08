@@ -4,7 +4,8 @@ import { roleHasPermission } from '@/lib/auth/permissions';
 import { serverApi } from '@/lib/api/server';
 import { apiQuery, parseTableParams } from '@/lib/table/params';
 import { PageHeader } from '@/components/page-header';
-import { AuditTable, AUDIT_TABLE, type AuditEntry } from '@/components/audit/audit-table';
+import { AUDIT_TABLE } from '@/lib/table/configs';
+import { AuditTable, type AuditEntry } from '@/components/audit/audit-table';
 
 export default async function AuditPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await getSessionUser();

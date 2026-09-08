@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/empty-state';
 import { RelativeTime } from '@/components/relative-time';
 import { DataTablePagination, DataTableToolbar, useTableParams } from '@/components/data-table';
 import { Button } from '@/components/ui/button';
-import type { TableConfig } from '@/lib/table/params';
+import { AUDIT_TABLE } from '@/lib/table/configs';
 import { cn } from '@/lib/utils';
 import { DiffList } from './diff-list';
 
@@ -25,8 +25,6 @@ export interface AuditEntry {
   createdAt: string;
 }
 
-// Mirrors AuditQueryDto: no sort (always newest first), filters + free text + date range.
-export const AUDIT_TABLE: TableConfig = { sortFields: [], defaultSort: 'createdAt:desc', filterKeys: ['entityType', 'action', 'actorId', 'from', 'to'] };
 export const AUDIT_ACTIONS = ['deposit.approve', 'deposit.reject', 'withdrawal.approve', 'withdrawal.reject', 'wallet.adjust', 'wallet.transfer', 'user.status_change', 'user.role_change'];
 
 const ACTION_TONE: Record<string, string> = {
@@ -79,8 +77,8 @@ export function AuditTable({ entries, total }: { entries: AuditEntry[]; total: n
         cfg={AUDIT_TABLE}
         searchPlaceholder="Search action or entity id"
         filters={[
-          { key: 'entityType', label: 'Entity', options: ['transaction', 'wallet', 'user'].map((v) => ({ value: v, label: v })) },
-          { key: 'action', label: 'Action', options: AUDIT_ACTIONS.map((a) => ({ value: a, label: a.replace('_', ' ') })) },
+          { key: 'entityType', label: 'Entity', allLabel: 'All entities', options: ['transaction', 'wallet', 'user'].map((v) => ({ value: v, label: v })) },
+          { key: 'action', label: 'Action', allLabel: 'All actions', options: AUDIT_ACTIONS.map((a) => ({ value: a, label: a.replace('_', ' ') })) },
         ]}
       />
       <DateRange />
