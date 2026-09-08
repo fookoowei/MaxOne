@@ -25,4 +25,10 @@ describe('HoldingList', () => {
     expect(screen.getByText('$20,000.00')).toBeInTheDocument();
     expect(screen.getByText(/\+33\.33%/)).toBeInTheDocument();
   });
+
+  it('empty → EmptyState with an action link', () => {
+    render(<HoldingList rows={[]} />);
+    const link = screen.getByRole('link', { name: 'Add a holding' });
+    expect(link).toHaveAttribute('href', '/portfolio/new');
+  });
 });

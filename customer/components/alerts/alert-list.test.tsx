@@ -16,4 +16,10 @@ describe('AlertList', () => {
     expect(screen.getByText(/reached/i)).toBeInTheDocument();
     expect(screen.getByText(/watching/i)).toBeInTheDocument();
   });
+
+  it('empty → EmptyState with an action link', () => {
+    render(<AlertList rows={[]} />);
+    const link = screen.getByRole('link', { name: 'Set an alert' });
+    expect(link).toHaveAttribute('href', '/alerts/new');
+  });
 });

@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChevronsUpDown, LogOut } from 'lucide-react';
+import { ChevronsUpDown, LogOut, Monitor, Moon, Sun } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import {
   Sidebar,
   SidebarContent,
@@ -23,7 +24,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { LinkPending } from '@/components/link-pending';
@@ -35,6 +41,7 @@ import type { SessionUser } from '@/lib/auth/cookie-names';
 export function AppSidebar({ user, pendingCount = 0 }: { user: SessionUser; pendingCount?: number }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
   const groups = navGroupsForRole(user.role);
   const initials = user.email.slice(0, 2).toUpperCase();
   const roleLabel = user.role.replace('_', ' ');
@@ -120,6 +127,20 @@ export function AppSidebar({ user, pendingCount = 0 }: { user: SessionUser; pend
                   <span className="block text-sm font-medium">{user.email}</span>
                   <span className="block text-xs text-muted-foreground capitalize">{roleLabel}</span>
                 </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    {theme === 'dark' ? <Moon aria-hidden /> : theme === 'light' ? <Sun aria-hidden /> : <Monitor aria-hidden />}
+                    Theme
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuRadioGroup value={theme ?? 'system'} onValueChange={(v) => setTheme(String(v))}>
+                      <DropdownMenuRadioItem value="system">System</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="light">Light</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="dark">Dark</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout}>
                   <LogOut aria-hidden />

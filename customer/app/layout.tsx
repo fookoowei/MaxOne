@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Manrope } from 'next/font/google';
 import './globals.css';
+import { ThemeProvider } from '@/components/theme-provider';
 
 // Manrope: warmer and rounder than the console's Plex, so the two products read as different tools.
 const manrope = Manrope({
@@ -26,8 +27,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${manrope.variable} antialiased`}>
-      <body>{children}</body>
+    <html lang="en" className={`${manrope.variable} antialiased`} suppressHydrationWarning>
+      <body>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

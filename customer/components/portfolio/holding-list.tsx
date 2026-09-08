@@ -1,11 +1,25 @@
 import Link from 'next/link';
+import { PieChart } from 'lucide-react';
 import { formatPrice } from '@/lib/format/price';
+import { buttonVariants } from '@/components/ui/button';
+import { EmptyState } from '@/components/layout/empty-state';
 import { RemoveHoldingButton } from '@/components/portfolio/remove-holding-button';
 import type { HoldingRow } from '@/lib/portfolio/compute';
 
 export function HoldingList({ rows }: { rows: HoldingRow[] }) {
   if (rows.length === 0) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">Add your first holding.</p>;
+    return (
+      <EmptyState
+        icon={PieChart}
+        title="Nothing tracked yet"
+        description="Add what you hold elsewhere to see its value and P/L here."
+        action={
+          <Link href="/portfolio/new" className={buttonVariants({ size: 'xl' })}>
+            Add a holding
+          </Link>
+        }
+      />
+    );
   }
   return (
     <ul className="divide-y divide-border">
