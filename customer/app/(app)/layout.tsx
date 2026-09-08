@@ -1,4 +1,4 @@
-import { Toaster } from 'sonner';
+import { Toaster } from '@/components/ui/sonner';
 import { BottomNav } from '@/components/bottom-nav';
 import { NotificationToaster } from '@/components/notification-toaster';
 
@@ -7,7 +7,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="mx-auto min-h-dvh w-full max-w-[420px] px-5 pb-24 pt-8">
       {children}
       <BottomNav />
-      <Toaster position="top-center" />
+      <Toaster position="top-center" richColors closeButton />
       <NotificationToaster />
     </div>
   );
