@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { serverApi } from '@/lib/api/server';
-import { PageHeader } from '@/components/page-header';
+import { PageHeader } from '@/components/layout/page-header';
 import { ActivityCard, type Transaction } from '@/components/wallet/activity-card';
 
 interface Wallet { id: string; currency: string }

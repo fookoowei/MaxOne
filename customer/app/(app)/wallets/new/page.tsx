@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { serverApi } from '@/lib/api/server';
-import { AddWalletForm } from '@/components/add-wallet-form';
+import { AddWalletForm } from '@/components/wallet/add-wallet-form';
 
 interface Wallet {
   currency: string;

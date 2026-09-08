@@ -5,7 +5,7 @@ import { isPasskeySupported, registerPasskey } from '@/lib/passkeys/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ConfirmDialog } from '@/components/confirm-dialog';
+import { ConfirmDialog } from '@/components/layout/confirm-dialog';
 import { apiRequest, toastApiError } from '@/lib/api/client';
 import { toast } from 'sonner';
 

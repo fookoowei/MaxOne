@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { Socket } from 'socket.io-client';
-import { BalanceCard } from '@/components/balance-card';
+import { BalanceCard } from '@/components/wallet/balance-card';
 import { connectSocket } from '@/lib/realtime/socket';
 
 interface BalanceEvent {

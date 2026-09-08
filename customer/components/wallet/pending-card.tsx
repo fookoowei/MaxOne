@@ -1,5 +1,5 @@
 import { MoneyText } from '@/components/money-text';
-import { RelativeTime } from '@/components/relative-time';
+import { RelativeTime } from '@/components/layout/relative-time';
 import type { Transaction } from './activity-card';
 
 // Desktop aside: what's waiting on a reviewer, with how long it has waited.

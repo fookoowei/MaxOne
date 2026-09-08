@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { serverApi } from '@/lib/api/server';
-import { AddHoldingForm } from '@/components/add-holding-form';
+import { AddHoldingForm } from '@/components/portfolio/add-holding-form';
 
 interface Asset {
   symbol: string;

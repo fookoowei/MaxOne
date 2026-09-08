@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getSessionUser } from '@/lib/auth/session';
-import { ReceiveQr } from '@/components/receive-qr';
+import { ReceiveQr } from '@/components/pay/receive-qr';
 
 export default async function ReceivePage() {
   const session = await getSessionUser();

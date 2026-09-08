@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { mergeLivePrices } from './live-prices';
-import type { MarketAsset } from '@/components/market-list';
+import type { MarketAsset } from '@/components/markets/market-list';
 
 const btc: MarketAsset = { id: 'bitcoin', symbol: 'BTC', name: 'Bitcoin', type: 'crypto', price: 43000, change24h: 2 };
 const eth: MarketAsset = { id: 'ethereum', symbol: 'ETH', name: 'Ethereum', type: 'crypto', price: 2500, change24h: -1 };

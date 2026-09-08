@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { QrScanner } from '@/components/qr-scanner';
+import { QrScanner } from '@/components/pay/qr-scanner';
 
 export default function ScanPage() {
   return (

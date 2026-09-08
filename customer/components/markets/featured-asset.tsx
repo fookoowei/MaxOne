@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { Bell } from 'lucide-react';
 import { formatPrice } from '@/lib/format/price';
-import { PriceChart } from '@/components/price-chart';
+import { PriceChart } from '@/components/markets/price-chart';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { MarketAsset } from '@/components/market-list';
+import type { MarketAsset } from '@/components/markets/market-list';
 
 // Desktop aside on Markets: one asset in depth — the first watched one, else the top of the list.
 export function FeaturedAsset({ asset, chart }: { asset: MarketAsset; chart: { points: number[]; labels: string[] } }) {

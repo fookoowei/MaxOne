@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { serverApi } from '@/lib/api/server';
 import { computePortfolio, type Holding, type PriceInfo } from '@/lib/portfolio/compute';
 import { formatPrice } from '@/lib/format/price';
-import { PageHeader } from '@/components/page-header';
+import { PageHeader } from '@/components/layout/page-header';
 import { WithAside } from '@/components/layout/with-aside';
-import type { MarketAsset } from '@/components/market-list';
+import type { MarketAsset } from '@/components/markets/market-list';
 import { MarketsView } from '@/components/markets/markets-view';
 import { FeaturedAsset } from '@/components/markets/featured-asset';
 

@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { serverApi } from '@/lib/api/server';
-import { AssetHeader, type AssetDetail } from '@/components/asset-header';
-import { PriceChart } from '@/components/price-chart';
+import { AssetHeader, type AssetDetail } from '@/components/markets/asset-header';
+import { PriceChart } from '@/components/markets/price-chart';
 
 interface ChartData {
   points: number[];

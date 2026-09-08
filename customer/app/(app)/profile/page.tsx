@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import { serverApi } from '@/lib/api/server';
 import { getSessionUser } from '@/lib/auth/session';
-import { TwoFactorSetup } from '@/components/two-factor-setup';
-import { PasskeyManager, type PasskeySummary } from '@/components/passkey-manager';
+import { TwoFactorSetup } from '@/components/security/two-factor-setup';
+import { PasskeyManager, type PasskeySummary } from '@/components/security/passkey-manager';
 
 export default async function ProfilePage() {
   const session = await getSessionUser();

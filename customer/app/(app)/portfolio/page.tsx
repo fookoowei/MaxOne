@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { serverApi } from '@/lib/api/server';
 import { computePortfolio, type Holding, type PriceInfo } from '@/lib/portfolio/compute';
-import { PortfolioSummary } from '@/components/portfolio-summary';
-import { HoldingList } from '@/components/holding-list';
+import { PortfolioSummary } from '@/components/portfolio/portfolio-summary';
+import { HoldingList } from '@/components/portfolio/holding-list';
 
 export default async function PortfolioPage() {
   const [holdingsRes, marketsRes] = await Promise.all([serverApi('/portfolio'), serverApi('/markets')]);

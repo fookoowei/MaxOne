@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { serverApi } from '@/lib/api/server';
-import { AddAlertForm } from '@/components/add-alert-form';
+import { AddAlertForm } from '@/components/alerts/add-alert-form';
 
 interface Asset {
   symbol: string;

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LinkPending } from '@/components/link-pending';
+import { LinkPending } from '@/components/layout/link-pending';
 import { NAV_ITEMS, isActivePath } from '@/lib/nav';
 import { cn } from '@/lib/utils';
 

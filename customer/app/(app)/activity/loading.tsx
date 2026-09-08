@@ -1,4 +1,4 @@
-import { ListSkeleton, PageHeaderSkeleton } from '@/components/skeletons';
+import { ListSkeleton, PageHeaderSkeleton } from '@/components/layout/skeletons';
 export default function Loading() {
   return (
     <div className="space-y-6">

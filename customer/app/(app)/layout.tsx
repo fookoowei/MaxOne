@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/auth/session';
 import { Toaster } from '@/components/ui/sonner';
-import { NotificationToaster } from '@/components/notification-toaster';
+import { NotificationToaster } from '@/components/layout/notification-toaster';
 import { AppShell } from '@/components/layout/app-shell';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {

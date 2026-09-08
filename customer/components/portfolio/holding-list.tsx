@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { formatPrice } from '@/lib/format/price';
-import { RemoveHoldingButton } from '@/components/remove-holding-button';
+import { RemoveHoldingButton } from '@/components/portfolio/remove-holding-button';
 import type { HoldingRow } from '@/lib/portfolio/compute';
 
 export function HoldingList({ rows }: { rows: HoldingRow[] }) {

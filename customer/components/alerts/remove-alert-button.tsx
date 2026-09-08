@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiRequest, toastApiError } from '@/lib/api/client';
-import { ConfirmDialog } from '@/components/confirm-dialog';
+import { ConfirmDialog } from '@/components/layout/confirm-dialog';
 
 export function RemoveAlertButton({ id, symbol }: { id: string; symbol?: string }) {
   const router = useRouter();

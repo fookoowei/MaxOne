@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { serverApi } from '@/lib/api/server';
 import { computeAlerts, type Alert, type PriceInfo } from '@/lib/alerts/compute';
-import { AlertList } from '@/components/alert-list';
-import { PushToggle } from '@/components/push-toggle';
+import { AlertList } from '@/components/alerts/alert-list';
+import { PushToggle } from '@/components/alerts/push-toggle';
 
 export default async function AlertsPage() {
   const [alertsRes, marketsRes] = await Promise.all([serverApi('/alerts'), serverApi('/markets')]);

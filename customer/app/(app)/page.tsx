@@ -5,7 +5,7 @@ import { serverApi } from '@/lib/api/server';
 import { getSessionUser } from '@/lib/auth/session';
 import { formatMoney } from '@/lib/format/money';
 import { WithAside } from '@/components/layout/with-aside';
-import { LiveBalance } from '@/components/live-balance';
+import { LiveBalance } from '@/components/wallet/live-balance';
 import { QuickActions } from '@/components/wallet/quick-actions';
 import { ActivityCard, type Transaction } from '@/components/wallet/activity-card';
 import { WatchingCard } from '@/components/wallet/watching-card';

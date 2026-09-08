@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MarketsView } from './markets-view';
-import type { MarketAsset } from '@/components/market-list';
+import type { MarketAsset } from '@/components/markets/market-list';
 
 const handlers: Record<string, (p: unknown) => void> = {};
 const socket = { on: (ev: string, cb: (p: unknown) => void) => { handlers[ev] = cb; }, disconnect: vi.fn() };

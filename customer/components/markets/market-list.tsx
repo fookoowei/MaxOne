@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { formatPrice } from '@/lib/format/price';
-import { WatchButton } from '@/components/watch-button';
+import { WatchButton } from '@/components/markets/watch-button';
 import { cn } from '@/lib/utils';
 
 export interface MarketAsset {

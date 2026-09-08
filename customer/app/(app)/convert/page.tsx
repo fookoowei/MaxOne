@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { serverApi } from '@/lib/api/server';
-import { ConvertForm } from '@/components/convert-form';
-import type { WalletSummary } from '@/components/wallet-list';
+import { ConvertForm } from '@/components/wallet/convert-form';
+import type { WalletSummary } from '@/components/wallet/wallet-list';
 
 export default async function ConvertPage() {
   const res = await serverApi('/wallets');

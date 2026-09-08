@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { serverApi } from '@/lib/api/server';
-import { PageHeader } from '@/components/page-header';
+import { PageHeader } from '@/components/layout/page-header';
 import { SendMoneyWizard } from '@/components/pay/send-money-wizard';
 
 interface Wallet { id: string; currency: string; balance: number }

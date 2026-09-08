@@ -1,5 +1,5 @@
 import { formatPrice } from '@/lib/format/price';
-import { RemoveAlertButton } from '@/components/remove-alert-button';
+import { RemoveAlertButton } from '@/components/alerts/remove-alert-button';
 import type { AlertRow } from '@/lib/alerts/compute';
 
 export function AlertList({ rows }: { rows: AlertRow[] }) {

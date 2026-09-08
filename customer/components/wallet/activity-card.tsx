@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { ArrowDownToLine, ArrowUpDown, ArrowUpFromLine, History, Send } from 'lucide-react';
 import { MoneyText } from '@/components/money-text';
-import { EmptyState } from '@/components/empty-state';
-import { RelativeTime } from '@/components/relative-time';
+import { EmptyState } from '@/components/layout/empty-state';
+import { RelativeTime } from '@/components/layout/relative-time';
 import { cn } from '@/lib/utils';
 
 export interface Transaction {

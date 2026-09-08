@@ -5,7 +5,7 @@ import type { Socket } from 'socket.io-client';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { MarketList, type MarketAsset } from '@/components/market-list';
+import { MarketList, type MarketAsset } from '@/components/markets/market-list';
 import { connectSocket } from '@/lib/realtime/socket';
 import { mergeLivePrices } from '@/lib/markets/live-prices';
 
