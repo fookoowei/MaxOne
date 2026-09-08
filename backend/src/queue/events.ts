@@ -33,6 +33,7 @@ export interface NotificationPushEvent {
   occurredAt: string; // ISO
   userId: string;
   payload: NotificationPayload;
+  requestId?: string; // M17: the HTTP request that caused it (absent for tick-driven events)
 }
 
 /** Parse + validate a raw message body. Throws on anything the consumer must not act on. */

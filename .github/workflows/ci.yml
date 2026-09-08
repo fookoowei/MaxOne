@@ -14,6 +14,48 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    # M17: the integration lane runs here too, against throwaway service containers. On a GitHub
+    # runner these ARE reachable on localhost — the one place that hostname is legitimate.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: wallet
+          POSTGRES_PASSWORD: wallet
+          POSTGRES_DB: wallet_db_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U wallet -d wallet_db_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+      rabbitmq:
+        image: rabbitmq:4-management
+        ports: ["5672:5672", "15672:15672"]
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://wallet:wallet@localhost:5432/wallet_db_test
+      TEST_REDIS_URL: redis://localhost:6379/1
+      TEST_RABBITMQ_URL: amqp://guest:guest@localhost:5672/test
+      RABBITMQ_MANAGEMENT_URL: http://localhost:15672
+      # Required by the app at boot (no fallbacks since M17); the lane overrides the URLs above.
+      REDIS_URL: redis://localhost:6379/1
+      RABBITMQ_URL: amqp://guest:guest@localhost:5672/test
+      JWT_ACCESS_SECRET: ci-access
+      JWT_REFRESH_SECRET: ci-refresh
+      WEBAUTHN_RP_ID: localhost
+      WEBAUTHN_RP_NAME: MaxOne
+      WEBAUTHN_ORIGIN: http://localhost:3300
+      # Throwaway VAPID keypair (web-push validates key lengths at boot; never used to send).
+      VAPID_PUBLIC_KEY: BAa_qm1XlRXo9nEvO_WWLYfozY2PoEgrtpGRN6GNIHDOaU_-nha0RnhguLgnHcY-y-gX0jtmd_X0P0R4BtpZ9fU
+      VAPID_PRIVATE_KEY: -s2SiGW6y0QHWj_8yLx4OskqtyBktSfI80zXWAe8gA0
+      VAPID_SUBJECT: mailto:ci@example.com
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,6 +67,7 @@ jobs:
       - run: npx prisma generate
       - run: npx tsc --noEmit
       - run: npm test
+      - run: npm run test:integration:ci
 
   frontend:
     name: Frontend — type-check + tests
@@ -78,5 +121,10 @@ jobs:
       - name: Trigger Vercel deploy (frontend)
         env:
           HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        if: env.HOOK != ''
+        run: curl -fsSL -X POST "$HOOK"
+      - name: Trigger Vercel deploy (customer app)
+        env:
+          HOOK: ${{ secrets.VERCEL_CUSTOMER_DEPLOY_HOOK }}
         if: env.HOOK != ''
         run: curl -fsSL -X POST "$HOOK"

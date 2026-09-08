@@ -1,12 +1,17 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { Logger as PinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { auditContextMiddleware } from './audit/audit.middleware';
+import { initSentry } from './observability/sentry';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  initSentry('api'); // M17: before anything can throw; no-op without SENTRY_DSN
+  // bufferLogs: hold boot logs until pino is attached, so even startup lines are structured.
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(PinoLogger));
   // Security headers on every response (HSTS, nosniff, frame options, …). CSP is relaxed to allow
   // inline scripts/styles so the Swagger UI at /api-docs renders — this API serves only JSON
   // otherwise, so there's no user-facing HTML that a strict CSP would be protecting.

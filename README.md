@@ -9,6 +9,12 @@ Backend-for-Frontend (BFF) auth tier. A customer-facing app is planned (one API,
 - `frontend/` — Next.js (App Router) back-office console; the Next server holds httpOnly cookies
   and proxies to the API (tokens never reach the browser).
 
+## Deploying
+
+See [DEPLOY.md](DEPLOY.md): Render (API + worker via `render.yaml`), Neon, Upstash Redis, CloudAMQP,
+two Vercel projects, the env-var matrix, and the smoke checklist. Nothing in production code falls
+back to localhost — every URL is an env var.
+
 ## Run the backend with Docker
 
 The backend is containerized; `docker compose up` runs the API, the **worker**, Postgres, Redis and

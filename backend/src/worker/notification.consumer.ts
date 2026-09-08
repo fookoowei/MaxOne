@@ -11,6 +11,7 @@ import {
   type NotificationPushEvent,
 } from '../queue/events';
 import type { AmqpMessage } from '../queue/amqp.types';
+import { captureException } from '../observability/sentry';
 
 const PREFETCH = 10; // max unacked messages held by this worker: a slow push can't hoard the queue
 const DRAIN_POLL_MS = 50;
@@ -62,13 +63,14 @@ export class NotificationConsumer {
         event = parseNotificationPushEvent(msg.content.toString());
       } catch (e) {
         this.log.warn(`dead-lettering malformed message: ${reason(e)}`);
+        captureException(e, { stage: 'parse' });
         this.queue.nack(msg, false);
         return;
       }
 
       const doneKey = `mq:done:${event.id}`;
       if (await this.cache.get(doneKey)) {
-        this.log.log(`duplicate, skipping id=${event.id}`);
+        this.log.log(`duplicate, skipping id=${event.id} req=${event.requestId ?? '-'}`);
         this.queue.ack(msg);
         return;
       }
@@ -82,7 +84,7 @@ export class NotificationConsumer {
 
       await this.cache.set(doneKey, 1, DONE_TTL_S); // mark AFTER success: a crash mid-send → retry, not skip
       this.queue.ack(msg);
-      this.log.log(`push sent id=${event.id} user=${event.userId}`);
+      this.log.log(`push sent id=${event.id} user=${event.userId} req=${event.requestId ?? '-'}`);
     } finally {
       this.inFlight -= 1;
     }
@@ -92,6 +94,7 @@ export class NotificationConsumer {
     const attempt = Number(msg.properties.headers?.[HEADER_RETRY_COUNT] ?? 0);
     if (attempt >= MAX_RETRIES) {
       this.log.warn(`dead-lettering after ${attempt} retries id=${event.id} reason=${why}`);
+      captureException(new Error(`push dead-lettered after ${attempt} retries: ${why}`), { eventId: event.id, userId: event.userId, requestId: event.requestId });
       this.queue.nack(msg, false);
       return;
     }

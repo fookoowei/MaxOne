@@ -4,6 +4,7 @@ import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { REDIS_CLIENT } from '../../src/cache/cache.service';
 import { QueueService } from '../../src/queue/queue.service';
+import { auditContextMiddleware } from '../../src/audit/audit.middleware';
 
 /** The two Redis commands the harness needs (ioredis has them; keeps the type narrow). */
 export interface TestRedis {
@@ -46,6 +47,7 @@ export async function bootApp(): Promise<{
   }
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const app = moduleRef.createNestApplication();
+  app.use(auditContextMiddleware); // same edge as main.ts: audit context + request id (M17)
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   await app.init();
   return {

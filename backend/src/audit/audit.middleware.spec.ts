@@ -1,23 +1,24 @@
 import { auditContextMiddleware } from './audit.middleware';
 import { getAuditContext } from './audit.context';
 
-// A minimal stand-in for the parts of the Express Request we read.
+// A minimal stand-in for the parts of the Express Request/Response we touch.
 const fakeReq = (ip: string | undefined, agent: string | undefined) =>
-  ({ ip, get: () => agent }) as any;
+  ({ ip, get: (h: string) => (h === 'user-agent' ? agent : undefined) }) as any;
+const fakeRes = () => ({ setHeader: jest.fn() }) as any;
 
 describe('auditContextMiddleware', () => {
   it('makes the request ip and user-agent visible to downstream callers', () => {
     let seen: any;
-    auditContextMiddleware(fakeReq('203.0.113.7', 'jest-agent'), {} as any, () => {
+    auditContextMiddleware(fakeReq('203.0.113.7', 'jest-agent'), fakeRes(), () => {
       seen = getAuditContext();
     });
-    expect(seen).toEqual({ ipAddress: '203.0.113.7', userAgent: 'jest-agent' });
+    expect(seen).toEqual({ requestId: expect.any(String), ipAddress: '203.0.113.7', userAgent: 'jest-agent' });
   });
 
   it('keeps the context across an async hop — the store follows the call chain', async () => {
     let seen: any;
     await new Promise<void>((resolve) => {
-      auditContextMiddleware(fakeReq('203.0.113.7', 'jest-agent'), {} as any, async () => {
+      auditContextMiddleware(fakeReq('203.0.113.7', 'jest-agent'), fakeRes(), async () => {
         await Promise.resolve(); // the service layer is async; the store must survive this
         seen = getAuditContext();
         resolve();
@@ -28,6 +29,6 @@ describe('auditContextMiddleware', () => {
 
   it('yields nulls outside any request rather than throwing', () => {
     // A job, a script, or a unit test has no HTTP context. Audit must still work.
-    expect(getAuditContext()).toEqual({ ipAddress: null, userAgent: null });
+    expect(getAuditContext()).toEqual({ requestId: '', ipAddress: null, userAgent: null });
   });
 });

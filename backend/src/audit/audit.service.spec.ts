@@ -46,7 +46,7 @@ describe('AuditService.log', () => {
     const tx = { auditLog: { create: jest.fn() } };
     const service = await buildService({});
 
-    await auditContext.run({ ipAddress: '203.0.113.7', userAgent: 'jest-agent' }, () =>
+    await auditContext.run({ requestId: 'r1', ipAddress: '203.0.113.7', userAgent: 'jest-agent' }, () =>
       service.log(tx as any, entry),
     );
 

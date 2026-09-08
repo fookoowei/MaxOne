@@ -34,6 +34,7 @@ export interface AmqpChannelLike {
   nack(msg: AmqpMessage, allUpTo: boolean, requeue: boolean): void;
   get(queue: string, opts: { noAck: boolean }): Promise<AmqpMessage | false>;
   purgeQueue(queue: string): Promise<unknown>;
+  checkQueue(queue: string): Promise<{ messageCount: number }>;
   close(): Promise<void>;
   on(event: 'error' | 'close', listener: (...args: unknown[]) => void): unknown;
 }

@@ -9,6 +9,7 @@ export interface RedisLike {
   del(key: string): Promise<unknown>;
   connect?(): Promise<void>;
   quit?(): Promise<unknown>;
+  ping?(): Promise<string>;
 }
 
 /** Only store values worth replaying: no nulls, no empty lists (a provider outage must not get pinned). */
@@ -34,6 +35,15 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   // Close the socket so a test app (and a graceful shutdown) doesn't hang on an open handle.
   async onModuleDestroy(): Promise<void> {
     await this.redis.quit?.().catch(() => undefined);
+  }
+
+  /** M17 health: true iff Redis answers PONG. Never throws. */
+  async ping(): Promise<boolean> {
+    try {
+      return (await this.redis.ping?.()) === 'PONG';
+    } catch {
+      return false;
+    }
   }
 
   async get<T>(key: string): Promise<T | null> {

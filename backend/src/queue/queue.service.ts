@@ -126,6 +126,17 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     await this.open();
   }
 
+  /** M17 health/metrics: messages sitting in a queue, or null when disconnected. Never throws. */
+  async depth(queue: string): Promise<number | null> {
+    if (!this.channel) return null;
+    try {
+      return (await this.channel.checkQueue(queue)).messageCount;
+    } catch (e) {
+      this.warn(e);
+      return null;
+    }
+  }
+
   /** Test support: pull ONE message from any queue (ack'd immediately), or false if empty. */
   async peek(queue: string): Promise<AmqpMessage | false> {
     if (!this.channel) return false;
@@ -139,7 +150,8 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
 
   private async open(): Promise<void> {
     try {
-      const url = this.config.get<string>('RABBITMQ_URL') ?? 'amqp://guest:guest@localhost:5672/';
+      // M17: no localhost fallback — RABBITMQ_URL is required (dev in .env; prod = CloudAMQP amqps://).
+      const url = this.config.getOrThrow<string>('RABBITMQ_URL');
       const conn = await this.connect(url);
       const channel = await conn.createChannel();
       // Idempotent: asserting existing objects with the SAME options is a no-op on the broker.

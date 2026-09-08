@@ -1,5 +1,6 @@
 import { NotificationService } from './notification.service';
 import { ROUTING_KEYS } from '../queue/events';
+import { auditContext } from '../audit/audit.context';
 
 describe('NotificationService (M16d: enqueue in-tx / dispatch after commit)', () => {
   const payload = { title: 'Deposit approved', body: '$100.00 added to your wallet', tag: 'x', url: '/' };
@@ -24,6 +25,17 @@ describe('NotificationService (M16d: enqueue in-tx / dispatch after commit)', ()
     expect(outbox.enqueue).toHaveBeenCalledWith(tx, ROUTING_KEYS.notificationPush, event);
     expect(realtime.emitNotification).not.toHaveBeenCalled();
     expect(outbox.publishNow).not.toHaveBeenCalled();
+  });
+
+  it('enqueue: stamps the current request id onto the event (M17 correlation); absent outside a request', async () => {
+    const { svc } = build();
+    const inside = await auditContext.run(
+      { requestId: 'req-42', ipAddress: null, userAgent: null },
+      () => svc.enqueue({} as any, 'u1', payload),
+    );
+    expect(inside.requestId).toBe('req-42');
+    const outside = await svc.enqueue({} as any, 'u1', payload);
+    expect(outside.requestId).toBeUndefined();
   });
 
   it('dispatch: socket toast + publishNow with the event as the outbox row', async () => {

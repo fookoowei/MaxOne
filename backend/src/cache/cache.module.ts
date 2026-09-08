@@ -15,7 +15,8 @@ import { CacheService, REDIS_CLIENT } from './cache.service';
       provide: REDIS_CLIENT,
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const client = new Redis(config.get<string>('REDIS_URL') ?? 'redis://localhost:6379/0', {
+        // M17: no localhost fallback — REDIS_URL is required (dev value lives in .env; prod = Upstash rediss://).
+        const client = new Redis(config.getOrThrow<string>('REDIS_URL'), {
           lazyConnect: true, // CacheService.onModuleInit connects (and absorbs the failure)
           enableOfflineQueue: false, // while disconnected, commands fail NOW instead of queueing
           maxRetriesPerRequest: 1,

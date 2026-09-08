@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { RealtimeService, type NotificationPayload } from './realtime.service';
 import { OutboxService } from '../outbox/outbox.service';
 import { ROUTING_KEYS, type NotificationPushEvent } from '../queue/events';
+import { getAuditContext } from '../audit/audit.context';
 
 /**
  * Two halves that mirror before-commit / after-commit (M16d):
@@ -30,6 +31,7 @@ export class NotificationService {
       occurredAt: new Date().toISOString(),
       userId,
       payload,
+      ...(getAuditContext().requestId ? { requestId: getAuditContext().requestId } : {}),
     };
     await this.outbox.enqueue(tx, ROUTING_KEYS.notificationPush, event);
     return event;
