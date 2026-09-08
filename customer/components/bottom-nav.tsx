@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Send, TrendingUp, User } from 'lucide-react';
+import { LinkPending } from '@/components/link-pending';
 
 const tabs = [
   { label: 'Home', icon: Home, href: '/' },
@@ -23,7 +24,10 @@ export function BottomNav() {
         }`;
         return href ? (
           <Link key={label} href={href} aria-current={active ? 'page' : undefined} className={cls}>
-            <Icon className="size-5" aria-hidden />
+            <span className="relative">
+              <Icon className="size-5" aria-hidden />
+              <LinkPending className="absolute -top-1 -right-2 text-primary" />
+            </span>
             {label}
           </Link>
         ) : (
