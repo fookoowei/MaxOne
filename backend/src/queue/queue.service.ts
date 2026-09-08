@@ -29,6 +29,7 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
   private timer?: NodeJS.Timeout;
   private lastWarned?: string;
   private readonly closeListeners: (() => void)[] = [];
+  private readonly openListeners: (() => void)[] = [];
 
   constructor(
     @Inject(AMQP_CONNECT) private readonly connect: AmqpConnect,
@@ -56,6 +57,11 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
   /** Registers a listener for "the broker connection went away". The worker exits on it. */
   onClose(listener: () => void): void {
     this.closeListeners.push(listener);
+  }
+
+  /** Registers a listener for "connected (or reconnected) and topology asserted". Fired on every open. */
+  onOpen(listener: () => void): void {
+    this.openListeners.push(listener);
   }
 
   /** Fire-and-forget. `false` means "not published" — callers never see a throw. */
@@ -195,6 +201,7 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
       this.attempt = 0;
       this.lastWarned = undefined;
       this.log.log(`Connected to RabbitMQ — exchange ${EXCHANGES.events}, queue ${QUEUES.notificationsPush}`);
+      this.openListeners.forEach((l) => l());
     } catch (e) {
       this.warn(e);
       this.scheduleReconnect();

@@ -47,6 +47,8 @@ cd backend && npm run prisma:seed
   human; redeliveries are deduped on the event id via Redis). Events are written to an **outbox
   table in the same DB transaction** as the ledger row and relayed to the broker, so a broker
   outage delays a notification instead of losing it.
+  In production on the free tier the consumer runs inside the API process (`CONSUMER_IN_PROCESS=true`);
+  locally and in compose it is a separate `worker` process.
 
 **Useful commands:**
 ```bash
