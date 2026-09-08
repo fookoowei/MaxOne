@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 
 export function AddHoldingForm({ assets }: { assets: { symbol: string; name: string }[] }) {
   const router = useRouter();
-  const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -19,7 +18,6 @@ export function AddHoldingForm({ assets }: { assets: { symbol: string; name: str
   } = useForm<HoldingInput>({ resolver: zodResolver(holdingSchema) });
 
   async function onSubmit(values: HoldingInput) {
-    setServerError(null);
     const res = await fetch('/api/portfolio', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -31,7 +29,7 @@ export function AddHoldingForm({ assets }: { assets: { symbol: string; name: str
       }),
     });
     if (!res.ok) {
-      setServerError('Could not add that holding. Please try again.');
+      toast.error('Could not add that holding. Please try again.');
       return;
     }
     router.push('/portfolio');
@@ -63,8 +61,7 @@ export function AddHoldingForm({ assets }: { assets: { symbol: string; name: str
         <Input id="avgCost" inputMode="decimal" placeholder="30000" {...register('avgCost')} />
         {errors.avgCost && <p className="text-sm text-destructive">{errors.avgCost.message}</p>}
       </div>
-      {serverError && <p className="text-sm text-destructive">{serverError}</p>}
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
+      <Button type="submit" className="w-full" pending={isSubmitting}>
         {isSubmitting ? 'Adding…' : 'Add holding'}
       </Button>
     </form>

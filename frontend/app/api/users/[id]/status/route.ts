@@ -1,4 +1,5 @@
 import { serverApiWithRefresh } from '@/lib/api/server';
+import { proxy } from '@/lib/api/proxy';
 
 // BFF: forward a status change to NestJS (user.manage + SoD enforced there), mirror the status.
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -9,6 +10,5 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ status: b.status }),
   });
-  if (!res.ok) return new Response(null, { status: res.status });
-  return Response.json(await res.json());
+  return proxy(res); // M18a: forward the API's status + error envelope
 }

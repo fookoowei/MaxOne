@@ -172,10 +172,10 @@ export function TransferForm({
               onChange={(e) => setCode(e.target.value)}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={busy || !code}>
+          <Button type="submit" className="w-full" pending={busy} disabled={!code}>
             {busy ? 'Verifying…' : 'Verify & send'}
           </Button>
-          <Button type="button" variant="outline" className="w-full" onClick={passkeyStepUp} disabled={busy}>
+          <Button type="button" variant="outline" className="w-full" onClick={passkeyStepUp} pending={busy}>
             Use passkey instead
           </Button>
         </form>
@@ -197,7 +197,7 @@ export function TransferForm({
             <Label htmlFor="note">Note (optional)</Label>
             <Input id="note" value={note} onChange={(e) => setNote(e.target.value)} />
           </div>
-          <Button type="button" className="w-full" onClick={() => send()} disabled={busy}>
+          <Button type="button" className="w-full" onClick={() => send()} pending={busy}>
             {busy ? 'Sending…' : 'Send'}
           </Button>
         </>

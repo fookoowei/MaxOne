@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 
 export function SignupForm() {
   const router = useRouter();
-  const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -19,7 +18,6 @@ export function SignupForm() {
   } = useForm<SignupInput>({ resolver: zodResolver(signupSchema) });
 
   async function onSubmit(values: SignupInput) {
-    setServerError(null);
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -27,7 +25,7 @@ export function SignupForm() {
     });
     if (!res.ok) {
       const { error } = await res.json().catch(() => ({ error: 'Something went wrong.' }));
-      setServerError(error);
+      toast.error(error);
       return;
     }
     router.push('/');
@@ -60,8 +58,7 @@ export function SignupForm() {
         <Input id="password" type="password" {...register('password')} />
         {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
       </div>
-      {serverError && <p className="text-sm text-destructive">{serverError}</p>}
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
+      <Button type="submit" className="w-full" pending={isSubmitting}>
         {isSubmitting ? 'Creating…' : 'Create account'}
       </Button>
     </form>

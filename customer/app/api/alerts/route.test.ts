@@ -18,7 +18,7 @@ describe('POST /api/alerts', () => {
       body: JSON.stringify({ symbol: 'BTC', type: 'crypto', targetPrice: 80000, direction: 'above' }),
     });
     const res = await POST(req);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201); // M18a: proxy() forwards the API's real status
     const sent = JSON.parse((serverApiWithRefresh.mock.calls[0][1] as RequestInit).body as string);
     expect(sent).toEqual({ symbol: 'BTC', type: 'crypto', targetPrice: 80000, direction: 'above' });
   });

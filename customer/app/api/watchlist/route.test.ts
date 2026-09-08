@@ -19,7 +19,7 @@ describe('POST /api/watchlist', () => {
     });
     const res = await POST(req);
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201); // M18a: proxy() forwards the API's real status
     expect(serverApiWithRefresh).toHaveBeenCalledWith('/watchlist', expect.objectContaining({ method: 'POST' }));
     const sent = JSON.parse((serverApiWithRefresh.mock.calls[0][1] as RequestInit).body as string);
     expect(sent).toEqual({ symbol: 'BTC', type: 'crypto' });

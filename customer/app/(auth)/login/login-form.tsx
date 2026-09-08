@@ -1,5 +1,6 @@
 'use client';
 
+import { toast } from 'sonner';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,7 +13,6 @@ import { Label } from '@/components/ui/label';
 
 export function LoginForm() {
   const router = useRouter();
-  const [serverError, setServerError] = useState<string | null>(null);
   // 2FA: when the password step returns a challenge, we swap to the code step.
   const [challenge, setChallenge] = useState<string | null>(null);
   const [code, setCode] = useState('');
@@ -25,7 +25,6 @@ export function LoginForm() {
   } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
 
   async function onSubmit(values: LoginInput) {
-    setServerError(null);
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -33,7 +32,7 @@ export function LoginForm() {
     });
     if (!res.ok) {
       const { error } = await res.json().catch(() => ({ error: 'Something went wrong.' }));
-      setServerError(error);
+      toast.error(error);
       return;
     }
     const data = await res.json();
@@ -46,7 +45,6 @@ export function LoginForm() {
 
   async function onSubmitCode(e: React.FormEvent) {
     e.preventDefault();
-    setServerError(null);
     setVerifying(true);
     const res = await fetch('/api/auth/login/2fa', {
       method: 'POST',
@@ -56,7 +54,7 @@ export function LoginForm() {
     setVerifying(false);
     if (!res.ok) {
       const { error } = await res.json().catch(() => ({ error: 'Invalid code.' }));
-      setServerError(error);
+      toast.error(error);
       return;
     }
     router.push('/');
@@ -64,14 +62,13 @@ export function LoginForm() {
 
   // Usernameless passkey sign-in — no password, and a passkey needs no TOTP step.
   async function passkeyLogin() {
-    setServerError(null);
     setPkBusy(true);
     try {
       const ok = await loginWithPasskey();
       if (ok) router.push('/');
-      else setServerError('Passkey sign-in failed. Try your password instead.');
+      else toast.error('Passkey sign-in failed. Try your password instead.');
     } catch {
-      setServerError('Passkey sign-in was cancelled.');
+      toast.error('Passkey sign-in was cancelled.');
     } finally {
       setPkBusy(false);
     }
@@ -94,7 +91,6 @@ export function LoginForm() {
             From your authenticator app — or use one of your recovery codes.
           </p>
         </div>
-        {serverError && <p className="text-sm text-destructive">{serverError}</p>}
         <Button type="submit" className="w-full" disabled={verifying || !code}>
           {verifying ? 'Verifying…' : 'Verify'}
         </Button>
@@ -114,8 +110,7 @@ export function LoginForm() {
         <Input id="password" type="password" {...register('password')} />
         {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
       </div>
-      {serverError && <p className="text-sm text-destructive">{serverError}</p>}
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
+      <Button type="submit" className="w-full" pending={isSubmitting}>
         {isSubmitting ? 'Logging in…' : 'Log in'}
       </Button>
       <Button type="button" variant="outline" className="w-full" onClick={passkeyLogin} disabled={pkBusy}>

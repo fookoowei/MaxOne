@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const toastError = vi.fn();
+vi.mock('sonner', () => ({ toast: { error: (...a: unknown[]) => toastError(...a), success: vi.fn() } }));
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AmountForm } from './amount-form';
@@ -46,7 +49,7 @@ describe('AmountForm', () => {
     await userEvent.type(screen.getByLabelText(/amount/i), '9999');
     await userEvent.click(screen.getByRole('button', { name: /request withdrawal/i }));
 
-    expect(await screen.findByText(/insufficient funds/i)).toBeInTheDocument();
+    await vi.waitFor(() => expect(toastError).toHaveBeenCalledWith(expect.stringMatching(/insufficient funds/i)));
     expect(push).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,5 @@
 import { serverApiWithRefresh } from '@/lib/api/server';
+import { proxy } from '@/lib/api/proxy';
 
 // BFF: create a wallet in a new currency. Auto-names it "<CODE> wallet".
 export async function POST(request: Request) {
@@ -9,6 +10,5 @@ export async function POST(request: Request) {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ name: `${currency} wallet`, currency }),
   });
-  if (!res.ok) return new Response(null, { status: res.status });
-  return Response.json(await res.json());
+  return proxy(res); // M18a: forward the API's status + error envelope
 }

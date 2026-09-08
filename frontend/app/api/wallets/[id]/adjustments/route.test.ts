@@ -26,7 +26,7 @@ describe('POST /api/wallets/[id]/adjustments', () => {
 
     const res = await POST(body({ direction: 'credit', amount: 5000, note: 'bonus' }), ctx('w1'));
 
-    expect(res.status).toBe(200); // Response.json() normalizes to 200
+    expect(res.status).toBe(201); // M18a: proxy() forwards the API's real status
     expect(await res.json()).toEqual({ id: 't1' });
     expect(serverApiWithRefresh).toHaveBeenCalledWith(
       '/wallets/w1/adjustments',

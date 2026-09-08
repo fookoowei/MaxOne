@@ -1,4 +1,5 @@
 import { serverApiWithRefresh } from '@/lib/api/server';
+import { proxy } from '@/lib/api/proxy';
 
 // BFF: forward a withdrawal REQUEST to NestJS (creates a pending transaction there,
 // awaiting staff approval; the backend 400s if the balance is insufficient). Mirror
@@ -15,6 +16,5 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     },
     body: JSON.stringify({ amount: b.amount, note: b.note }),
   });
-  if (!res.ok) return new Response(null, { status: res.status });
-  return Response.json(await res.json());
+  return proxy(res); // M18a: forward the API's status + error envelope
 }
