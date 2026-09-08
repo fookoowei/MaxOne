@@ -21,7 +21,7 @@ export default async function SendPage({
   if (!primary) redirect('/');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-[720px]">
       <header className="space-y-1">
         <Link href="/pay" className="text-sm text-muted-foreground">
           ← Back

@@ -31,7 +31,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-[720px]">
       <header>
         <p className="text-sm text-muted-foreground">Welcome back</p>
         <h1 className="text-lg font-semibold">

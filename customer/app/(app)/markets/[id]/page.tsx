@@ -22,7 +22,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
   const chart = chartRes.ok ? ((await chartRes.json()) as ChartData) : { points: [], labels: [] };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-[720px]">
       <Link href="/markets" className="text-sm text-muted-foreground">
         ← Markets
       </Link>

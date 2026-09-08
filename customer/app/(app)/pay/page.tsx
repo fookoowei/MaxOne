@@ -9,7 +9,7 @@ const actions = [
 
 export default function PayPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-[720px]">
       <h1 className="text-xl font-semibold">Pay</h1>
       <div className="grid gap-3">
         {actions.map(({ href, label, icon: Icon }) => (

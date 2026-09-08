@@ -17,7 +17,7 @@ export default async function MarketsPage() {
   const followedSymbols = watch.map((w) => w.symbol);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-[720px]">
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">Markets</h1>

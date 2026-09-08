@@ -13,7 +13,7 @@ export default async function NewWalletPage() {
   const wallets = (await res.json()) as Wallet[];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-[720px]">
       <header className="space-y-1">
         <Link href="/" className="text-sm text-muted-foreground">
           ← Back

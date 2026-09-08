@@ -10,7 +10,7 @@ export default async function ReceivePage() {
   const handle = session.handle ?? session.email.split('@')[0];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-[720px]">
       <header>
         <Link href="/pay" className="text-sm text-muted-foreground">
           ← Back

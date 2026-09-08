@@ -1,14 +1,18 @@
+import { redirect } from 'next/navigation';
+import { getSessionUser } from '@/lib/auth/session';
 import { Toaster } from '@/components/ui/sonner';
-import { BottomNav } from '@/components/bottom-nav';
 import { NotificationToaster } from '@/components/notification-toaster';
+import { AppShell } from '@/components/layout/app-shell';
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const session = await getSessionUser();
+  if (!session) redirect('/login');
+  const name = [session.firstName, session.lastName].filter(Boolean).join(' ') || session.email;
   return (
-    <div className="mx-auto min-h-dvh w-full max-w-[420px] px-5 pb-24 pt-8">
+    <AppShell user={{ name, handle: session.handle }}>
       {children}
-      <BottomNav />
       <Toaster position="top-center" richColors closeButton />
       <NotificationToaster />
-    </div>
+    </AppShell>
   );
 }

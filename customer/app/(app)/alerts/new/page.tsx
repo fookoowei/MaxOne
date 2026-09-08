@@ -14,7 +14,7 @@ export default async function NewAlertPage() {
   const assets = res.ok ? ((await res.json()) as Asset[]) : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-[720px]">
       <header className="space-y-1">
         <Link href="/alerts" className="text-sm text-muted-foreground">
           ← Back

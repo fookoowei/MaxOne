@@ -14,7 +14,7 @@ export default async function AlertsPage() {
   const rows = computeAlerts(alerts, prices);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:max-w-[720px]">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Price alerts</h1>
         <Link href="/alerts/new" className="text-sm text-primary underline">
