@@ -1,10 +1,25 @@
+import Link from 'next/link';
+import { BellRing } from 'lucide-react';
 import { formatPrice } from '@/lib/format/price';
+import { buttonVariants } from '@/components/ui/button';
+import { EmptyState } from '@/components/layout/empty-state';
 import { RemoveAlertButton } from '@/components/alerts/remove-alert-button';
 import type { AlertRow } from '@/lib/alerts/compute';
 
 export function AlertList({ rows }: { rows: AlertRow[] }) {
   if (rows.length === 0) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">Set your first alert.</p>;
+    return (
+      <EmptyState
+        icon={BellRing}
+        title="No alerts yet"
+        description="Pick an asset and a price, and we'll watch it for you."
+        action={
+          <Link href="/alerts/new" className={buttonVariants({ size: 'xl' })}>
+            Set an alert
+          </Link>
+        }
+      />
+    );
   }
   return (
     <ul className="divide-y divide-border">

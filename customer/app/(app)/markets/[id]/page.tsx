@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
 import { serverApi } from '@/lib/api/server';
 import { AssetHeader, type AssetDetail } from '@/components/markets/asset-header';
 import { PriceChart } from '@/components/markets/price-chart';
@@ -23,8 +24,9 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
 
   return (
     <div className="space-y-6 lg:max-w-[720px]">
-      <Link href="/markets" className="text-sm text-muted-foreground">
-        ← Markets
+      <Link href="/markets" className="-ml-1 inline-flex min-h-11 items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <ChevronLeft className="size-[18px]" aria-hidden />
+        Markets
       </Link>
       <AssetHeader asset={asset} />
       <PriceChart id={id} initial={chart} />
