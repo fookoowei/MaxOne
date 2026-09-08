@@ -14,6 +14,6 @@ describe('AlertList', () => {
     render(<AlertList rows={rows} />);
     expect(screen.getByText(/above \$70,000/i)).toBeInTheDocument();
     expect(screen.getByText(/reached/i)).toBeInTheDocument();
-    expect(screen.getByText(/pending/i)).toBeInTheDocument();
+    expect(screen.getByText(/watching/i)).toBeInTheDocument();
   });
 });

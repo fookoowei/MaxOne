@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 import { PasskeyManager } from './passkey-manager';
 
 const registerPasskey = vi.fn();
@@ -29,7 +30,9 @@ describe('PasskeyManager', () => {
   it('removes a passkey', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue(new Response(null, { status: 204 }));
     render(<PasskeyManager initial={[{ id: 'pk1', label: 'Old phone', deviceType: null, createdAt: '2026-09-04T00:00:00Z' }]} />);
-    await userEvent.click(screen.getByRole('button', { name: /remove/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^remove$/i }));
+    expect(await screen.findByRole('alertdialog')).toHaveTextContent(/remove passkey/i);
+    await userEvent.click(screen.getByRole('button', { name: /remove passkey/i }));
     expect(await screen.findByText(/no passkeys yet/i)).toBeInTheDocument();
   });
 });

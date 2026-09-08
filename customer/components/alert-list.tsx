@@ -18,14 +18,10 @@ export function AlertList({ rows }: { rows: AlertRow[] }) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs ${
-                r.triggeredAt ? 'bg-emerald-100 text-emerald-700' : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              {r.triggeredAt ? '🔔 Reached' : 'Pending'}
+            <span className={`inline-flex h-5 items-center rounded-full px-2 text-xs font-medium ${r.triggeredAt ? 'bg-status-approved/12 text-status-approved' : 'bg-muted text-muted-foreground'}`}>
+              {r.triggeredAt ? 'Reached' : 'Watching'}
             </span>
-            <RemoveAlertButton id={r.id} />
+            <RemoveAlertButton id={r.id} symbol={r.symbol} />
           </div>
         </li>
       ))}

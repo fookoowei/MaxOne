@@ -1,6 +1,6 @@
 'use client';
 
-import { toast } from 'sonner';
+import { apiRequest, toastApiError } from '@/lib/api/client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SUPPORTED_CURRENCIES } from '@/lib/currencies';
@@ -16,14 +16,14 @@ export function AddWalletForm({ held }: { held: string[] }) {
 
   async function submit() {
     setBusy(true);
-    const res = await fetch('/api/wallets', {
+    const res = await apiRequest('/api/wallets', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ currency }),
     });
     setBusy(false);
     if (!res.ok) {
-      toast.error('Could not add that wallet. Please try again.');
+      toastApiError(res.error, { HTTP_500: 'Could not add that wallet. Please try again.' });
       return;
     }
     router.push('/');
@@ -50,8 +50,8 @@ export function AddWalletForm({ held }: { held: string[] }) {
           ))}
         </select>
       </div>
-      <Button type="button" className="w-full" onClick={submit} pending={busy}>
-        {busy ? 'Adding…' : 'Add wallet'}
+      <Button type="button" size="xl" className="w-full" onClick={submit} pending={busy}>
+        Add wallet
       </Button>
     </div>
   );

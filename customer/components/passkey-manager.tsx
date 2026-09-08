@@ -5,6 +5,9 @@ import { isPasskeySupported, registerPasskey } from '@/lib/passkeys/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { apiRequest, toastApiError } from '@/lib/api/client';
+import { toast } from 'sonner';
 
 export interface PasskeySummary {
   id: string;
@@ -18,33 +21,39 @@ export function PasskeyManager({ initial }: { initial: PasskeySummary[] }) {
   const [passkeys, setPasskeys] = useState(initial);
   const [label, setLabel] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<PasskeySummary | null>(null);
+  const [removeBusy, setRemoveBusy] = useState(false);
   const [supported, setSupported] = useState<boolean | null>(null); // decided client-side (no SSR mismatch)
 
   useEffect(() => setSupported(isPasskeySupported()), []);
 
   async function add() {
     setBusy(true);
-    setError(null);
     try {
       const ok = await registerPasskey(label || undefined);
       if (!ok) {
-        setError('Could not add the passkey. Try again.');
+        toast.error('Could not add the passkey. Try again.');
         return;
       }
       const r = await fetch('/api/passkeys');
       if (r.ok) setPasskeys((await r.json()) as PasskeySummary[]);
       setLabel('');
     } catch {
-      setError('Passkey setup was cancelled.');
+      toast.error('Passkey setup was cancelled.');
     } finally {
       setBusy(false);
     }
   }
 
-  async function remove(id: string) {
-    const r = await fetch(`/api/passkeys/${id}`, { method: 'DELETE' });
-    if (r.ok) setPasskeys((p) => p.filter((k) => k.id !== id));
+  async function remove() {
+    if (!removing) return;
+    setRemoveBusy(true);
+    const r = await apiRequest(`/api/passkeys/${removing.id}`, { method: 'DELETE' });
+    setRemoveBusy(false);
+    if (!r.ok) return toastApiError(r.error);
+    setPasskeys((p) => p.filter((k) => k.id !== removing.id));
+    setRemoving(null);
+    toast.success('Passkey removed');
   }
 
   return (
@@ -62,7 +71,7 @@ export function PasskeyManager({ initial }: { initial: PasskeySummary[] }) {
                   {new Date(k.createdAt).toLocaleDateString()}
                 </p>
               </div>
-              <Button type="button" variant="ghost" size="sm" onClick={() => remove(k.id)}>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setRemoving(k)}>
                 Remove
               </Button>
             </li>
@@ -83,12 +92,20 @@ export function PasskeyManager({ initial }: { initial: PasskeySummary[] }) {
               onChange={(e) => setLabel(e.target.value)}
             />
           </div>
-          <Button type="button" onClick={add} disabled={busy || supported === null}>
-            {busy ? 'Adding…' : 'Add passkey'}
+          <Button type="button" onClick={add} pending={busy} disabled={supported === null}>
+            Add passkey
           </Button>
         </div>
       )}
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      <ConfirmDialog
+        open={removing !== null}
+        onOpenChange={(o) => !o && setRemoving(null)}
+        title={`Remove passkey “${removing?.label ?? 'Passkey'}”?`}
+        description="You will need your password (and code, if 2FA is on) to sign in from that device next time."
+        actionLabel="Remove passkey"
+        pending={removeBusy}
+        onConfirm={() => void remove()}
+      />
     </div>
   );
 }

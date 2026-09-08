@@ -1,6 +1,6 @@
 'use client';
 
-import { toast } from 'sonner';
+import { apiRequest, toastApiError } from '@/lib/api/client';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -18,7 +18,7 @@ export function AddHoldingForm({ assets }: { assets: { symbol: string; name: str
   } = useForm<HoldingInput>({ resolver: zodResolver(holdingSchema) });
 
   async function onSubmit(values: HoldingInput) {
-    const res = await fetch('/api/portfolio', {
+    const res = await apiRequest('/api/portfolio', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -29,7 +29,7 @@ export function AddHoldingForm({ assets }: { assets: { symbol: string; name: str
       }),
     });
     if (!res.ok) {
-      toast.error('Could not add that holding. Please try again.');
+      toastApiError(res.error, { HTTP_500: 'Could not add that holding. Please try again.' });
       return;
     }
     router.push('/portfolio');

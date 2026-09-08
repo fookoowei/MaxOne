@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { parseAmountToMinor } from '@/lib/format/parse-amount';
 import { useIdempotencyKey } from '@/lib/idempotency/key';
+import { apiRequest, toastApiError } from '@/lib/api/client';
 import { formatMoney } from '@/lib/format/money';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,12 +36,12 @@ export function ConvertForm({ wallets }: { wallets: WalletSummary[] }) {
       setError('Enter a valid amount.');
       return;
     }
-    const res = await fetch(`/api/rates/quote?from=${from.currency}&to=${to.currency}&amount=${minor}`);
+    const res = await apiRequest<{ converted: number; rate: string }>(`/api/rates/quote?from=${from.currency}&to=${to.currency}&amount=${minor}`);
     if (!res.ok) {
-      setError('Could not fetch a rate. Try again.');
+      toastApiError(res.error, { HTTP_503: 'Could not fetch a rate right now. Try again in a moment.' });
       return;
     }
-    setQuote((await res.json()) as { converted: number; rate: string });
+    setQuote(res.data);
   }
 
   async function convert() {
@@ -48,18 +49,18 @@ export function ConvertForm({ wallets }: { wallets: WalletSummary[] }) {
     setBusy(true);
     setError(null);
     const minor = parseAmountToMinor(amount);
-    const res = await fetch(`/api/wallets/${fromId}/transfers`, {
+    const res = await apiRequest(`/api/wallets/${fromId}/transfers`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'idempotency-key': idem.key() },
       body: JSON.stringify({ toWalletId: toId, amount: minor }),
     });
     setBusy(false);
-    if (res.status === 409) {
-      setError('This conversion may have already gone through — check your balances before trying again.');
-      return;
-    }
     if (!res.ok) {
-      setError('Conversion failed. Check your balance and try again.');
+      toastApiError(res.error, {
+        HTTP_409: 'This conversion may have already gone through — check your balances before trying again.',
+        HTTP_400: 'Conversion failed. Check your balance and try again.',
+        HTTP_500: 'Conversion failed. Check your balance and try again.',
+      });
       return;
     }
     idem.reset();
@@ -119,7 +120,7 @@ export function ConvertForm({ wallets }: { wallets: WalletSummary[] }) {
       </div>
 
       {!quote && (
-        <Button type="button" variant="outline" className="w-full" onClick={getQuote}>
+        <Button type="button" variant="outline" size="xl" className="w-full" onClick={getQuote}>
           Get quote
         </Button>
       )}
@@ -133,8 +134,8 @@ export function ConvertForm({ wallets }: { wallets: WalletSummary[] }) {
           <p className="text-xs text-muted-foreground">
             Rate is indicative; the final amount is set at confirmation.
           </p>
-          <Button type="button" className="w-full" onClick={convert} pending={busy}>
-            {busy ? 'Converting…' : 'Convert'}
+          <Button type="button" size="xl" className="w-full" onClick={convert} pending={busy}>
+            Convert
           </Button>
         </>
       )}

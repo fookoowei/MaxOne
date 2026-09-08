@@ -1,6 +1,6 @@
 'use client';
 
-import { toast } from 'sonner';
+import { apiRequest, toastApiError } from '@/lib/api/client';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -18,7 +18,7 @@ export function AddAlertForm({ assets }: { assets: { symbol: string; name: strin
   } = useForm<AlertInput>({ resolver: zodResolver(alertSchema) });
 
   async function onSubmit(values: AlertInput) {
-    const res = await fetch('/api/alerts', {
+    const res = await apiRequest('/api/alerts', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -29,7 +29,7 @@ export function AddAlertForm({ assets }: { assets: { symbol: string; name: strin
       }),
     });
     if (!res.ok) {
-      toast.error('Could not set that alert. Please try again.');
+      toastApiError(res.error, { HTTP_500: 'Could not set that alert. Please try again.' });
       return;
     }
     router.push('/alerts');

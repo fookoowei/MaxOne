@@ -14,7 +14,7 @@ describe('MarketList', () => {
   it('renders name, symbol, price, and colored 24h change', () => {
     render(<MarketList assets={assets} />);
     expect(screen.getByText('Bitcoin')).toBeInTheDocument();
-    expect(screen.getByText('BTC')).toBeInTheDocument();
+    expect(screen.getAllByText('BTC').length).toBeGreaterThanOrEqual(1); // label (+ the avatar)
     expect(screen.getByText('$43,000.00')).toBeInTheDocument();
     expect(screen.getByText('+2.34%')).toBeInTheDocument();
     expect(screen.getByText('-1.10%')).toBeInTheDocument();
