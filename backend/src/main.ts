@@ -12,6 +12,7 @@ async function bootstrap() {
   // bufferLogs: hold boot logs until pino is attached, so even startup lines are structured.
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(PinoLogger));
+  app.enableShutdownHooks(); // SIGTERM → beforeApplicationShutdown (drains the in-process consumer if enabled)
   // Security headers on every response (HSTS, nosniff, frame options, …). CSP is relaxed to allow
   // inline scripts/styles so the Swagger UI at /api-docs renders — this API serves only JSON
   // otherwise, so there's no user-facing HTML that a strict CSP would be protecting.

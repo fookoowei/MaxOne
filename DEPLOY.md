@@ -21,15 +21,25 @@ boot with the variable's name, instead of silently pointing at a machine that is
 
 Both URLs are TLS (`rediss://`, `amqps://`); ioredis and amqplib handle that with no code change.
 
-## 2. Render — API + worker (`render.yaml`)
+## 2. Render — API (+ optional worker)
 
-Dashboard → **New → Blueprint** → pick this repo → Render reads `render.yaml` and creates
-`maxone-backend` (web) and `maxone-worker` (background worker) from the same Dockerfile.
-Then fill every `sync: false` variable on **both** services (matrix below). The worker has no port
-and no migrations — the API's image CMD runs `prisma migrate deploy` on boot.
+**The consumer: free or paid.** Render's free instance type covers web services only; a Background
+Worker starts on the Starter plan (~$7/mo). Two ways to run the queue consumer:
 
-If `maxone-backend` already exists from M8: keep it, create only the worker (**New → Background
-Worker**, Docker, root `backend`, command `node dist/src/worker`) and add the new variables to the API.
+| | free (default) | paid |
+|---|---|---|
+| where the consumer runs | inside the API process (`CONSUMER_IN_PROCESS=true`) | separate `maxone-worker` service |
+| queue / retries / DLQ / outbox | identical | identical |
+| what you lose | the process boundary in prod (still real locally and in compose); a push-provider stall shares the API's event loop | nothing |
+| `render.yaml` | API only (worker block commented out) | uncomment the worker block, set `CONSUMER_IN_PROCESS=false` on the API |
+
+In-process, the consumer subscribes whenever the broker (re)connects and drains on SIGTERM — fail-soft,
+because the API must keep serving HTTP. Never run both at once with the flag on.
+
+If `maxone-backend` already exists from M8: keep it and add the new variables (matrix below) — no
+blueprint needed. For a fresh account: **New → Blueprint** → this repo → Render creates the API from
+`render.yaml`; then fill every `sync: false` variable. The API's image CMD runs `prisma migrate deploy`
+on boot.
 
 `autoDeploy: false` on both: CI fires `RENDER_DEPLOY_HOOK` only after every test job is green.
 Create the hook under the API service → Settings → Deploy Hook; a second hook for the worker goes in
@@ -64,6 +74,7 @@ same gate the backend has had since M9.
 | `NODE_ENV` | ✔ | ✔ | | | `production` (JSON logs, no pretty-print) |
 | `LOG_LEVEL` | ✔ | ✔ | | | `info` |
 | `SERVICE_NAME` | ✔ | ✔ | | | `api` / `worker` (tags every log line) |
+| `CONSUMER_IN_PROCESS` | ✔ | | | | `true` (free tier) / `false` when a separate worker runs |
 | `SENTRY_DSN` | opt | opt | | | Sentry project DSN; unset = disabled |
 | `API_BASE_URL` | | | ✔ | ✔ | `https://maxone-backend.onrender.com` |
 | `NEXT_PUBLIC_WS_URL` | | | | ✔ | `https://maxone-backend.onrender.com` |
@@ -75,7 +86,7 @@ GitHub Actions secrets: `RENDER_DEPLOY_HOOK`, `VERCEL_DEPLOY_HOOK`, `VERCEL_CUST
 
 1. `curl https://maxone-backend.onrender.com/health` → `{"status":"ok","db":"up","redis":"up","rabbitmq":"up",…}` (200). `degraded` tells you which dependency to look at; 503 = Postgres.
 2. `curl …/metrics | grep maxone_` → the five gauges.
-3. Render → maxone-worker → Logs: `Connected to RabbitMQ`, `Consuming notifications.push`, `Worker up`.
+3. Render → API → Logs: `Connected to RabbitMQ`, `in-process consumer subscribed (boot)` (or, with a paid worker: maxone-worker → `Worker up`).
 4. Customer app: sign up, subscribe to push; staff console: approve a deposit → toast in the open tab, push on the closed device; worker log shows `push sent id=… req=<the API request id>`.
 5. CloudAMQP → RabbitMQ Manager: `notifications.push.dead` = 0. If not, the API log has `ALERT dead-letters` (and Sentry, if configured).
 

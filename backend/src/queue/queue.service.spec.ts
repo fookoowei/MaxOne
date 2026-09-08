@@ -136,6 +136,22 @@ describe('QueueService', () => {
     expect(seen).not.toHaveBeenCalled();
   });
 
+  it('onOpen listeners fire on connect AND on every reconnect (the in-process consumer re-subscribes)', async () => {
+    jest.useFakeTimers();
+    const amqp = fakeAmqp();
+    const svc = new QueueService(amqp.connect, config);
+    jest.spyOn((svc as any).log, 'warn').mockImplementation(() => undefined);
+    const opened = jest.fn();
+    svc.onOpen(opened);
+    await svc.onModuleInit();
+    expect(opened).toHaveBeenCalledTimes(1);
+    amqp.dropConnection();
+    await jest.advanceTimersByTimeAsync(500);
+    expect(opened).toHaveBeenCalledTimes(2);
+    await svc.onModuleDestroy();
+    jest.useRealTimers();
+  });
+
   it('consume sets prefetch and hands messages to the handler; ack/nack/cancel/purge reach the channel', async () => {
     const amqp = fakeAmqp();
     const svc = new QueueService(amqp.connect, config);

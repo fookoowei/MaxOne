@@ -21,6 +21,8 @@ services:
         value: info
       - key: SERVICE_NAME
         value: api
+      - key: CONSUMER_IN_PROCESS
+        value: "true"                 # free tier: run the queue consumer inside the API (see DEPLOY.md §2)
       - key: DATABASE_URL
         sync: false                   # Neon connection string (pooled is fine for the API)
       - key: REDIS_URL
@@ -48,32 +50,35 @@ services:
       - key: SENTRY_DSN
         sync: false                   # optional — leave empty to disable
 
-  - type: worker
-    name: maxone-worker
-    runtime: docker
-    rootDir: backend
-    dockerfilePath: ./Dockerfile
-    dockerCommand: node dist/src/worker   # overrides the image CMD (no migrate here — the API does it)
-    plan: free
-    autoDeploy: false
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: LOG_LEVEL
-        value: info
-      - key: SERVICE_NAME
-        value: worker
-      - key: DATABASE_URL
-        sync: false                   # same Neon DB (push subscriptions)
-      - key: REDIS_URL
-        sync: false                   # same Upstash (dedupe marks)
-      - key: RABBITMQ_URL
-        sync: false                   # same CloudAMQP
-      - key: VAPID_PUBLIC_KEY
-        sync: false
-      - key: VAPID_PRIVATE_KEY
-        sync: false
-      - key: VAPID_SUBJECT
-        sync: false
-      - key: SENTRY_DSN
-        sync: false
+  # OPTIONAL — the separate worker. Render background workers are NOT on the free tier (Starter,
+  # ~$7/mo). If you enable this, set CONSUMER_IN_PROCESS=false on the API so pushes aren't consumed
+  # twice. Uncomment to use.
+  # - type: worker
+  #   name: maxone-worker
+  #   runtime: docker
+  #   rootDir: backend
+  #   dockerfilePath: ./Dockerfile
+  #   dockerCommand: node dist/src/worker   # overrides the image CMD (no migrate here — the API does it)
+  #   plan: free
+  #   autoDeploy: false
+  #   envVars:
+  #     - key: NODE_ENV
+  #       value: production
+  #     - key: LOG_LEVEL
+  #       value: info
+  #     - key: SERVICE_NAME
+  #       value: worker
+  #     - key: DATABASE_URL
+  #       sync: false                   # same Neon DB (push subscriptions)
+  #     - key: REDIS_URL
+  #       sync: false                   # same Upstash (dedupe marks)
+  #     - key: RABBITMQ_URL
+  #       sync: false                   # same CloudAMQP
+  #     - key: VAPID_PUBLIC_KEY
+  #       sync: false
+  #     - key: VAPID_PRIVATE_KEY
+  #       sync: false
+  #     - key: VAPID_SUBJECT
+  #       sync: false
+  #     - key: SENTRY_DSN
+  #       sync: false
