@@ -45,9 +45,13 @@ export async function apiRequest<T = unknown>(input: string, init: RequestInit =
   };
 }
 
-/** Show an API error as a toast. `overrides` swaps the API's wording for friendlier copy by code. */
+/**
+ * Show an API error as a toast. `overrides` swaps the API's wording for friendlier copy, keyed by
+ * the API's `code` first, then by `HTTP_<status>` — so a caller can say "any 409 here means X"
+ * without knowing every code the API might use.
+ */
 export function toastApiError(error: ApiError, overrides: Partial<Record<string, string>> = {}): void {
-  toast.error(overrides[error.code] ?? error.message, {
+  toast.error(overrides[error.code] ?? overrides[`HTTP_${error.status}`] ?? error.message, {
     description: error.details?.length ? error.details.join(' ') : undefined,
   });
 }
