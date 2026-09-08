@@ -20,7 +20,7 @@ describe('ApprovalsTable', () => {
   it('renders a row with type, formatted amount, wallet, and owner', () => {
     render(<ApprovalsTable rows={rows} role="finance" />);
     expect(screen.getByText('deposit')).toBeInTheDocument();
-    expect(screen.getByText('$50.00')).toBeInTheDocument();
+    expect(screen.getByText((_, n) => n?.tagName === 'TD' && n.textContent === '$50.00')).toBeInTheDocument();
     expect(screen.getByText('Main')).toBeInTheDocument();
     expect(screen.getByText('jane@wallet.local')).toBeInTheDocument();
   });

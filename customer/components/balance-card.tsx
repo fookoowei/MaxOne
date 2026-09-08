@@ -12,7 +12,7 @@ export function BalanceCard({ balance, currency }: { balance: number; currency: 
       />
       <p className="text-sm/6 opacity-80">Total balance</p>
       <p className="mt-1 text-4xl font-bold tracking-tight tabular-nums">
-        {formatMoney(balance, currency)}
+        <span className="tabular">{formatMoney(balance, currency)}</span>
       </p>
       <p className="mt-2 text-xs uppercase tracking-wide opacity-70">{currency} wallet</p>
     </section>

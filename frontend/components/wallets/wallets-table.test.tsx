@@ -10,7 +10,7 @@ describe('WalletsTable', () => {
   it('renders a wallet row linking to its detail page', () => {
     render(<WalletsTable wallets={wallets} />);
     expect(screen.getByText('Main')).toBeInTheDocument();
-    expect(screen.getByText('$150.00')).toBeInTheDocument();
+    expect(screen.getByText((_, n) => n?.tagName === 'TD' && n.textContent === '$150.00')).toBeInTheDocument();
     expect(screen.getByText('jane@wallet.local')).toBeInTheDocument();
     const link = screen.getByRole('link', { name: /main/i });
     expect(link).toHaveAttribute('href', '/wallets/w1');

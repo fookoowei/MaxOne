@@ -1,4 +1,5 @@
-import { formatMoney } from '@/lib/format/money';
+import { MoneyText } from '@/components/money-text';
+import { StatusBadge } from '@/components/status-badge';
 
 export interface WalletTransaction {
   id: string;
@@ -31,10 +32,10 @@ export function TransactionHistory({ rows, currency }: { rows: WalletTransaction
           {rows.map((t) => (
             <tr key={t.id} className="border-b last:border-0">
               <td className="px-4 py-2 capitalize">{t.type}</td>
-              <td className="px-4 py-2 tabular-nums">{formatMoney(t.amount, currency)}</td>
-              <td className="px-4 py-2 capitalize">{t.status}</td>
+              <td className="px-4 py-2 text-right"><MoneyText amountMinor={t.amount} currency={currency} /></td>
+              <td className="px-4 py-2"><StatusBadge status={t.status} /></td>
               <td className="px-4 py-2 tabular-nums">
-                {t.balanceAfter === null ? '—' : formatMoney(t.balanceAfter, currency)}
+                {t.balanceAfter === null ? '—' : <MoneyText amountMinor={t.balanceAfter} currency={currency} />}
               </td>
               <td className="px-4 py-2 text-muted-foreground">{new Date(t.createdAt).toLocaleString()}</td>
             </tr>

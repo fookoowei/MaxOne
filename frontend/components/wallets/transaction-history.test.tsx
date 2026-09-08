@@ -10,9 +10,9 @@ describe('TransactionHistory', () => {
   it('renders a transaction row with formatted amount, status, and running balance', () => {
     render(<TransactionHistory rows={rows} currency="USD" />);
     expect(screen.getByText('adjustment')).toBeInTheDocument();
-    expect(screen.getByText('$50.00')).toBeInTheDocument();
+    expect(screen.getByText((_, n) => n?.tagName === 'TD' && n.textContent === '$50.00')).toBeInTheDocument();
     expect(screen.getByText('approved')).toBeInTheDocument();
-    expect(screen.getByText('$200.00')).toBeInTheDocument();
+    expect(screen.getByText((_, n) => n?.tagName === 'TD' && n.textContent === '$200.00')).toBeInTheDocument();
   });
 
   it('shows an empty state when there are no transactions', () => {
