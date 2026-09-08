@@ -123,15 +123,41 @@ export class WalletsService {
     user: { select: { email: true } },
   } satisfies Prisma.WalletSelect;
 
-  async listAllWallets({ skip = 0, take = 20 }: { skip?: number; take?: number }) {
+  async listAllWallets({
+    skip = 0,
+    take = 20,
+    q,
+    currency,
+    sort,
+  }: {
+    skip?: number;
+    take?: number;
+    q?: string;
+    currency?: string;
+    sort?: string;
+  }) {
+    // M18b: search on wallet name or owner email; filter by currency; whitelisted sort.
+    const where: Prisma.WalletWhereInput = {
+      ...(q
+        ? {
+            OR: [
+              { name: { contains: q, mode: 'insensitive' } },
+              { user: { email: { contains: q, mode: 'insensitive' } } },
+            ],
+          }
+        : {}),
+      ...(currency ? { currency: currency.toUpperCase() } : {}),
+    };
+    const [field, dir] = (sort ?? 'createdAt:asc').split(':') as [string, 'asc' | 'desc'];
     const [wallets, total] = await Promise.all([
       this.prisma.wallet.findMany({
+        where,
         skip,
         take,
-        orderBy: { createdAt: 'asc' },
+        orderBy: { [field]: dir },
         select: WalletsService.STAFF_WALLET_SELECT,
       }),
-      this.prisma.wallet.count(),
+      this.prisma.wallet.count({ where }),
     ]);
     return { total, skip, take, wallets };
   }

@@ -56,6 +56,7 @@ export class AuditService {
     entityType?: string;
     entityId?: string;
     action?: string;
+    q?: string;
     from?: Date;
     to?: Date;
     skip?: number;
@@ -70,6 +71,9 @@ export class AuditService {
       ...(filters.entityType ? { entityType: filters.entityType } : {}),
       ...(filters.entityId ? { entityId: filters.entityId } : {}),
       ...(filters.action ? { action: filters.action } : {}),
+      ...(filters.q
+        ? { OR: [{ action: { contains: filters.q, mode: 'insensitive' } }, { entityId: { startsWith: filters.q } }] }
+        : {}),
       ...(filters.from || filters.to
         ? {
             createdAt: {

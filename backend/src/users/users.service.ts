@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { RolesService } from './roles.service';
 import { toSafeUser } from './to-safe-user';
 import type { AuthUser } from '../auth/jwt.strategy';
@@ -67,15 +68,47 @@ export class UsersService {
   }
 
   /** One page of users, plus the total so a UI can render "showing 10–20 of 37". */
-  async findMany({ skip = 0, take = 20 }: { skip?: number; take?: number }) {
+  async findMany({
+    skip = 0,
+    take = 20,
+    q,
+    role,
+    status,
+    sort,
+  }: {
+    skip?: number;
+    take?: number;
+    q?: string;
+    role?: string;
+    status?: string;
+    sort?: string;
+  }) {
+    // M18b: one AND-ed where from optional filters; search is a case-insensitive OR across the
+    // fields a staff member would type. Sort comes from a DTO whitelist (never a raw column name).
+    const where: Prisma.UserWhereInput = {
+      ...(q
+        ? {
+            OR: [
+              { email: { contains: q, mode: 'insensitive' } },
+              { handle: { contains: q, mode: 'insensitive' } },
+              { firstName: { contains: q, mode: 'insensitive' } },
+              { lastName: { contains: q, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+      ...(role ? { role: { name: role } } : {}),
+      ...(status ? { status } : {}),
+    };
+    const [field, dir] = (sort ?? 'createdAt:desc').split(':') as [string, 'asc' | 'desc'];
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
+        where,
         skip,
         take,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { [field]: dir },
         include: { role: { select: { id: true, name: true } } },
       }),
-      this.prisma.user.count(),
+      this.prisma.user.count({ where }),
     ]);
     return { total, skip, take, users: users.map(toSafeUser) };
   }
