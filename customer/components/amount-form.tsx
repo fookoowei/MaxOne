@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -21,7 +21,6 @@ export function AmountForm({
   currency: string;
 }) {
   const router = useRouter();
-  const [serverError, setServerError] = useState<string | null>(null);
   const idem = useIdempotencyKey();
   const {
     register,
@@ -33,7 +32,6 @@ export function AmountForm({
   const cta = mode === 'deposit' ? 'Request deposit' : 'Request withdrawal';
 
   async function onSubmit(values: AmountInput) {
-    setServerError(null);
     const amount = parseAmountToMinor(values.amount);
     const res = await fetch(`/api/wallets/${walletId}/${endpoint}`, {
       method: 'POST',
@@ -41,11 +39,11 @@ export function AmountForm({
       body: JSON.stringify({ amount, note: values.note || undefined }),
     });
     if (res.status === 409) {
-      setServerError('This request may already have been submitted — check your history before trying again.');
+      toast.error('This request may already have been submitted — check your history before trying again.');
       return;
     }
     if (!res.ok) {
-      setServerError(
+      toast.error(
         mode === 'withdraw' && res.status === 400
           ? 'Insufficient funds for this withdrawal.'
           : 'Could not submit your request. Please try again.',
@@ -67,8 +65,7 @@ export function AmountForm({
         <Label htmlFor="note">Note (optional)</Label>
         <Input id="note" {...register('note')} />
       </div>
-      {serverError && <p className="text-sm text-destructive">{serverError}</p>}
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
+      <Button type="submit" className="w-full" pending={isSubmitting}>
         {isSubmitting ? 'Submitting…' : cta}
       </Button>
       <p className="text-center text-xs text-muted-foreground">

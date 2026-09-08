@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/auth/session';
 import { Nav } from '@/components/nav';
 import { Topbar } from '@/components/topbar';
+import { Toaster } from '@/components/ui/sonner';
 
 // The shell every dashboard page shares. It reads the identity mirror server-
 // side (no /me call during render) and renders the role-aware nav + topbar.
@@ -24,6 +25,7 @@ export default async function DashboardLayout({
         </aside>
         <main className="flex-1 p-6">{children}</main>
       </div>
+      <Toaster position="top-right" richColors closeButton />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { serverApiWithRefresh } from '@/lib/api/server';
+import { proxy } from '@/lib/api/proxy';
 
 export async function POST(request: Request) {
   const b = await request.json().catch(() => ({}) as Record<string, unknown>);
@@ -7,6 +8,5 @@ export async function POST(request: Request) {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ code: b.code }),
   });
-  if (!res.ok) return new Response(null, { status: res.status });
-  return Response.json(await res.json()); // { recoveryCodes } — shown once
+  return proxy(res); // M18a: forward the API's status + error envelope // { recoveryCodes } — shown once
 }

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { roleHasPermission, type Permission } from '@/lib/auth/permissions';
+import { LinkPending } from '@/components/link-pending';
 
 interface NavItem {
   href: string;
@@ -37,14 +38,16 @@ export function Nav({ role }: { role: string }) {
           <Link
             key={item.href}
             href={item.href}
+            aria-current={active ? 'page' : undefined}
             className={cn(
-              'rounded-md px-3 py-2 text-sm font-medium transition-colors',
+              'flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors',
               active
-                ? 'bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50'
-                : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900',
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground',
             )}
           >
             {item.label}
+            <LinkPending className="text-muted-foreground" />
           </Link>
         );
       })}

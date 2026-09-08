@@ -1,4 +1,4 @@
-import { formatMoney } from '@/lib/format/money';
+import { MoneyText } from '@/components/money-text';
 import { RowActions } from './row-actions';
 
 export interface PendingTransaction {
@@ -21,7 +21,7 @@ export function ApprovalsTable({ rows, role }: { rows: PendingTransaction[]; rol
         <thead className="border-b bg-muted/50 text-left">
           <tr>
             <th className="px-4 py-2 font-medium">Type</th>
-            <th className="px-4 py-2 font-medium">Amount</th>
+            <th className="px-4 py-2 text-right font-medium">Amount</th>
             <th className="px-4 py-2 font-medium">Wallet</th>
             <th className="px-4 py-2 font-medium">Owner</th>
             <th className="px-4 py-2 font-medium">Requested</th>
@@ -32,7 +32,7 @@ export function ApprovalsTable({ rows, role }: { rows: PendingTransaction[]; rol
           {rows.map((row) => (
             <tr key={row.id} className="border-b last:border-0">
               <td className="px-4 py-2 capitalize">{row.type}</td>
-              <td className="px-4 py-2 tabular-nums">{formatMoney(row.amount, row.wallet.currency)}</td>
+              <td className="px-4 py-2 text-right"><MoneyText amountMinor={row.amount} currency={row.wallet.currency} /></td>
               <td className="px-4 py-2">{row.wallet.name}</td>
               <td className="px-4 py-2">{row.wallet.user.email}</td>
               <td className="px-4 py-2 text-muted-foreground">

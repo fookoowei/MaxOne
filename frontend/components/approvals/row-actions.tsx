@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { roleHasPermission, type Permission } from '@/lib/auth/permissions';
+import { apiRequest, toastApiError } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 
 export function RowActions({
@@ -17,8 +19,7 @@ export function RowActions({
   const router = useRouter();
   const [mode, setMode] = useState<'idle' | 'rejecting'>('idle');
   const [note, setNote] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [acting, setActing] = useState<'approve' | 'reject' | null>(null);
 
   // The SAME permission gates approve AND reject — the backend uses assertApprovePermission
   // for both (deposit.reject/withdrawal.reject are only audit labels, not permissions).
@@ -26,23 +27,23 @@ export function RowActions({
   const allowed = roleHasPermission(role, permission);
   const denyReason = allowed ? undefined : `Requires ${permission}`;
 
-  async function settle(path: string, body?: unknown) {
-    setBusy(true);
-    setError(null);
+  async function settle(action: 'approve' | 'reject', body?: unknown) {
+    setActing(action);
     try {
-      const res = await fetch(path, {
+      const result = await apiRequest(`/api/transactions/${id}/${action}`, {
         method: 'POST',
         headers: body ? { 'content-type': 'application/json' } : undefined,
         body: body ? JSON.stringify(body) : undefined,
       });
-      if (!res.ok) {
-        setError(res.status === 409 ? 'Already reviewed.' : 'Action failed.');
+      if (result.ok) {
+        toast.success(action === 'approve' ? 'Approved' : 'Rejected');
+      } else {
+        // 409 = someone else settled it first; the refresh below drops the row either way.
+        toastApiError(result.error, { HTTP_409: 'Already reviewed by someone else.' });
       }
-      // Refresh either way: on 409 the row is gone; on success it's settled — the
-      // Server Component re-fetches and the row drops off the queue.
       router.refresh();
     } finally {
-      setBusy(false);
+      setActing(null);
       setMode('idle');
     }
   }
@@ -61,12 +62,12 @@ export function RowActions({
           <Button
             size="sm"
             variant="destructive"
-            disabled={busy}
-            onClick={() => settle(`/api/transactions/${id}/reject`, { note: note || undefined })}
+            pending={acting === 'reject'}
+            onClick={() => settle('reject', { note: note || undefined })}
           >
             Confirm reject
           </Button>
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => setMode('idle')}>
+          <Button size="sm" variant="outline" disabled={acting !== null} onClick={() => setMode('idle')}>
             Cancel
           </Button>
         </div>
@@ -78,26 +79,22 @@ export function RowActions({
     <div className="flex items-center gap-2">
       <Button
         size="sm"
-        disabled={!allowed || busy}
+        disabled={!allowed || acting !== null}
+        pending={acting === 'approve'}
         title={denyReason}
-        onClick={() => settle(`/api/transactions/${id}/approve`)}
+        onClick={() => settle('approve')}
       >
         Approve
       </Button>
       <Button
         size="sm"
         variant="outline"
-        disabled={!allowed || busy}
+        disabled={!allowed || acting !== null}
         title={denyReason}
         onClick={() => setMode('rejecting')}
       >
         Reject
       </Button>
-      {error && (
-        <span role="alert" className="text-xs text-red-600">
-          {error}
-        </span>
-      )}
     </div>
   );
 }

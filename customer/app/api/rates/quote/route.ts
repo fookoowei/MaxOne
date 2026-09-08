@@ -1,4 +1,5 @@
 import { serverApiWithRefresh } from '@/lib/api/server';
+import { proxy } from '@/lib/api/proxy';
 
 export async function GET(request: Request) {
   const p = new URL(request.url).searchParams;
@@ -8,6 +9,5 @@ export async function GET(request: Request) {
   const res = await serverApiWithRefresh(
     `/rates/quote?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&amount=${encodeURIComponent(amount)}`,
   );
-  if (!res.ok) return new Response(null, { status: res.status });
-  return Response.json(await res.json());
+  return proxy(res); // M18a: forward the API's status + error envelope
 }

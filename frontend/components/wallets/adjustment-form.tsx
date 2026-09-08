@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -22,7 +22,6 @@ type Values = z.infer<typeof schema>;
 
 export function AdjustmentForm({ walletId, role }: { walletId: string; role: string }) {
   const router = useRouter();
-  const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -39,14 +38,13 @@ export function AdjustmentForm({ walletId, role }: { walletId: string; role: str
   }
 
   async function onSubmit(values: Values) {
-    setFormError(null);
     const res = await fetch(`/api/wallets/${walletId}/adjustments`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(values),
     });
     if (!res.ok) {
-      setFormError(
+      toast.error(
         res.status === 400 ? 'Rejected — a debit can’t make the balance negative.' : 'Something went wrong.',
       );
       return;
@@ -77,13 +75,7 @@ export function AdjustmentForm({ walletId, role }: { walletId: string; role: str
         {errors.note && <span className="text-xs text-red-600">{errors.note.message}</span>}
       </div>
 
-      {formError && (
-        <span role="alert" className="text-xs text-red-600">
-          {formError}
-        </span>
-      )}
-
-      <Button type="submit" disabled={isSubmitting} className="w-fit">
+      <Button type="submit" pending={isSubmitting} className="w-fit">
         Apply adjustment
       </Button>
     </form>

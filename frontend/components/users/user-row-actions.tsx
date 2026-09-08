@@ -1,5 +1,6 @@
 'use client';
 
+import { toast } from 'sonner';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -23,7 +24,6 @@ export function UserRowActions({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const isSelf = user.id === currentUserId; // SoD: can't change your own status/role
   // Only a super_admin may assign super_admin, so hide that option otherwise.
@@ -31,7 +31,6 @@ export function UserRowActions({
 
   async function patch(path: string, payload: unknown) {
     setBusy(true);
-    setError(null);
     try {
       const res = await fetch(path, {
         method: 'PATCH',
@@ -39,7 +38,7 @@ export function UserRowActions({
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        setError(res.status === 403 ? 'Not allowed.' : 'Action failed.');
+        toast.error(res.status === 403 ? 'Not allowed.' : 'Action failed.');
         return;
       }
       router.refresh();
@@ -82,12 +81,6 @@ export function UserRowActions({
           </option>
         ))}
       </select>
-
-      {error && (
-        <span role="alert" className="text-xs text-red-600">
-          {error}
-        </span>
-      )}
     </div>
   );
 }

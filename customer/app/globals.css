@@ -6,6 +6,10 @@
 
 @theme inline {
   --color-background: var(--background);
+  --color-status-pending: var(--status-pending);
+  --color-status-approved: var(--status-approved);
+  --color-status-rejected: var(--status-rejected);
+  --color-status-info: var(--status-info);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
@@ -130,4 +134,8 @@
   html {
     @apply font-sans;
   }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
 }

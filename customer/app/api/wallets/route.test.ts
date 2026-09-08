@@ -22,7 +22,7 @@ describe('POST /api/wallets', () => {
     serverApiWithRefresh.mockResolvedValue(new Response(JSON.stringify({ id: 'w2' }), { status: 201 }));
     const res = await POST(body({ currency: 'EUR' }));
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201); // M18a: proxy() forwards the API's real status
     expect(serverApiWithRefresh).toHaveBeenCalledWith('/wallets', expect.objectContaining({ method: 'POST' }));
     const sent = JSON.parse((serverApiWithRefresh.mock.calls[0][1] as RequestInit).body as string);
     expect(sent).toEqual({ name: 'EUR wallet', currency: 'EUR' });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 
 export function AddAlertForm({ assets }: { assets: { symbol: string; name: string }[] }) {
   const router = useRouter();
-  const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -19,7 +18,6 @@ export function AddAlertForm({ assets }: { assets: { symbol: string; name: strin
   } = useForm<AlertInput>({ resolver: zodResolver(alertSchema) });
 
   async function onSubmit(values: AlertInput) {
-    setServerError(null);
     const res = await fetch('/api/alerts', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -31,7 +29,7 @@ export function AddAlertForm({ assets }: { assets: { symbol: string; name: strin
       }),
     });
     if (!res.ok) {
-      setServerError('Could not set that alert. Please try again.');
+      toast.error('Could not set that alert. Please try again.');
       return;
     }
     router.push('/alerts');
@@ -61,8 +59,7 @@ export function AddAlertForm({ assets }: { assets: { symbol: string; name: strin
         <Input id="targetPrice" inputMode="decimal" placeholder="80000" {...register('targetPrice')} />
         {errors.targetPrice && <p className="text-sm text-destructive">{errors.targetPrice.message}</p>}
       </div>
-      {serverError && <p className="text-sm text-destructive">{serverError}</p>}
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
+      <Button type="submit" className="w-full" pending={isSubmitting}>
         {isSubmitting ? 'Setting…' : 'Set alert'}
       </Button>
     </form>

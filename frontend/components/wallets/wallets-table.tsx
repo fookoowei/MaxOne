@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { formatMoney } from '@/lib/format/money';
+import { MoneyText } from '@/components/money-text';
 
 export interface StaffWallet {
   id: string;
@@ -36,7 +36,7 @@ export function WalletsTable({ wallets }: { wallets: StaffWallet[] }) {
               </td>
               <td className="px-4 py-2">{w.user.email}</td>
               <td className="px-4 py-2">{w.currency}</td>
-              <td className="px-4 py-2 tabular-nums">{formatMoney(w.balance, w.currency)}</td>
+              <td className="px-4 py-2 text-right"><MoneyText amountMinor={w.balance} currency={w.currency} /></td>
             </tr>
           ))}
         </tbody>

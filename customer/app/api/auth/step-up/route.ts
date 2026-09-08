@@ -1,4 +1,5 @@
 import { serverApiWithRefresh } from '@/lib/api/server';
+import { proxy } from '@/lib/api/proxy';
 
 // Re-prove the second factor → a short-lived step-up grant for a sensitive action.
 export async function POST(request: Request) {
@@ -8,6 +9,5 @@ export async function POST(request: Request) {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ code: b.code }),
   });
-  if (!res.ok) return new Response(null, { status: res.status });
-  return Response.json(await res.json()); // { stepUpToken }
+  return proxy(res); // M18a: forward the API's status + error envelope // { stepUpToken }
 }

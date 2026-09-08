@@ -18,7 +18,7 @@ describe('POST /api/portfolio', () => {
       body: JSON.stringify({ symbol: 'BTC', type: 'crypto', quantity: 0.5, avgCost: 30000 }),
     });
     const res = await POST(req);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201); // M18a: proxy() forwards the API's real status
     const sent = JSON.parse((serverApiWithRefresh.mock.calls[0][1] as RequestInit).body as string);
     expect(sent).toEqual({ symbol: 'BTC', type: 'crypto', quantity: 0.5, avgCost: 30000 });
   });

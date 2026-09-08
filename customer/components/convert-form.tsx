@@ -133,7 +133,7 @@ export function ConvertForm({ wallets }: { wallets: WalletSummary[] }) {
           <p className="text-xs text-muted-foreground">
             Rate is indicative; the final amount is set at confirmation.
           </p>
-          <Button type="button" className="w-full" onClick={convert} disabled={busy}>
+          <Button type="button" className="w-full" onClick={convert} pending={busy}>
             {busy ? 'Converting…' : 'Convert'}
           </Button>
         </>
