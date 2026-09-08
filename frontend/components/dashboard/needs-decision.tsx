@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ArrowDownToLine, ArrowRight, ArrowUpFromLine, ClipboardCheck } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { MoneyText } from '@/components/money-text';
 import { EmptyState } from '@/components/empty-state';
 import { RelativeTime } from '@/components/relative-time';
@@ -17,10 +17,10 @@ export function NeedsDecision({ rows, total, role }: { rows: PendingTransaction[
       <header className="flex items-center justify-between border-b px-4 py-3">
         <h2 className="text-sm font-semibold">Needs a decision</h2>
         {total > 0 && (
-          <Button variant="ghost" size="sm" render={<Link href="/approvals" />}>
+          <Link href="/approvals" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>
             View all {total}
             <ArrowRight aria-hidden />
-          </Button>
+          </Link>
         )}
       </header>
       {rows.length === 0 ? (

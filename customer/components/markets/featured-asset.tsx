@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Bell } from 'lucide-react';
 import { formatPrice } from '@/lib/format/price';
 import { PriceChart } from '@/components/markets/price-chart';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { MarketAsset } from '@/components/markets/market-list';
 
@@ -27,10 +27,10 @@ export function FeaturedAsset({ asset, chart }: { asset: MarketAsset; chart: { p
         </span>
       </p>
       <PriceChart id={asset.id} initial={chart} />
-      <Button variant="outline" className="h-10 w-full" render={<Link href={`/alerts/new?symbol=${encodeURIComponent(asset.symbol)}`} />}>
+      <Link href={`/alerts/new?symbol=${encodeURIComponent(asset.symbol)}`} className={buttonVariants({ variant: 'outline', className: 'h-10 w-full' })}>
         <Bell aria-hidden />
         Set a price alert
-      </Button>
+      </Link>
     </section>
   );
 }
