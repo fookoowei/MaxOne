@@ -52,10 +52,12 @@ the same CI step if you want it deployed on every green push (or redeploy it man
 | staff console (existing) | `frontend/` | `API_BASE_URL=https://maxone-backend.onrender.com` |
 | customer app (**new**) | `customer/` | `API_BASE_URL` (same), `NEXT_PUBLIC_WS_URL=https://maxone-backend.onrender.com`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (= backend `VAPID_PUBLIC_KEY`) |
 
-On **both** projects: Settings → Git → **disable "Automatic deployments"**, then Settings → Deploy
-Hooks → create one → paste as GitHub secrets `VERCEL_DEPLOY_HOOK` (staff) and
-`VERCEL_CUSTOMER_DEPLOY_HOOK` (customer). From then on Vercel only deploys when CI is green — the
-same gate the backend has had since M9.
+Automatic production deploys from `main` are switched off **in code**: each app's `vercel.json` has
+`git.deploymentEnabled.main = false` (pull-request previews stay on). Deploy Hooks are explicit
+triggers and are not affected by that setting. On **both** projects: Settings → Deploy Hooks →
+create one on `main` → paste as GitHub secrets `VERCEL_DEPLOY_HOOK` (staff) and
+`VERCEL_CUSTOMER_DEPLOY_HOOK` (customer). From then on a push to `main` deploys nothing by itself;
+CI fires the hooks only when every job is green — the same gate the backend has had since M9.
 
 ## 4. Env-var matrix
 
