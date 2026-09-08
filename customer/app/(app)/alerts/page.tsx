@@ -16,7 +16,7 @@ export default async function AlertsPage() {
   return (
     <div className="space-y-6 lg:max-w-[720px]">
       <PageHeader title="Price alerts" description="Checked automatically — you'll get a toast the moment one triggers.">
-        <Link href="/alerts/new" className={buttonVariants({ variant: 'outline' })}>
+        <Link href="/alerts/new" className={buttonVariants({ variant: 'secondary' })}>
           New alert
         </Link>
       </PageHeader>

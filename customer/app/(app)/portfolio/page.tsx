@@ -16,7 +16,7 @@ export default async function PortfolioPage() {
   return (
     <div className="space-y-6 lg:max-w-[720px]">
       <PageHeader title="Portfolio" description="What you hold, valued at today's prices." back={{ href: '/markets', label: 'Markets' }}>
-        <Link href="/portfolio/new" className={buttonVariants({ variant: 'outline' })}>
+        <Link href="/portfolio/new" className={buttonVariants({ variant: 'secondary' })}>
           Add holding
         </Link>
       </PageHeader>
