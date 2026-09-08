@@ -3,6 +3,7 @@ import { serverApi } from '@/lib/api/server';
 import { getSessionUser } from '@/lib/auth/session';
 import { TwoFactorSetup } from '@/components/security/two-factor-setup';
 import { PasskeyManager, type PasskeySummary } from '@/components/security/passkey-manager';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default async function ProfilePage() {
   const session = await getSessionUser();
@@ -22,6 +23,14 @@ export default async function ProfilePage() {
         </p>
         <p className="text-xs text-muted-foreground">{session?.email}</p>
       </header>
+
+      <section className="space-y-3 rounded-[20px] border bg-card p-4">
+        <div>
+          <h2 className="text-sm font-semibold">Appearance</h2>
+          <p className="text-xs text-muted-foreground">Follow your device, or pick one.</p>
+        </div>
+        <ThemeToggle />
+      </section>
 
       <section className="space-y-2 rounded-lg border p-4">
         <h2 className="text-sm font-medium">Security</h2>

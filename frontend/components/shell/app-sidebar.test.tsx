@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/approvals', useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
+vi.mock('next-themes', () => ({ useTheme: () => ({ theme: 'system', setTheme: vi.fn() }) }));
 
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from './app-sidebar';
