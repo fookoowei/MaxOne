@@ -40,10 +40,10 @@ export function parseTableParams(raw: RawParams, cfg: TableConfig): TableParams 
 }
 
 /** Query string for the API: `q`, `sort`, `skip`, `take` and each filter (only when set). */
-export function apiQuery(p: TableParams): string {
+export function apiQuery(p: TableParams, opts: { sort?: boolean } = {}): string {
   const sp = new URLSearchParams();
   if (p.q) sp.set('q', p.q);
-  sp.set('sort', p.sort);
+  if (opts.sort !== false) sp.set('sort', p.sort);
   sp.set('skip', String(p.skip));
   sp.set('take', String(p.take));
   for (const [k, v] of Object.entries(p.filters)) sp.set(k, v);
