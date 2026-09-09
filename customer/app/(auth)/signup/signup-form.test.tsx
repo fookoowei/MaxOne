@@ -5,6 +5,8 @@ import { SignupForm } from './signup-form';
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
+const toastError = vi.fn();
+vi.mock('sonner', () => ({ toast: { error: (...a: unknown[]) => toastError(...a) } }));
 
 beforeEach(() => {
   push.mockReset();
@@ -42,5 +44,22 @@ describe('SignupForm', () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith('/'));
     const sent = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string);
     expect(sent.handle).toBe('alice');
+  });
+
+  it("shows the API's own message when the handle is taken", async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ code: 'CONFLICT', message: 'Handle already taken' }), { status: 409 }),
+    );
+    render(<SignupForm />);
+
+    await userEvent.type(screen.getByLabelText(/first name/i), 'Alice');
+    await userEvent.type(screen.getByLabelText(/last name/i), 'Lee');
+    await userEvent.type(screen.getByLabelText(/handle/i), 'alice');
+    await userEvent.type(screen.getByLabelText(/email/i), 'alice@example.com');
+    await userEvent.type(screen.getByLabelText(/password/i), 'Password123');
+    await userEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Handle already taken', expect.anything()));
+    expect(push).not.toHaveBeenCalled();
   });
 });

@@ -1,10 +1,10 @@
 'use client';
 
-import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { signupSchema, type SignupInput } from '@/lib/schemas/auth';
+import { apiRequest, toastApiError } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,14 +18,15 @@ export function SignupForm() {
   } = useForm<SignupInput>({ resolver: zodResolver(signupSchema) });
 
   async function onSubmit(values: SignupInput) {
-    const res = await fetch('/api/auth/register', {
+    // M18a: the BFF forwards the API's error envelope, so the toast can say *which*
+    // field failed or *what* is already taken ("Handle already taken").
+    const res = await apiRequest('/api/auth/register', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(values),
     });
     if (!res.ok) {
-      const { error } = await res.json().catch(() => ({ error: 'Something went wrong.' }));
-      toast.error(error);
+      toastApiError(res.error);
       return;
     }
     router.push('/');
