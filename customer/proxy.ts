@@ -43,8 +43,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
   // Session present but the access token expired (its 15-min cookie is gone) and a
   // refresh token remains → refresh at the edge. Cookie-gone IS the expiry signal, so
-  // no JWT decoding is needed here, and the network call happens at most once per
-  // 15-minute window rather than on every request.
+  // no JWT decoding is needed here. NOTE: a navigation and its prefetches can hit this
+  // branch in parallel (separate lambdas, no way to single-flight) — the backend's
+  // 30s reuse grace makes every one of them a valid sibling refresh (prod bug 2026-09-09).
   if (hasSession && !isPublic && !hasAccess && refreshToken) {
     return refreshAtEdge(request, refreshToken);
   }
@@ -56,21 +57,30 @@ async function refreshAtEdge(
   request: NextRequest,
   refreshToken: string,
 ): Promise<NextResponse> {
-  const res = await fetch(apiUrl('/auth/refresh'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ refreshToken }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(apiUrl('/auth/refresh'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+  } catch {
+    // Backend unreachable — a transient fault, not a verdict on the session. Continue
+    // without touching cookies; the next request retries the refresh.
+    return NextResponse.next();
+  }
 
-  if (!res.ok) {
-    // Refresh token dead (expired or already rotated, single-use) → wipe the session
-    // so this and future requests cleanly land on /login.
+  if (res.status === 401 || res.status === 403) {
+    // Refresh token dead (expired, or a replay revoked its family) → wipe the session
+    // so this and future requests cleanly land on /login. Only an explicit rejection
+    // ends a session: a 502 while Render restarts used to log people out here.
     const redirect = NextResponse.redirect(new URL('/login', request.url));
     redirect.cookies.delete(ACCESS_COOKIE);
     redirect.cookies.delete(REFRESH_COOKIE);
     redirect.cookies.delete(SESSION_USER_COOKIE);
     return redirect;
   }
+  if (!res.ok) return NextResponse.next(); // 5xx: keep the cookies, retry next time
 
   const tokens = (await res.json()) as { accessToken: string; refreshToken: string };
   const response = NextResponse.next();
