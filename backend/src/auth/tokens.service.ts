@@ -6,6 +6,15 @@ import type { Prisma } from '@prisma/client';
 
 const REFRESH_TTL_DAYS = 7;
 
+// Concurrent-refresh leeway (Auth0 calls it the "reuse interval"). The customer BFF runs on
+// Vercel: N parallel requests (a navigation + its prefetches, or several route handlers) that
+// all find the 15-min access cookie expired each exchange the SAME refresh token, and there is
+// no shared memory to single-flight them. Treating the 2nd..Nth as replays revoked the family
+// and logged customers out ~15 min after login (prod, 2026-09-09). Inside this window a
+// re-presentation is a sibling refresh, not an attack: it gets its own pair in the same family.
+// After the window the strict rule stands — any replay revokes the whole family.
+const REUSE_GRACE_MS = 30_000;
+
 @Injectable()
 export class TokensService {
   constructor(
@@ -32,7 +41,9 @@ export class TokensService {
 
   private async verifyPurpose(token: string, purpose: string): Promise<string> {
     try {
-      const p = await this.jwt.verifyAsync<{ sub: string; purpose?: string }>(token);
+      const p = await this.jwt.verifyAsync<{ sub: string; purpose?: string }>(
+        token,
+      );
       if (p.purpose !== purpose) throw new Error('wrong purpose');
       return p.sub;
     } catch {
@@ -71,7 +82,9 @@ export class TokensService {
     // Refresh token: an opaque random string. Its authority lives in the DB row,
     // and we store only its SHA-256 hash — never the raw value.
     const refreshToken = randomBytes(48).toString('hex');
-    const expiresAt = new Date(Date.now() + REFRESH_TTL_DAYS * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(
+      Date.now() + REFRESH_TTL_DAYS * 24 * 60 * 60 * 1000,
+    );
     await db.refreshToken.create({
       data: {
         tokenHash: this.hash(refreshToken),
@@ -99,9 +112,15 @@ export class TokensService {
     // No row = unknown or revoked token.
     if (!existing) throw new UnauthorizedException('Invalid refresh token');
 
-    // Fast-path reuse: already rotated once → a replay. Revoke the whole family.
+    // Already rotated once. Within the grace window that's a concurrent sibling (see
+    // REUSE_GRACE_MS) → issue it its own pair. Beyond it, a replay → revoke the whole family.
     if (existing.usedAt) {
-      await this.prisma.refreshToken.deleteMany({ where: { familyId: existing.familyId } });
+      if (Date.now() - existing.usedAt.getTime() < REUSE_GRACE_MS) {
+        return this.issueTokens(existing.user, existing.familyId);
+      }
+      await this.prisma.refreshToken.deleteMany({
+        where: { familyId: existing.familyId },
+      });
       throw new UnauthorizedException('Refresh token reuse detected');
     }
 
@@ -127,8 +146,9 @@ export class TokensService {
       return this.issueTokens(existing.user, existing.familyId, tx);
     });
     if (!issued) {
-      await this.prisma.refreshToken.deleteMany({ where: { familyId: existing.familyId } });
-      throw new UnauthorizedException('Refresh token reuse detected');
+      // Lost the atomic claim to a request that committed milliseconds ago: by definition
+      // inside the grace window → the concurrent case, not a replay. Sibling pair, no revoke.
+      return this.issueTokens(existing.user, existing.familyId);
     }
     return issued;
   }
@@ -160,10 +180,17 @@ export class TokensService {
     );
   }
 
-  async verifyWebAuthnChallenge(token: string): Promise<{ challenge: string; userId?: string }> {
+  async verifyWebAuthnChallenge(
+    token: string,
+  ): Promise<{ challenge: string; userId?: string }> {
     try {
-      const p = await this.jwt.verifyAsync<{ sub?: string; purpose?: string; challenge?: string }>(token);
-      if (p.purpose !== 'webauthn' || !p.challenge) throw new Error('bad challenge token');
+      const p = await this.jwt.verifyAsync<{
+        sub?: string;
+        purpose?: string;
+        challenge?: string;
+      }>(token);
+      if (p.purpose !== 'webauthn' || !p.challenge)
+        throw new Error('bad challenge token');
       return { challenge: p.challenge, userId: p.sub };
     } catch {
       throw new UnauthorizedException('Invalid or expired WebAuthn challenge');
