@@ -78,6 +78,7 @@ CI fires the hooks only when every job is green — the same gate the backend ha
 | `SERVICE_NAME` | ✔ | ✔ | | | `api` / `worker` (tags every log line) |
 | `CONSUMER_IN_PROCESS` | ✔ | | | | `true` (free tier) / `false` when a separate worker runs |
 | `SENTRY_DSN` | opt | opt | | | Sentry project DSN; unset = disabled |
+| `COINGECKO_API_KEY` | opt | | | | CoinGecko free Demo key (`x-cg-demo-api-key`); unset = keyless, which Render's shared IP gets rate-limited on → empty Markets. Failures are logged as `CoinGecko <status> …` |
 | `API_BASE_URL` | | | ✔ | ✔ | `https://maxone-backend.onrender.com` |
 | `NEXT_PUBLIC_WS_URL` | | | | ✔ | `https://maxone-backend.onrender.com` |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | | | | ✔ | = `VAPID_PUBLIC_KEY` |

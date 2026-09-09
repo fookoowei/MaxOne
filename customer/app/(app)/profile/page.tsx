@@ -4,6 +4,7 @@ import { getSessionUser } from '@/lib/auth/session';
 import { TwoFactorSetup } from '@/components/security/two-factor-setup';
 import { PasskeyManager, type PasskeySummary } from '@/components/security/passkey-manager';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { SignOutButton } from '@/components/sign-out-button';
 import { PageHeader } from '@/components/layout/page-header';
 
 export default async function ProfilePage() {
@@ -43,6 +44,14 @@ export default async function ProfilePage() {
           Sign in with Face ID, Touch ID or Windows Hello — no password. We only ever store a public key.
         </p>
         <PasskeyManager initial={passkeys} />
+      </section>
+
+      <section className="space-y-3 rounded-[20px] border bg-card p-4">
+        <h2 className="text-sm font-semibold">Account</h2>
+        <p className="text-xs text-muted-foreground">
+          Signs you out on this device only — other devices keep their own session.
+        </p>
+        <SignOutButton />
       </section>
     </div>
   );
