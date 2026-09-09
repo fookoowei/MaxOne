@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(lsof -nP -iTCP:3200 -sTCP:LISTEN)",
+      "Read(//Users/max/.claude/**)",
+      "Bash(curl -s -m 60 -o /dev/null -w ' status: %{http_code} location: %header{location}\\\\n' https://max-one-eight.vercel.app/)",
+      "Bash(curl -s -m 30 -o /dev/null -w ' status: %{http_code}\\\\n' https://max-one-eight.vercel.app/login)",
+      "Bash(curl -s -m 90 -c /private/tmp/claude-501/-Users-max-Documents-GitHub-wallet-system/f61d5777-907f-41d3-a44c-28e66faf793f/scratchpad/vercel.jar https://max-one-eight.vercel.app/api/auth/login -H 'content-type: application/json' -d '{\"email\":\"admin@wallet.local\",\"password\":\"ChangeMe123!\"}' -w '\\\\n status: %{http_code}\\\\n')",
+      "Bash(awk '/access_token|refresh_token|session_user/{print \" \"$6}' /private/tmp/claude-501/-Users-max-Documents-GitHub-wallet-system/f61d5777-907f-41d3-a44c-28e66faf793f/scratchpad/vercel.jar)",
+      "Bash(curl -s -m 30 -b /private/tmp/claude-501/-Users-max-Documents-GitHub-wallet-system/f61d5777-907f-41d3-a44c-28e66faf793f/scratchpad/vercel.jar -o /dev/null -w ' status: %{http_code}\\\\n' https://max-one-eight.vercel.app/)",
+      "Bash(curl -s -m 90 -o /dev/null -w '  render /health: %{http_code} \\(%{time_total}s\\)\\\\n' https://maxone-backend.onrender.com/health)",
+      "Bash(curl -s -m 30 -c /private/tmp/claude-501/-Users-max-Documents-GitHub-wallet-system/f61d5777-907f-41d3-a44c-28e66faf793f/scratchpad/vercel.jar https://max-one-eight.vercel.app/api/auth/login -H 'content-type: application/json' -d '{\"email\":\"admin@wallet.local\",\"password\":\"ChangeMe123!\"}' -w '\\\\n  status: %{http_code}\\\\n')",
+      "Bash(awk '/access_token|refresh_token|session_user/{print \"    \"$6}' /private/tmp/claude-501/-Users-max-Documents-GitHub-wallet-system/f61d5777-907f-41d3-a44c-28e66faf793f/scratchpad/vercel.jar)",
+      "Bash(curl -s -m 90 -o /dev/null https://maxone-backend.onrender.com/health)",
+      "Bash(curl -s -m 30 -c /private/tmp/claude-501/-Users-max-Documents-GitHub-wallet-system/f61d5777-907f-41d3-a44c-28e66faf793f/scratchpad/vercel2.jar https://max-one-eight.vercel.app/api/auth/login -H 'content-type: application/json' -d '{\"email\":\"admin@wallet.local\",\"password\":\"ChangeMe123!\"}' -o /dev/null -w '  login: %{http_code}\\\\n')",
+      "Bash(awk '/access_token|refresh_token|session_user/{print \"    \"$6}' /private/tmp/claude-501/-Users-max-Documents-GitHub-wallet-system/f61d5777-907f-41d3-a44c-28e66faf793f/scratchpad/vercel2.jar)",
+      "Bash(curl -s -m 30 -b /private/tmp/claude-501/-Users-max-Documents-GitHub-wallet-system/f61d5777-907f-41d3-a44c-28e66faf793f/scratchpad/vercel2.jar -o /dev/null -w '  /: %{http_code}\\\\n' https://max-one-eight.vercel.app/)",
+      "Bash(cat >> *)"
+    ],
+    "additionalDirectories": [
+      "/Users/max/.claude",
+      "/Users/max/Documents/GitHub/wallet-system/docs"
+    ]
+  }
+}
