@@ -78,7 +78,19 @@ describe('proxy edge silent-refresh', () => {
     expect(res.headers.get('location')).toBeNull();
   });
 
-  it('redirects to /login when refresh fails', async () => {
+  it('keeps the session when the backend is merely down (502 / network) — no wipe, no redirect', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(new Response('Bad Gateway', { status: 502 }));
+    let res = await proxy(req('/', { session: true, refresh: true }));
+    expect(res.headers.get('location')).toBeNull();
+    expect(res.cookies.getAll()).toEqual([]); // nothing set, nothing deleted
+
+    vi.spyOn(global, 'fetch').mockRejectedValue(new Error('ECONNREFUSED'));
+    res = await proxy(req('/', { session: true, refresh: true }));
+    expect(res.headers.get('location')).toBeNull();
+    expect(res.cookies.getAll()).toEqual([]);
+  });
+
+  it('redirects to /login when refresh is rejected (401)', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue(new Response(null, { status: 401 }));
     const res = await proxy(req('/', { session: true, refresh: true }));
     expect(res.status).toBe(307);

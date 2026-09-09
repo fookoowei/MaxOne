@@ -9,7 +9,10 @@ describe('TokensService.issueWsTicket', () => {
     const ticket = await service.issueWsTicket('u1');
 
     expect(ticket).toBe('ticket.jwt');
-    expect(jwt.signAsync).toHaveBeenCalledWith({ sub: 'u1', purpose: 'ws' }, { expiresIn: '60s' });
+    expect(jwt.signAsync).toHaveBeenCalledWith(
+      { sub: 'u1', purpose: 'ws' },
+      { expiresIn: '60s' },
+    );
   });
 });
 
@@ -18,7 +21,7 @@ function tokensWith(refreshToken: any) {
   const jwt = { signAsync: jest.fn().mockResolvedValue('access.jwt') };
   const prisma: any = { refreshToken };
   prisma.$transaction = jest.fn().mockImplementation((cb: any) => cb(prisma)); // tx client = same mock
-  return { service: new TokensService(jwt as any, prisma as any), prisma };
+  return { service: new TokensService(jwt as any, prisma), prisma };
 }
 
 describe('TokensService.issueTokens family', () => {
@@ -37,13 +40,24 @@ describe('TokensService.issueTokens family', () => {
 });
 
 describe('TokensService.rotate reuse detection', () => {
-  const base = { id: 'rt1', familyId: 'fam-1', expiresAt: new Date(Date.now() + 1e6), user: userRow };
+  const base = {
+    id: 'rt1',
+    familyId: 'fam-1',
+    expiresAt: new Date(Date.now() + 1e6),
+    user: userRow,
+  };
 
   it('atomically claims an unused token and reissues in the same family', async () => {
     const create = jest.fn().mockResolvedValue({});
     const updateMany = jest.fn().mockResolvedValue({ count: 1 });
     const findUnique = jest.fn().mockResolvedValue({ ...base, usedAt: null });
-    const { service } = tokensWith({ findUnique, updateMany, create, delete: jest.fn(), deleteMany: jest.fn() });
+    const { service } = tokensWith({
+      findUnique,
+      updateMany,
+      create,
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+    });
     await service.rotate('raw');
     // Conditional update (usedAt: null) = the atomic claim that closes the TOCTOU race.
     expect(updateMany).toHaveBeenCalledWith({
@@ -53,36 +67,90 @@ describe('TokensService.rotate reuse detection', () => {
     expect(create.mock.calls[0][0].data.familyId).toBe('fam-1');
   });
 
-  it('revokes the family when an already-used token is presented (fast-path reuse)', async () => {
+  it('treats a token used <30s ago as a CONCURRENT refresh: sibling pair, family kept', async () => {
+    // Serverless BFF: parallel requests refresh with the same token; the 2nd is not an attacker.
+    const create = jest.fn().mockResolvedValue({});
+    const deleteMany = jest.fn();
+    const findUnique = jest
+      .fn()
+      .mockResolvedValue({ ...base, usedAt: new Date(Date.now() - 500) });
+    const { service } = tokensWith({
+      findUnique,
+      deleteMany,
+      create,
+      updateMany: jest.fn(),
+      delete: jest.fn(),
+    });
+    const pair = await service.rotate('raw');
+    expect(pair.refreshToken).toEqual(expect.any(String));
+    expect(create.mock.calls[0][0].data.familyId).toBe('fam-1');
+    expect(deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('revokes the family when an already-used token is presented AFTER the grace window (replay)', async () => {
     const deleteMany = jest.fn().mockResolvedValue({ count: 2 });
-    const findUnique = jest.fn().mockResolvedValue({ ...base, usedAt: new Date() });
-    const { service } = tokensWith({ findUnique, deleteMany, updateMany: jest.fn(), create: jest.fn(), delete: jest.fn() });
-    await expect(service.rotate('raw')).rejects.toBeInstanceOf(UnauthorizedException);
+    const findUnique = jest
+      .fn()
+      .mockResolvedValue({ ...base, usedAt: new Date(Date.now() - 60_000) });
+    const { service } = tokensWith({
+      findUnique,
+      deleteMany,
+      updateMany: jest.fn(),
+      create: jest.fn(),
+      delete: jest.fn(),
+    });
+    await expect(service.rotate('raw')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
     expect(deleteMany).toHaveBeenCalledWith({ where: { familyId: 'fam-1' } });
   });
 
-  it('revokes the family when the atomic claim loses a race (concurrent reuse)', async () => {
+  it('hands the atomic-claim LOSER its own sibling pair (concurrent refresh, not reuse)', async () => {
     // findUnique saw usedAt:null, but a concurrent request claimed it first → updateMany count 0.
-    const deleteMany = jest.fn().mockResolvedValue({ count: 2 });
+    // That winner committed milliseconds ago — inside the grace window by definition.
+    const deleteMany = jest.fn();
+    const create = jest.fn().mockResolvedValue({});
     const updateMany = jest.fn().mockResolvedValue({ count: 0 });
     const findUnique = jest.fn().mockResolvedValue({ ...base, usedAt: null });
-    const { service } = tokensWith({ findUnique, updateMany, deleteMany, create: jest.fn(), delete: jest.fn() });
-    await expect(service.rotate('raw')).rejects.toBeInstanceOf(UnauthorizedException);
-    expect(deleteMany).toHaveBeenCalledWith({ where: { familyId: 'fam-1' } });
+    const { service } = tokensWith({
+      findUnique,
+      updateMany,
+      deleteMany,
+      create,
+      delete: jest.fn(),
+    });
+    const pair = await service.rotate('raw');
+    expect(pair.refreshToken).toEqual(expect.any(String));
+    expect(create.mock.calls[0][0].data.familyId).toBe('fam-1');
+    expect(deleteMany).not.toHaveBeenCalled();
   });
 
   it('rejects an expired token', async () => {
     const del = jest.fn().mockResolvedValue({});
-    const findUnique = jest.fn().mockResolvedValue({ ...base, usedAt: null, expiresAt: new Date(Date.now() - 1) });
-    const { service } = tokensWith({ findUnique, delete: del, update: jest.fn(), create: jest.fn(), deleteMany: jest.fn() });
-    await expect(service.rotate('raw')).rejects.toBeInstanceOf(UnauthorizedException);
+    const findUnique = jest.fn().mockResolvedValue({
+      ...base,
+      usedAt: null,
+      expiresAt: new Date(Date.now() - 1),
+    });
+    const { service } = tokensWith({
+      findUnique,
+      delete: del,
+      update: jest.fn(),
+      create: jest.fn(),
+      deleteMany: jest.fn(),
+    });
+    await expect(service.rotate('raw')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
     expect(del).toHaveBeenCalledWith({ where: { id: 'rt1' } });
   });
 
   it('rejects an unknown token', async () => {
     const findUnique = jest.fn().mockResolvedValue(null);
     const { service } = tokensWith({ findUnique });
-    await expect(service.rotate('raw')).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(service.rotate('raw')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 });
 
@@ -91,22 +159,35 @@ describe('TokensService 2FA challenge', () => {
     const jwt = { signAsync: jest.fn().mockResolvedValue('challenge.jwt') };
     const service = new TokensService(jwt as any, {} as any);
     expect(await service.issue2faChallenge('u1')).toBe('challenge.jwt');
-    expect(jwt.signAsync).toHaveBeenCalledWith({ sub: 'u1', purpose: '2fa' }, { expiresIn: '5m' });
+    expect(jwt.signAsync).toHaveBeenCalledWith(
+      { sub: 'u1', purpose: '2fa' },
+      { expiresIn: '5m' },
+    );
   });
   it('verifies a challenge and returns the user id', async () => {
-    const jwt = { verifyAsync: jest.fn().mockResolvedValue({ sub: 'u1', purpose: '2fa' }) };
+    const jwt = {
+      verifyAsync: jest.fn().mockResolvedValue({ sub: 'u1', purpose: '2fa' }),
+    };
     const service = new TokensService(jwt as any, {} as any);
     expect(await service.verify2faChallenge('t')).toBe('u1');
   });
   it('rejects a token with the wrong purpose (e.g. a ws ticket)', async () => {
-    const jwt = { verifyAsync: jest.fn().mockResolvedValue({ sub: 'u1', purpose: 'ws' }) };
+    const jwt = {
+      verifyAsync: jest.fn().mockResolvedValue({ sub: 'u1', purpose: 'ws' }),
+    };
     const service = new TokensService(jwt as any, {} as any);
-    await expect(service.verify2faChallenge('t')).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(service.verify2faChallenge('t')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
   it('rejects an invalid/expired token', async () => {
-    const jwt = { verifyAsync: jest.fn().mockRejectedValue(new Error('expired')) };
+    const jwt = {
+      verifyAsync: jest.fn().mockRejectedValue(new Error('expired')),
+    };
     const service = new TokensService(jwt as any, {} as any);
-    await expect(service.verify2faChallenge('t')).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(service.verify2faChallenge('t')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 });
 
@@ -115,15 +196,28 @@ describe('TokensService step-up grant', () => {
     const jwt = { signAsync: jest.fn().mockResolvedValue('grant.jwt') };
     const service = new TokensService(jwt as any, {} as any);
     expect(await service.issueStepUpGrant('u1')).toBe('grant.jwt');
-    expect(jwt.signAsync).toHaveBeenCalledWith({ sub: 'u1', purpose: 'step-up' }, { expiresIn: '5m' });
+    expect(jwt.signAsync).toHaveBeenCalledWith(
+      { sub: 'u1', purpose: 'step-up' },
+      { expiresIn: '5m' },
+    );
   });
   it('verifies a grant and returns the user id', async () => {
-    const jwt = { verifyAsync: jest.fn().mockResolvedValue({ sub: 'u1', purpose: 'step-up' }) };
-    expect(await new TokensService(jwt as any, {} as any).verifyStepUpGrant('t')).toBe('u1');
+    const jwt = {
+      verifyAsync: jest
+        .fn()
+        .mockResolvedValue({ sub: 'u1', purpose: 'step-up' }),
+    };
+    expect(
+      await new TokensService(jwt as any, {} as any).verifyStepUpGrant('t'),
+    ).toBe('u1');
   });
   it('rejects a 2fa challenge presented as a step-up grant (purpose mismatch)', async () => {
-    const jwt = { verifyAsync: jest.fn().mockResolvedValue({ sub: 'u1', purpose: '2fa' }) };
-    await expect(new TokensService(jwt as any, {} as any).verifyStepUpGrant('t')).rejects.toBeInstanceOf(UnauthorizedException);
+    const jwt = {
+      verifyAsync: jest.fn().mockResolvedValue({ sub: 'u1', purpose: '2fa' }),
+    };
+    await expect(
+      new TokensService(jwt as any, {} as any).verifyStepUpGrant('t'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
 
@@ -132,18 +226,48 @@ describe('TokensService WebAuthn challenge', () => {
     const jwt = { signAsync: jest.fn().mockResolvedValue('c.jwt') };
     const service = new TokensService(jwt as any, {} as any);
     expect(await service.issueWebAuthnChallenge('CHAL', 'u1')).toBe('c.jwt');
-    expect(jwt.signAsync).toHaveBeenCalledWith({ sub: 'u1', purpose: 'webauthn', challenge: 'CHAL' }, { expiresIn: '5m' });
+    expect(jwt.signAsync).toHaveBeenCalledWith(
+      { sub: 'u1', purpose: 'webauthn', challenge: 'CHAL' },
+      { expiresIn: '5m' },
+    );
     await service.issueWebAuthnChallenge('CHAL2'); // usernameless login: no sub
-    expect(jwt.signAsync).toHaveBeenLastCalledWith({ purpose: 'webauthn', challenge: 'CHAL2' }, { expiresIn: '5m' });
+    expect(jwt.signAsync).toHaveBeenLastCalledWith(
+      { purpose: 'webauthn', challenge: 'CHAL2' },
+      { expiresIn: '5m' },
+    );
   });
   it('verifies and returns { challenge, userId }', async () => {
-    const jwt = { verifyAsync: jest.fn().mockResolvedValue({ sub: 'u1', purpose: 'webauthn', challenge: 'CHAL' }) };
-    expect(await new TokensService(jwt as any, {} as any).verifyWebAuthnChallenge('t')).toEqual({ challenge: 'CHAL', userId: 'u1' });
+    const jwt = {
+      verifyAsync: jest.fn().mockResolvedValue({
+        sub: 'u1',
+        purpose: 'webauthn',
+        challenge: 'CHAL',
+      }),
+    };
+    expect(
+      await new TokensService(jwt as any, {} as any).verifyWebAuthnChallenge(
+        't',
+      ),
+    ).toEqual({ challenge: 'CHAL', userId: 'u1' });
   });
   it('rejects the wrong purpose or a missing challenge', async () => {
-    const wrong = { verifyAsync: jest.fn().mockResolvedValue({ sub: 'u1', purpose: 'step-up', challenge: 'CHAL' }) };
-    await expect(new TokensService(wrong as any, {} as any).verifyWebAuthnChallenge('t')).rejects.toBeInstanceOf(UnauthorizedException);
-    const noChal = { verifyAsync: jest.fn().mockResolvedValue({ sub: 'u1', purpose: 'webauthn' }) };
-    await expect(new TokensService(noChal as any, {} as any).verifyWebAuthnChallenge('t')).rejects.toBeInstanceOf(UnauthorizedException);
+    const wrong = {
+      verifyAsync: jest.fn().mockResolvedValue({
+        sub: 'u1',
+        purpose: 'step-up',
+        challenge: 'CHAL',
+      }),
+    };
+    await expect(
+      new TokensService(wrong as any, {} as any).verifyWebAuthnChallenge('t'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    const noChal = {
+      verifyAsync: jest
+        .fn()
+        .mockResolvedValue({ sub: 'u1', purpose: 'webauthn' }),
+    };
+    await expect(
+      new TokensService(noChal as any, {} as any).verifyWebAuthnChallenge('t'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

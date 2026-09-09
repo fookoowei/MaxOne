@@ -38,15 +38,21 @@ export async function serverApiWithRefresh(
   const refreshToken = store.get(REFRESH_COOKIE)?.value;
   if (!refreshToken) return first;
 
-  const refreshed = await fetch(apiUrl('/auth/refresh'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ refreshToken }),
-  });
-  if (!refreshed.ok) {
-    await clearAuthCookies();
-    return first; // still 401 — the caller surfaces it
+  let refreshed: Response;
+  try {
+    refreshed = await fetch(apiUrl('/auth/refresh'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+  } catch {
+    return first; // backend unreachable: transient — keep the cookies, surface the 401
   }
+  if (refreshed.status === 401 || refreshed.status === 403) {
+    await clearAuthCookies(); // explicit rejection = the session is over
+    return first;
+  }
+  if (!refreshed.ok) return first; // 5xx (e.g. Render restarting): keep the cookies, retry later
 
   const tokens = (await refreshed.json()) as { accessToken: string; refreshToken: string };
   await refreshAuthCookies(tokens);
