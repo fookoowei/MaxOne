@@ -14,8 +14,13 @@ export async function POST(request: Request) {
   });
 
   if (!res.ok) {
-    // Mirror the backend's status (401 on bad credentials); keep the message
-    // vague so the endpoint can't be used to probe which emails exist.
+    // 403 means the credentials were RIGHT and the account is the problem (suspended), so the
+    // real reason is safe to show and saves the customer guessing at their password. Everything
+    // else stays vague, so the endpoint can't be used to probe which emails exist.
+    if (res.status === 403) {
+      const data = (await res.json().catch(() => ({}))) as { message?: string };
+      return Response.json({ error: data.message ?? 'This account cannot sign in.' }, { status: 403 });
+    }
     return Response.json({ error: 'Invalid email or password.' }, { status: res.status });
   }
 

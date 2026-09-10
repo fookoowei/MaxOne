@@ -32,41 +32,59 @@ describe('PermissionsGuard', () => {
     const users = { findByIdWithPermissions: jest.fn() };
     const guard = buildGuard(undefined, users);
 
-    await expect(guard.canActivate(buildContext({ id: 'user-1' }))).resolves.toBe(true);
+    await expect(
+      guard.canActivate(buildContext({ id: 'user-1' })),
+    ).resolves.toBe(true);
     expect(users.findByIdWithPermissions).not.toHaveBeenCalled();
   });
 
   it('allows when the caller holds every required permission', async () => {
     const users = {
-      findByIdWithPermissions: jest.fn().mockResolvedValue(userRow(['user.manage', 'audit.view'])),
+      findByIdWithPermissions: jest
+        .fn()
+        .mockResolvedValue(userRow(['user.manage', 'audit.view'])),
     };
     const guard = buildGuard(['user.manage'], users);
 
-    await expect(guard.canActivate(buildContext({ id: 'user-1' }))).resolves.toBe(true);
+    await expect(
+      guard.canActivate(buildContext({ id: 'user-1' })),
+    ).resolves.toBe(true);
   });
 
   it('denies when one of several required permissions is missing', async () => {
     const users = {
-      findByIdWithPermissions: jest.fn().mockResolvedValue(userRow(['user.manage'])),
+      findByIdWithPermissions: jest
+        .fn()
+        .mockResolvedValue(userRow(['user.manage'])),
     };
     const guard = buildGuard(['user.manage', 'audit.view'], users);
 
-    await expect(guard.canActivate(buildContext({ id: 'user-1' }))).rejects.toThrow(ForbiddenException);
+    await expect(
+      guard.canActivate(buildContext({ id: 'user-1' })),
+    ).rejects.toThrow(ForbiddenException);
   });
 
   it('denies a suspended user even when the role holds the permission', async () => {
     const users = {
-      findByIdWithPermissions: jest.fn().mockResolvedValue(userRow(['user.manage'], 'suspended')),
+      findByIdWithPermissions: jest
+        .fn()
+        .mockResolvedValue(userRow(['user.manage'], 'suspended')),
     };
     const guard = buildGuard(['user.manage'], users);
 
-    await expect(guard.canActivate(buildContext({ id: 'user-1' }))).rejects.toThrow('Account suspended');
+    await expect(
+      guard.canActivate(buildContext({ id: 'user-1' })),
+    ).rejects.toThrow('Account suspended');
   });
 
   it('denies when the user no longer exists in the database', async () => {
-    const users = { findByIdWithPermissions: jest.fn().mockResolvedValue(null) };
+    const users = {
+      findByIdWithPermissions: jest.fn().mockResolvedValue(null),
+    };
     const guard = buildGuard(['user.manage'], users);
 
-    await expect(guard.canActivate(buildContext({ id: 'ghost' }))).rejects.toThrow(ForbiddenException);
+    await expect(
+      guard.canActivate(buildContext({ id: 'ghost' })),
+    ).rejects.toThrow(ForbiddenException);
   });
 });

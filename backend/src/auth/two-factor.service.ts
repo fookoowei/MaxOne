@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { authenticator } from 'otplib';
 import * as QRCode from 'qrcode';
 import { createHash, randomBytes } from 'crypto';
@@ -9,7 +13,8 @@ const RECOVERY_COUNT = 8;
 // Recovery codes are high-entropy random strings, so a fast sha256 is the right hash
 // (bcrypt's slowness only matters for low-entropy human passwords).
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
-const normalize = (code: string) => code.trim().toLowerCase().replace(/\s+/g, '');
+const normalize = (code: string) =>
+  code.trim().toLowerCase().replace(/\s+/g, '');
 
 @Injectable()
 export class TwoFactorService {
@@ -34,10 +39,15 @@ export class TwoFactorService {
   // Step 2: prove the authenticator works, then enable + issue one-time recovery codes.
   async verifyAndEnable(userId: string, code: string) {
     const user = await this.users.findByIdRaw(userId);
-    if (!user?.totpSecret || !authenticator.check(normalize(code), user.totpSecret)) {
+    if (
+      !user?.totpSecret ||
+      !authenticator.check(normalize(code), user.totpSecret)
+    ) {
       throw new UnauthorizedException('Invalid code');
     }
-    const recoveryCodes = Array.from({ length: RECOVERY_COUNT }, () => randomBytes(5).toString('hex'));
+    const recoveryCodes = Array.from({ length: RECOVERY_COUNT }, () =>
+      randomBytes(5).toString('hex'),
+    );
     await this.users.enableTotp(userId, recoveryCodes.map(sha256));
     return { recoveryCodes }; // plaintext, shown ONCE
   }
@@ -46,7 +56,11 @@ export class TwoFactorService {
   // Shared by login and disable — so a lost-phone user can still turn 2FA off with a
   // recovery code and re-enroll on a new device (no dead-end).
   private async proveFactor(
-    user: { id: string; totpSecret: string | null; totpRecoveryHashes: string[] },
+    user: {
+      id: string;
+      totpSecret: string | null;
+      totpRecoveryHashes: string[];
+    },
     code: string,
   ): Promise<boolean> {
     const c = normalize(code);

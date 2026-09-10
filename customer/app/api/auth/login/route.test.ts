@@ -45,6 +45,18 @@ describe('POST /api/auth/login (BFF)', () => {
     expect(setAuthCookies).not.toHaveBeenCalled();
   });
 
+  it('passes a suspension (403) through so the customer learns the real reason', async () => {
+    fetchMock.mockResolvedValue(
+      Response.json({ code: 'FORBIDDEN', message: 'This account has been suspended. Please contact support.' }, { status: 403 }),
+    );
+
+    const res = await POST(post({ email: 'a@b.c', password: 'pw' }));
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: 'This account has been suspended. Please contact support.' });
+    expect(setAuthCookies).not.toHaveBeenCalled();
+  });
+
   it('keeps the message vague on 401 (no email enumeration)', async () => {
     fetchMock.mockResolvedValue(Response.json({ message: 'No such user' }, { status: 401 }));
     const res = await POST(post({ email: 'a@b.c', password: 'pw' }));

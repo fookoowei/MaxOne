@@ -24,7 +24,10 @@ import { TwoFactorCodeDto } from './dto/two-factor-code.dto';
 import { Login2faDto } from './dto/login-2fa.dto';
 import { PasskeysService } from './passkeys.service';
 import { PasskeyVerifyDto } from './dto/passkey-verify.dto';
-import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
+import type {
+  AuthenticationResponseJSON,
+  RegistrationResponseJSON,
+} from '@simplewebauthn/server';
 
 @Controller('auth')
 export class AuthController {
@@ -95,7 +98,10 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('2fa/disable')
   @HttpCode(204)
-  async disable2fa(@CurrentUser() user: AuthUser, @Body() dto: TwoFactorCodeDto): Promise<void> {
+  async disable2fa(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: TwoFactorCodeDto,
+  ): Promise<void> {
     await this.twoFactor.disable(user.id, dto.code);
   }
 
@@ -122,12 +128,18 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('passkeys/register/options')
   passkeyRegisterOptions(@CurrentUser() user: AuthUser) {
-    return this.passkeys.registrationOptions({ id: user.id, email: user.email });
+    return this.passkeys.registrationOptions({
+      id: user.id,
+      email: user.email,
+    });
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('passkeys/register/verify')
-  passkeyRegisterVerify(@CurrentUser() user: AuthUser, @Body() dto: PasskeyVerifyDto) {
+  passkeyRegisterVerify(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: PasskeyVerifyDto,
+  ) {
     return this.passkeys.verifyRegistration(
       user.id,
       dto.response as unknown as RegistrationResponseJSON,
@@ -145,7 +157,10 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Delete('passkeys/:id')
   @HttpCode(204)
-  async removePasskey(@CurrentUser() user: AuthUser, @Param('id') id: string): Promise<void> {
+  async removePasskey(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ): Promise<void> {
     await this.passkeys.remove(user.id, id);
   }
 
@@ -174,7 +189,10 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('step-up/passkey/verify')
-  async stepUpPasskeyVerify(@CurrentUser() user: AuthUser, @Body() dto: PasskeyVerifyDto) {
+  async stepUpPasskeyVerify(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: PasskeyVerifyDto,
+  ) {
     await this.passkeys.verifyAuthentication(
       dto.response as unknown as AuthenticationResponseJSON,
       dto.challengeToken,

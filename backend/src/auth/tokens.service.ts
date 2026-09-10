@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -111,6 +115,14 @@ export class TokensService {
 
     // No row = unknown or revoked token.
     if (!existing) throw new UnauthorizedException('Invalid refresh token');
+
+    // Suspending a user already deletes their refresh rows (UsersService.updateStatus), so this
+    // is the second lock: a row that survives by any other route must still not mint tokens.
+    if (existing.user.status !== 'active') {
+      throw new ForbiddenException(
+        'This account has been suspended. Please contact support.',
+      );
+    }
 
     // Already rotated once. Within the grace window that's a concurrent sibling (see
     // REUSE_GRACE_MS) → issue it its own pair. Beyond it, a replay → revoke the whole family.

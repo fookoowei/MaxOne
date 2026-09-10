@@ -27,7 +27,10 @@ export function MoneyText({
     >
       {tone === 'positive' && '+'}
       {tone === 'negative' && '−'}
-      <span className="text-muted-foreground">{symbol}</span>
+      {/* De-emphasise the symbol ONLY on a neutral amount. When the amount carries a direction the
+          symbol takes exactly the same green/red — not grey, and not a dimmed shade of it, since
+          either reads as a rendering bug next to the number. */}
+      <span className={tone === 'neutral' ? 'text-muted-foreground' : undefined}>{symbol}</span>
       {value}
     </span>
   );
