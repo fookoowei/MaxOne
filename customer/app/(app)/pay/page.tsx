@@ -27,7 +27,20 @@ export default async function PayPage() {
         .catch(() => [] as Transaction[])
     : [];
   return (
-    <WithAside aside={primary ? <ActivityCard title="Recent transfers" transactions={transfers} currency={primary.currency} limit={5} seeAllHref="/activity" /> : undefined}>
+    <WithAside
+      aside={
+        primary ? (
+          <ActivityCard
+            title="Recent transfers"
+            transactions={transfers}
+            currency={primary.currency}
+            limit={5}
+            seeAllHref="/activity"
+            empty={{ title: 'No transfers yet', description: 'Send money to someone by their @handle.' }}
+          />
+        ) : undefined
+      }
+    >
       <div className="space-y-6">
         <PageHeader title="Pay" description="Send, receive or scan — transfers land instantly." />
         <div className="grid gap-3">

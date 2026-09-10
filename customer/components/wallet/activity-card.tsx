@@ -24,7 +24,22 @@ export function isCredit(type: string): boolean {
 
 // A statement, not a log: what it was, whether it's settled, and the amount signed by direction.
 // Colour appears only on money that arrived; pending is a pill, never a colour on the amount.
-export function ActivityCard({ transactions, currency, limit, seeAllHref, title = 'Recent activity' }: { transactions: Transaction[]; currency: string; limit?: number; seeAllHref?: string; title?: string }) {
+export function ActivityCard({
+  transactions,
+  currency,
+  limit,
+  seeAllHref,
+  title = 'Recent activity',
+  empty = { title: 'No activity yet', description: 'Add money to get started.' },
+}: {
+  transactions: Transaction[];
+  currency: string;
+  limit?: number;
+  seeAllHref?: string;
+  title?: string;
+  /** What to say when there are no rows — a filtered card (e.g. transfers only) needs its own hint. */
+  empty?: { title: string; description?: string };
+}) {
   const rows = limit ? transactions.slice(0, limit) : transactions;
   return (
     <section className="rounded-[20px] border bg-card px-4 pb-1 pt-1">
@@ -36,7 +51,7 @@ export function ActivityCard({ transactions, currency, limit, seeAllHref, title 
       </div>
       {rows.length === 0 ? (
         <div className="pb-3">
-          <EmptyState icon={History} title="No activity yet" description="Add money to get started." />
+          <EmptyState icon={History} title={empty.title} description={empty.description} />
         </div>
       ) : (
         <ul className="divide-y">

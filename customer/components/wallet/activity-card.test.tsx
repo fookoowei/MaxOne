@@ -24,4 +24,9 @@ describe('ActivityCard', () => {
     render(<ActivityCard transactions={[]} currency="USD" />);
     expect(screen.getByText('No activity yet')).toBeInTheDocument();
   });
+  it('a filtered card can say its own empty hint', () => {
+    render(<ActivityCard transactions={[]} currency="USD" title="Recent transfers" empty={{ title: 'No transfers yet', description: 'Send money to someone.' }} />);
+    expect(screen.getByText('No transfers yet')).toBeInTheDocument();
+    expect(screen.getByText('Send money to someone.')).toBeInTheDocument();
+  });
 });
