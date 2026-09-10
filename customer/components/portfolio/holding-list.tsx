@@ -35,7 +35,7 @@ export function HoldingList({ rows }: { rows: HoldingRow[] }) {
           <div className="mr-2 text-right">
             <p className="text-sm font-semibold tabular-nums">{formatPrice(r.value)}</p>
             <p
-              className={`text-xs tabular-nums ${r.pnl >= 0 ? 'text-emerald-600' : 'text-destructive'}`}
+              className={`text-xs tabular-nums ${r.pnl >= 0 ? 'text-status-approved' : 'text-destructive'}`}
             >
               {r.pnl >= 0 ? '+' : ''}
               {r.pnlPct.toFixed(2)}%

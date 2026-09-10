@@ -22,7 +22,7 @@ export function AssetHeader({ asset }: { asset: AssetDetail }) {
       <p className="text-3xl font-bold tabular-nums">{formatPrice(asset.price)}</p>
       <p
         className={`text-sm tabular-nums ${
-          asset.change24h >= 0 ? 'text-emerald-600' : 'text-destructive'
+          asset.change24h >= 0 ? 'text-status-approved' : 'text-destructive'
         }`}
       >
         {asset.change24h >= 0 ? '+' : ''}
