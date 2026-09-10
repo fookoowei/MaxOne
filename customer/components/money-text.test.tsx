@@ -15,4 +15,11 @@ describe('MoneyText', () => {
     rerender(<MoneyText amountMinor={500} currency="USD" tone="negative" />);
     expect(screen.getByText((_, n) => n?.tagName === 'SPAN' && n.textContent === '−$5.00')).toHaveClass('text-status-rejected');
   });
+  it('the currency symbol takes the tone colour too — grey next to a green number reads as broken', () => {
+    const { rerender } = render(<MoneyText amountMinor={500} currency="USD" tone="positive" />);
+    expect(screen.getByText('$')).not.toHaveClass('text-muted-foreground');
+    expect(screen.getByText('$')).toHaveClass('opacity-70'); // lighter than the value, same hue
+    rerender(<MoneyText amountMinor={500} currency="USD" tone="negative" />);
+    expect(screen.getByText('$')).not.toHaveClass('text-muted-foreground');
+  });
 });

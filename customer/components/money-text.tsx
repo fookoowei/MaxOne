@@ -27,7 +27,10 @@ export function MoneyText({
     >
       {tone === 'positive' && '+'}
       {tone === 'negative' && '−'}
-      <span className="text-muted-foreground">{symbol}</span>
+      {/* The symbol stays lighter than the value, but it must not fight the tone: a grey $ beside
+          a green number reads as a rendering bug. Neutral keeps the muted grey; a toned amount
+          dims the inherited green/red instead. */}
+      <span className={tone === 'neutral' ? 'text-muted-foreground' : 'opacity-70'}>{symbol}</span>
       {value}
     </span>
   );
