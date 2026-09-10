@@ -31,7 +31,8 @@ describe('MoneyRequestWizard', () => {
     await userEvent.type(screen.getByLabelText(/note/i), 'Salary top-up');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(screen.getByText('Salary top-up')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /request \$250\.00 deposit/i })).toBeInTheDocument();
+    expect(screen.getByText('Instantly')).toBeInTheDocument(); // deposits no longer wait for review
+    expect(screen.getByRole('button', { name: /add \$250\.00/i })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /edit amount/i }));
     expect(screen.getByLabelText(/amount to add/i)).toHaveValue('250.00');
   });
@@ -41,8 +42,9 @@ describe('MoneyRequestWizard', () => {
     render(<MoneyRequestWizard mode="deposit" walletId="w1" currency="USD" balance={0} />);
     await userEvent.type(screen.getByLabelText(/amount to add/i), '50.50');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await userEvent.click(screen.getByRole('button', { name: /request \$50\.50 deposit/i }));
-    expect(await screen.findByText('Request sent')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /add \$50\.50/i }));
+    expect(await screen.findByText('Money added')).toBeInTheDocument();
+    expect(screen.getByText('Completed')).toBeInTheDocument();
     expect(screen.getByText('#ABCDEF12')).toBeInTheDocument();
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('/api/wallets/w1/deposits');
@@ -70,5 +72,16 @@ describe('MoneyRequestWizard', () => {
     await userEvent.click(screen.getByRole('button', { name: /request \$9,999\.00 withdrawal/i }));
     await waitFor(() => expect(toastError).toHaveBeenCalledWith(expect.stringMatching(/insufficient funds/i), expect.anything()));
     expect(screen.queryByText('Request sent')).toBeNull();
+  });
+
+  it('withdrawals still say they wait for a reviewer', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({ id: 'abcdef12-3456' }), { status: 201, headers: { 'content-type': 'application/json' } }));
+    render(<MoneyRequestWizard mode="withdraw" walletId="w1" currency="USD" balance={10000} />);
+    await userEvent.type(screen.getByLabelText(/amount to withdraw/i), '20');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByText('Reviewed by MaxOne')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /request \$20\.00 withdrawal/i }));
+    expect(await screen.findByText('Request sent')).toBeInTheDocument();
+    expect(screen.getByText('Pending review')).toBeInTheDocument();
   });
 });

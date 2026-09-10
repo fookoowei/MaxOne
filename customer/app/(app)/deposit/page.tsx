@@ -13,7 +13,7 @@ export default async function Page() {
   if (!primary) redirect('/');
   return (
     <div className="space-y-6 lg:max-w-[560px]">
-      <PageHeader title="Add money" description="Request a deposit into your wallet." back={{ href: '/', label: 'Back' }} />
+      <PageHeader title="Add money" description="Lands in your wallet instantly." back={{ href: '/', label: 'Back' }} />
       <MoneyRequestWizard mode="deposit" walletId={primary.id} currency={primary.currency} balance={primary.balance} />
     </div>
   );

@@ -25,7 +25,7 @@ export interface AuditEntry {
   createdAt: string;
 }
 
-export const AUDIT_ACTIONS = ['deposit.approve', 'deposit.reject', 'withdrawal.approve', 'withdrawal.reject', 'wallet.adjust', 'wallet.transfer', 'user.status_change', 'user.role_change'];
+export const AUDIT_ACTIONS = ['deposit.settle', 'deposit.approve', 'deposit.reject', 'withdrawal.approve', 'withdrawal.reject', 'wallet.adjust', 'wallet.transfer', 'user.status_change', 'user.role_change'];
 
 const ACTION_TONE: Record<string, string> = {
   approve: 'bg-status-approved/12 text-status-approved',

@@ -25,6 +25,8 @@ const symbolOf = (currency: string) => (new Intl.NumberFormat('en-US', { style: 
  * Add money / withdraw in three steps: enter the amount where you can see it, review exactly what
  * you are asking for, then a receipt. The request is one logical money operation, so ONE
  * idempotency key covers every retry of it and resets only after success.
+ * Deposits land instantly (2026-09-10); withdrawals still wait for a MaxOne reviewer — the copy
+ * on every step says which.
  */
 export function MoneyRequestWizard({ mode, walletId, currency, balance }: { mode: 'deposit' | 'withdraw'; walletId: string; currency: string; balance: number }) {
   const router = useRouter();
@@ -101,7 +103,7 @@ export function MoneyRequestWizard({ mode, walletId, currency, balance }: { mode
             <Input id="note" className="h-11 text-base" {...form.register('note')} />
           </div>
           <p className="text-xs text-muted-foreground">
-            {mode === 'deposit' ? 'A MaxOne reviewer approves deposits, usually within a few minutes. Your balance updates the moment it is approved.' : 'A MaxOne reviewer approves withdrawals. Your balance updates once it is approved.'}
+            {mode === 'deposit' ? 'Added to your balance the moment you confirm.' : 'A MaxOne reviewer approves withdrawals. Your balance updates once it is approved.'}
           </p>
           <Button type="submit" size="xl" className="w-full">
             Continue
@@ -117,7 +119,7 @@ export function MoneyRequestWizard({ mode, walletId, currency, balance }: { mode
               [mode === 'deposit' ? 'To' : 'From', 'My Wallet · ' + currency],
               ['Fee', 'None'],
               ...(values.note ? [['Note', values.note]] : []),
-              ['Approval', 'Reviewed by MaxOne'],
+              mode === 'deposit' ? ['Arrives', 'Instantly'] : ['Approval', 'Reviewed by MaxOne'],
             ].map(([k, v]) => (
               <div key={String(k)} className="flex items-center justify-between py-3 text-sm [&:not(:last-child)]:border-b">
                 <span className="text-muted-foreground">{k}</span>
@@ -130,7 +132,7 @@ export function MoneyRequestWizard({ mode, walletId, currency, balance }: { mode
           ) : (
             <div className="flex gap-3 rounded-[20px] bg-accent px-4 py-3.5 text-sm text-accent-foreground">
               <Check className="mt-0.5 size-[18px] shrink-0" aria-hidden />
-              <p>Nothing moves until a reviewer approves it. You will get a notification either way.</p>
+              <p>{mode === 'deposit' ? 'This adds the money to your wallet right away.' : 'Nothing moves until a reviewer approves it. You will get a notification either way.'}</p>
             </div>
           )}
           <div className="flex flex-col gap-2.5">
@@ -138,7 +140,7 @@ export function MoneyRequestWizard({ mode, walletId, currency, balance }: { mode
               Edit amount
             </Button>
             <Button type="button" size="xl" pending={pending} disabled={overBalance} onClick={() => void submit()}>
-              Request {formatMoney(minor, currency)} {noun}
+              {mode === 'deposit' ? `Add ${formatMoney(minor, currency)}` : `Request ${formatMoney(minor, currency)} ${noun}`}
             </Button>
           </div>
         </div>
@@ -150,15 +152,19 @@ export function MoneyRequestWizard({ mode, walletId, currency, balance }: { mode
             <span className="flex size-[72px] items-center justify-center rounded-3xl bg-status-approved/12 text-status-approved">
               <Check className="size-8" aria-hidden />
             </span>
-            <h2 className="text-xl font-semibold">Request sent</h2>
+            <h2 className="text-xl font-semibold">{mode === 'deposit' ? 'Money added' : 'Request sent'}</h2>
             <p className="max-w-[280px] text-sm text-muted-foreground">
-              {formatMoney(minor, currency)} is waiting for review. We will notify you when it is approved.
+              {mode === 'deposit' ? `${formatMoney(minor, currency)} is in your wallet.` : `${formatMoney(minor, currency)} is waiting for review. We will notify you when it is approved.`}
             </p>
           </section>
           <section className="rounded-[20px] border bg-card px-4 py-1 text-sm">
             <div className="flex items-center justify-between border-b py-3">
               <span className="text-muted-foreground">Status</span>
-              <span className="inline-flex h-5 items-center rounded-full bg-status-pending/12 px-2 text-xs font-medium text-status-pending">Pending review</span>
+              {mode === 'deposit' ? (
+                <span className="inline-flex h-5 items-center rounded-full bg-status-approved/12 px-2 text-xs font-medium text-status-approved">Completed</span>
+              ) : (
+                <span className="inline-flex h-5 items-center rounded-full bg-status-pending/12 px-2 text-xs font-medium text-status-pending">Pending review</span>
+              )}
             </div>
             <div className="flex items-center justify-between py-3">
               <span className="text-muted-foreground">Reference</span>
@@ -167,7 +173,7 @@ export function MoneyRequestWizard({ mode, walletId, currency, balance }: { mode
           </section>
           <div className="flex flex-col gap-2.5">
             <Button type="button" variant="outline" size="xl" onClick={() => { form.reset(); setValues(null); setResult(null); setStep(1); }}>
-              {mode === 'deposit' ? 'Add another deposit' : 'Request another withdrawal'}
+              {mode === 'deposit' ? 'Add more money' : 'Request another withdrawal'}
             </Button>
             <Button type="button" size="xl" onClick={() => router.push('/')}>
               Back to home

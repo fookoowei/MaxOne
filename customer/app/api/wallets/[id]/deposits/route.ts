@@ -1,8 +1,8 @@
 import { serverApiWithRefresh } from '@/lib/api/server';
 import { proxy } from '@/lib/api/proxy';
 
-// BFF: forward a deposit REQUEST to NestJS (creates a pending transaction there,
-// awaiting staff approval). Mirror the backend status so the client sees failures.
+// BFF: forward a deposit to NestJS, which settles it immediately (no staff review since
+// 2026-09-10; withdrawals still queue). Mirror the backend status so the client sees failures.
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const idem = request.headers.get('idempotency-key');

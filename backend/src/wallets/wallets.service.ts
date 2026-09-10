@@ -72,21 +72,102 @@ export class WalletsService {
     });
   }
 
-  async requestDeposit(id: string, actor: AuthUser, amount: number, note?: string) {
-    await this.getOwnedWallet(id, actor);
-    return this.prisma.transaction.create({
-      data: { walletId: id, type: 'deposit', amount, status: 'pending', requestedBy: actor.id, note },
+  /**
+   * A deposit settles immediately (2026-09-10; it used to queue for staff approval like a
+   * withdrawal). Money coming IN needs no reviewer — in production the payment provider's
+   * confirmation is the gate, and until M19 wires one up, the customer's confirmation stands in
+   * for it. Same atomic shape as `adjust`: lock the wallet, credit it, write an already-settled
+   * row with the balance chain, audit it, and queue the notification — one transaction.
+   * Withdrawals (money OUT) keep the pending → staff review flow.
+   */
+  async deposit(id: string, actor: AuthUser, amount: number, note?: string) {
+    await this.getOwnedWallet(id, actor); // 404 / 403 before any lock is taken
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Wallet" WHERE id = ${id} FOR UPDATE`;
+      const wallet = await tx.wallet.findUnique({ where: { id } });
+      if (!wallet) throw new NotFoundException('Wallet not found');
+
+      const before = wallet.balance;
+      const after = before + amount;
+      const settledAt = new Date();
+
+      await tx.wallet.update({ where: { id }, data: { balance: after } });
+      const created = await tx.transaction.create({
+        data: {
+          walletId: id,
+          type: 'deposit',
+          amount,
+          balanceBefore: before,
+          balanceAfter: after,
+          status: 'approved',
+          requestedBy: actor.id,
+          reviewedBy: actor.id,
+          reviewedAt: settledAt,
+          note,
+        },
+      });
+
+      await this.audit.log(tx, {
+        actorUserId: actor.id,
+        action: 'deposit.settle',
+        entityType: 'transaction',
+        entityId: created.id,
+        oldValue: { balance: before },
+        newValue: { balance: after, amount },
+      });
+
+      const money = formatMinor(amount, wallet.currency);
+      const event = await this.notifications.enqueue(tx, wallet.userId, {
+        title: 'Money added',
+        body: `${money} added to your wallet`,
+        tag: created.id,
+        url: '/',
+      });
+
+      return {
+        created,
+        owner: {
+          userId: wallet.userId,
+          walletId: wallet.id,
+          currency: wallet.currency,
+          balance: after,
+        },
+        event,
+      };
     });
+
+    // After commit only — a rolled-back credit must never announce a balance change.
+    this.realtime.emitBalance(result.owner.userId, {
+      walletId: result.owner.walletId,
+      currency: result.owner.currency,
+      balance: result.owner.balance,
+    });
+    await this.notifications.dispatch(result.event);
+    return result.created;
   }
 
-  async requestWithdrawal(id: string, actor: AuthUser, amount: number, note?: string) {
+  async requestWithdrawal(
+    id: string,
+    actor: AuthUser,
+    amount: number,
+    note?: string,
+  ) {
     const wallet = await this.getOwnedWallet(id, actor);
     // Friendly, NON-authoritative pre-check: fail obvious cases early so a customer
     // isn't left with a doomed pending request. The authoritative check is at approval
     // (the balance can change between request and approval).
-    if (wallet.balance < amount) throw new BadRequestException('Insufficient funds');
+    if (wallet.balance < amount)
+      throw new BadRequestException('Insufficient funds');
     return this.prisma.transaction.create({
-      data: { walletId: id, type: 'withdrawal', amount, status: 'pending', requestedBy: actor.id, note },
+      data: {
+        walletId: id,
+        type: 'withdrawal',
+        amount,
+        status: 'pending',
+        requestedBy: actor.id,
+        note,
+      },
     });
   }
 
@@ -148,7 +229,10 @@ export class WalletsService {
         : {}),
       ...(currency ? { currency: currency.toUpperCase() } : {}),
     };
-    const [field, dir] = (sort ?? 'createdAt:asc').split(':') as [string, 'asc' | 'desc'];
+    const [field, dir] = (sort ?? 'createdAt:asc').split(':') as [
+      string,
+      'asc' | 'desc',
+    ];
     const [wallets, total] = await Promise.all([
       this.prisma.wallet.findMany({
         where,
@@ -184,7 +268,10 @@ export class WalletsService {
     // immutable, and it does unrelated I/O (a user+permissions read). Doing it under the
     // row lock would hold that lock across an extra round-trip and borrow a second pool
     // connection while holding the first — a pool-starvation deadlock under load.
-    await this.assertApprovePermission(actor, await this.getSettleableType(txnId));
+    await this.assertApprovePermission(
+      actor,
+      await this.getSettleableType(txnId),
+    );
 
     const result = await this.prisma.$transaction(async (tx) => {
       // Lock the transaction row first (fixed order: txn, then wallet).
@@ -192,23 +279,30 @@ export class WalletsService {
       const txn = await tx.transaction.findUnique({ where: { id: txnId } });
       if (!txn) throw new NotFoundException('Transaction not found');
       // Re-checked under the lock: unlike `type`, status CAN change between the two reads.
-      if (txn.status !== 'pending') throw new ConflictException('Transaction already reviewed');
+      if (txn.status !== 'pending')
+        throw new ConflictException('Transaction already reviewed');
 
       // Lock the wallet row, then read its true current balance.
       await tx.$queryRaw`SELECT id FROM "Wallet" WHERE id = ${txn.walletId} FOR UPDATE`;
-      const wallet = await tx.wallet.findUnique({ where: { id: txn.walletId } });
+      const wallet = await tx.wallet.findUnique({
+        where: { id: txn.walletId },
+      });
       if (!wallet) throw new NotFoundException('Wallet not found');
 
       const before = wallet.balance;
       let after: number;
       if (txn.type === 'withdrawal') {
-        if (before < txn.amount) throw new BadRequestException('Insufficient funds');
+        if (before < txn.amount)
+          throw new BadRequestException('Insufficient funds');
         after = before - txn.amount;
       } else {
         after = before + txn.amount; // deposit
       }
 
-      await tx.wallet.update({ where: { id: wallet.id }, data: { balance: after } });
+      await tx.wallet.update({
+        where: { id: wallet.id },
+        data: { balance: after },
+      });
       const updated = await tx.transaction.update({
         where: { id: txn.id },
         data: {
@@ -240,13 +334,28 @@ export class WalletsService {
         tx,
         wallet.userId,
         txn.type === 'withdrawal'
-          ? { title: 'Withdrawal sent', body: `${money} withdrawn`, tag: updated.id, url: '/' }
-          : { title: 'Deposit approved', body: `${money} added to your wallet`, tag: updated.id, url: '/' },
+          ? {
+              title: 'Withdrawal sent',
+              body: `${money} withdrawn`,
+              tag: updated.id,
+              url: '/',
+            }
+          : {
+              title: 'Deposit approved',
+              body: `${money} added to your wallet`,
+              tag: updated.id,
+              url: '/',
+            },
       );
 
       return {
         updated,
-        owner: { userId: wallet.userId, walletId: wallet.id, currency: wallet.currency, balance: after },
+        owner: {
+          userId: wallet.userId,
+          walletId: wallet.id,
+          currency: wallet.currency,
+          balance: after,
+        },
         event,
       };
     });
@@ -262,13 +371,17 @@ export class WalletsService {
   }
 
   async reject(txnId: string, actor: AuthUser, note?: string) {
-    await this.assertApprovePermission(actor, await this.getSettleableType(txnId));
+    await this.assertApprovePermission(
+      actor,
+      await this.getSettleableType(txnId),
+    );
 
     const result = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "Transaction" WHERE id = ${txnId} FOR UPDATE`;
       const txn = await tx.transaction.findUnique({ where: { id: txnId } });
       if (!txn) throw new NotFoundException('Transaction not found');
-      if (txn.status !== 'pending') throw new ConflictException('Transaction already reviewed');
+      if (txn.status !== 'pending')
+        throw new ConflictException('Transaction already reviewed');
 
       const note_ = note ?? txn.note;
       const updated = await tx.transaction.update({
@@ -331,10 +444,17 @@ export class WalletsService {
       if (!wallet) throw new NotFoundException('Wallet not found');
 
       const before = wallet.balance;
-      const after = dto.direction === 'credit' ? before + dto.amount : before - dto.amount;
-      if (after < 0) throw new BadRequestException('Adjustment would make the balance negative');
+      const after =
+        dto.direction === 'credit' ? before + dto.amount : before - dto.amount;
+      if (after < 0)
+        throw new BadRequestException(
+          'Adjustment would make the balance negative',
+        );
 
-      await tx.wallet.update({ where: { id: walletId }, data: { balance: after } });
+      await tx.wallet.update({
+        where: { id: walletId },
+        data: { balance: after },
+      });
       const created = await tx.transaction.create({
         data: {
           walletId,
@@ -358,12 +478,22 @@ export class WalletsService {
         entityType: 'wallet',
         entityId: walletId,
         oldValue: { balance: before },
-        newValue: { balance: after, direction: dto.direction, amount: dto.amount, note: dto.note },
+        newValue: {
+          balance: after,
+          direction: dto.direction,
+          amount: dto.amount,
+          note: dto.note,
+        },
       });
 
       return {
         created,
-        owner: { userId: wallet.userId, walletId: wallet.id, currency: wallet.currency, balance: after },
+        owner: {
+          userId: wallet.userId,
+          walletId: wallet.id,
+          currency: wallet.currency,
+          balance: after,
+        },
       };
     });
     this.realtime.emitBalance(result.owner.userId, {
@@ -396,7 +526,9 @@ export class WalletsService {
 
     // Destination existence + currency, read before the lock. `currency` is immutable per wallet,
     // so reading it early is safe (same reasoning as M4a's `type`).
-    const dest = await this.prisma.wallet.findUnique({ where: { id: dto.toWalletId } });
+    const dest = await this.prisma.wallet.findUnique({
+      where: { id: dto.toWalletId },
+    });
     if (!dest) throw new NotFoundException('Destination wallet not found');
 
     // Fetch the rate BEFORE the lock — an external HTTP call must never run while holding two wallet
@@ -429,14 +561,21 @@ export class WalletsService {
       const to = await tx.wallet.findUnique({ where: { id: dto.toWalletId } });
       if (!to) throw new NotFoundException('Destination wallet not found');
 
-      if (from.balance < dto.amount) throw new BadRequestException('Insufficient funds');
+      if (from.balance < dto.amount)
+        throw new BadRequestException('Insufficient funds');
 
       const fromAfter = from.balance - dto.amount;
       const toAfter = to.balance + credit;
       const settledAt = new Date();
 
-      await tx.wallet.update({ where: { id: from.id }, data: { balance: fromAfter } });
-      await tx.wallet.update({ where: { id: to.id }, data: { balance: toAfter } });
+      await tx.wallet.update({
+        where: { id: from.id },
+        data: { balance: fromAfter },
+      });
+      await tx.wallet.update({
+        where: { id: to.id },
+        data: { balance: toAfter },
+      });
 
       // Shared across both halves. `amount` is NOT shared — each row records its OWN currency's
       // amount (the debit on the sender, the converted credit on the receiver). `exchangeRate` is
@@ -505,8 +644,18 @@ export class WalletsService {
       // which the sender has no right to see.
       return {
         outRow,
-        from: { userId: from.userId, walletId: from.id, currency: from.currency, balance: fromAfter },
-        to: { userId: to.userId, walletId: to.id, currency: to.currency, balance: toAfter },
+        from: {
+          userId: from.userId,
+          walletId: from.id,
+          currency: from.currency,
+          balance: fromAfter,
+        },
+        to: {
+          userId: to.userId,
+          walletId: to.id,
+          currency: to.currency,
+          balance: toAfter,
+        },
         event,
       };
     });
@@ -545,9 +694,12 @@ export class WalletsService {
    * static route guard. Permissions are read from the DB (never the token) — M3's rule.
    */
   private async assertApprovePermission(actor: AuthUser, type: string) {
-    const code = type === 'withdrawal' ? 'withdrawal.approve' : 'deposit.approve';
+    const code =
+      type === 'withdrawal' ? 'withdrawal.approve' : 'deposit.approve';
     const user = await this.users.findByIdWithPermissions(actor.id);
-    const held = new Set(user?.role.permissions.map((permission) => permission.code) ?? []);
+    const held = new Set(
+      user?.role.permissions.map((permission) => permission.code) ?? [],
+    );
     if (!held.has(code)) throw new ForbiddenException('Access denied');
   }
 
@@ -558,7 +710,8 @@ export class WalletsService {
   private async getOwnedWallet(id: string, actor: AuthUser) {
     const wallet = await this.prisma.wallet.findUnique({ where: { id } });
     if (!wallet) throw new NotFoundException('Wallet not found');
-    if (wallet.userId !== actor.id) throw new ForbiddenException('Access denied');
+    if (wallet.userId !== actor.id)
+      throw new ForbiddenException('Access denied');
     return wallet;
   }
 }

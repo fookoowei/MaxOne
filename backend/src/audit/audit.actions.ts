@@ -3,7 +3,8 @@
  * compile error and every audited action in the system is discoverable in one file.
  */
 export type AuditAction =
-  | 'deposit.approve'
+  | 'deposit.settle' // customer-initiated, settles instantly (2026-09-10)
+  | 'deposit.approve' // legacy: rows that were still pending when review was removed
   | 'deposit.reject'
   | 'withdrawal.approve'
   | 'withdrawal.reject'
