@@ -48,7 +48,7 @@ export function RecipientCombobox({
       </div>
       <Autocomplete.Portal>
         <Autocomplete.Positioner sideOffset={6} className="isolate z-50 outline-none">
-          <Autocomplete.Popup className="w-(--anchor-width) max-h-(--available-height) overflow-y-auto rounded-2xl border bg-card p-1.5 shadow-lg outline-none">
+          <Autocomplete.Popup className="w-(--anchor-width) max-h-(--available-height) overflow-y-auto rounded-lg border bg-card p-1 shadow-lg outline-none">
             {/* Status and Empty stay mounted (aria-live); their CHILDREN change with the lookup. */}
             <Autocomplete.Status className="flex items-center gap-2 px-2.5 py-2 text-sm text-muted-foreground empty:hidden">
               {state.kind === 'looking' && (
@@ -66,9 +66,9 @@ export function RecipientCombobox({
                 <Autocomplete.Item
                   key={item.value}
                   value={item}
-                  className="flex cursor-default items-center gap-3 rounded-xl px-2.5 py-2 text-sm outline-none select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
+                  className="flex cursor-default items-center gap-3 rounded-md px-2.5 py-2 text-sm outline-none select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
                 >
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-[12px] bg-secondary text-xs font-bold text-secondary-foreground" aria-hidden>
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-bold text-secondary-foreground" aria-hidden>
                     {initials(item.name)}
                   </span>
                   <span className="min-w-0">

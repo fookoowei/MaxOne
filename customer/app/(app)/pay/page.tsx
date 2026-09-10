@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import { Send, QrCode, ScanLine, ChevronRight } from 'lucide-react';
-import { getSessionUser } from '@/lib/auth/session';
+import { serverApi } from '@/lib/api/server';
 import { PageHeader } from '@/components/layout/page-header';
 import { WithAside } from '@/components/layout/with-aside';
-import { GetPaidCard } from '@/components/pay/get-paid-card';
+import { ActivityCard, type Transaction } from '@/components/wallet/activity-card';
+
+interface Wallet { id: string; currency: string }
 
 const actions = [
   { href: '/pay/send', label: 'Send', hint: 'To anyone by their handle', icon: Send },
@@ -11,12 +13,21 @@ const actions = [
   { href: '/pay/scan', label: 'Scan to pay', hint: 'Point your camera at a code', icon: ScanLine },
 ];
 
+const TRANSFERS = new Set(['transfer_in', 'transfer_out']);
+
 export default async function PayPage() {
-  const session = await getSessionUser();
-  // handle is carried in the session (enriched at login/register) — same fallback as Receive.
-  const handle = session ? (session.handle ?? session.email.split('@')[0]) : null;
+  // Desktop aside: the last few sends/receives. Both reads are enhancements — the page renders
+  // its three actions regardless.
+  const wallets = await serverApi('/wallets').then(async (r) => (r.ok ? ((await r.json()) as Wallet[]) : [])).catch(() => [] as Wallet[]);
+  const primary = wallets[0];
+  const transfers = primary
+    ? await serverApi(`/wallets/${primary.id}/transactions`)
+        .then(async (r) => (r.ok ? ((await r.json()) as Transaction[]) : []))
+        .then((rows) => rows.filter((t) => TRANSFERS.has(t.type)))
+        .catch(() => [] as Transaction[])
+    : [];
   return (
-    <WithAside aside={handle ? <GetPaidCard handle={handle} /> : undefined}>
+    <WithAside aside={primary ? <ActivityCard title="Recent transfers" transactions={transfers} currency={primary.currency} limit={5} seeAllHref="/activity" /> : undefined}>
       <div className="space-y-6">
         <PageHeader title="Pay" description="Send, receive or scan — transfers land instantly." />
         <div className="grid gap-3">
