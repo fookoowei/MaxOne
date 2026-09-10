@@ -10,6 +10,8 @@
   --color-status-approved: var(--status-approved);
   --color-status-rejected: var(--status-rejected);
   --color-status-info: var(--status-info);
+  --color-status-approved-bright: var(--status-approved-bright);
+  --color-status-rejected-bright: var(--status-rejected-bright);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
@@ -74,6 +76,20 @@
   --border: oklch(0.9 0.012 285);
   --input: oklch(0.9 0.012 285);
   --ring: oklch(0.48 0.16 285);
+  /* Money states — the only place colour carries meaning in data areas. These were mapped in
+     @theme inline from the start but never DEFINED here, so every text-status utility silently
+     fell back to the inherited foreground and every bg-status tint to transparent: gains rendered
+     as plain dark text while losses were red (--destructive exists), which is the asymmetry the
+     user reported. Hue-matched to Deep Iris rather than copied from the console's mint scheme. */
+  --status-pending: oklch(0.58 0.14 65);
+  --status-approved: oklch(0.52 0.13 160);
+  --status-rejected: oklch(0.55 0.2 25);
+  --status-info: oklch(0.55 0.15 260);
+  /* For dark/gradient surfaces (the portfolio hero): the mid-tone pair above sits at roughly the
+     same lightness as that backdrop and would be unreadable. Deliberately NOT overridden in
+     .dark — the hero's gradient is dark in both themes. */
+  --status-approved-bright: oklch(0.87 0.15 160);
+  --status-rejected-bright: oklch(0.83 0.13 25);
   --chart-1: oklch(0.48 0.16 285);
   --chart-2: oklch(0.62 0.14 200);
   --chart-3: oklch(0.7 0.15 150);
@@ -109,6 +125,12 @@
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.62 0.17 285);
+  /* Lighter money states so they carry on the dark ground. The -bright pair is inherited from
+     :root unchanged — it is already tuned for a dark surface. */
+  --status-pending: oklch(0.78 0.14 70);
+  --status-approved: oklch(0.72 0.13 160);
+  --status-rejected: oklch(0.7 0.17 25);
+  --status-info: oklch(0.72 0.13 255);
   --chart-1: oklch(0.62 0.17 285);
   --chart-2: oklch(0.62 0.14 200);
   --chart-3: oklch(0.7 0.15 150);

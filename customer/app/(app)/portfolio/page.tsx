@@ -35,7 +35,7 @@ export default async function PortfolioPage() {
             Add holding
           </Link>
         </PageHeader>
-        <PortfolioSummary totalValue={portfolio.totalValue} totalPnl={portfolio.totalPnl} />
+        <PortfolioSummary totalValue={portfolio.totalValue} totalPnl={portfolio.totalPnl} totalPnlPct={portfolio.totalPnlPct} />
         <HoldingList rows={portfolio.rows} />
       </div>
     </WithAside>

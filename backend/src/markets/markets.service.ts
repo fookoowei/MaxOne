@@ -19,11 +19,15 @@ export class MarketsService {
   // Crypto-only for now. CryptoProvider is fail-soft (returns [] on error), so this never throws —
   // and an empty result is never cached (defaultCacheable), so an outage isn't pinned for 15s.
   async list(): Promise<MarketAsset[]> {
-    return this.cache.wrap('markets:list', LIST_TTL, () => this.crypto.fetchAssets());
+    return this.cache.wrap('markets:list', LIST_TTL, () =>
+      this.crypto.fetchAssets(),
+    );
   }
 
   detail(id: string) {
-    return this.cache.wrap(`markets:detail:${id}`, DETAIL_TTL, () => this.crypto.fetchOne(id));
+    return this.cache.wrap(`markets:detail:${id}`, DETAIL_TTL, () =>
+      this.crypto.fetchOne(id),
+    );
   }
 
   chart(id: string, days: number) {

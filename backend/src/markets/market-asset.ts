@@ -7,6 +7,9 @@ export interface MarketAsset {
   type: 'crypto' | 'stock';
   price: number; // USD, display-only float (NOT integer minor units — never ledger money)
   change24h: number; // percent, e.g. -1.34
+  // Coin logo hosted by the provider. Optional on purpose: an older cached payload or a future
+  // provider without artwork just means the client falls back to its lettered badge.
+  image?: string;
 }
 
 // A single asset's detail — the list fields plus a few stats CoinGecko already returns.
@@ -22,4 +25,10 @@ export interface ChartData {
 }
 
 // CoinGecko coin ids.
-export const CRYPTO_IDS = ['bitcoin', 'ethereum', 'solana', 'cardano', 'dogecoin'];
+export const CRYPTO_IDS = [
+  'bitcoin',
+  'ethereum',
+  'solana',
+  'cardano',
+  'dogecoin',
+];

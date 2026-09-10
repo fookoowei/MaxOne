@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { formatPrice } from '@/lib/format/price';
+import { CoinIcon } from '@/components/markets/coin-icon';
 import { cn } from '@/lib/utils';
 import type { WatchedAsset } from '@/components/wallet/watching-card';
 
@@ -17,10 +18,13 @@ export function MarketsTicker({ assets }: { assets: (WatchedAsset & { name: stri
       <ul className="mt-1 divide-y">
         {assets.slice(0, 4).map((a) => (
           <li key={a.symbol}>
-            <Link href={`/markets/${a.id}`} className="flex items-center justify-between py-3">
-              <div>
-                <p className="text-sm font-medium">{a.name}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{a.symbol}</p>
+            <Link href={`/markets/${a.id}`} className="flex items-center justify-between gap-3 py-3">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <CoinIcon src={a.image} symbol={a.symbol} className="size-8 text-[10px]" />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{a.name}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{a.symbol}</p>
+                </div>
               </div>
               <div className="text-right">
                 <p className="text-sm font-semibold tabular">{formatPrice(a.price)}</p>

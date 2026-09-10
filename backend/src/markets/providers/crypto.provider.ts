@@ -12,6 +12,7 @@ interface CoinGeckoRow {
   name: string;
   current_price: number;
   price_change_percentage_24h: number | null;
+  image: string | null; // coin logo URL on CoinGecko's CDN
 }
 
 // CoinGecko markets endpoint. Isolated + fail-soft: any failure returns [] so a crypto outage
@@ -53,6 +54,7 @@ export class CryptoProvider {
         type: 'crypto' as const,
         price: r.current_price,
         change24h: r.price_change_percentage_24h ?? 0,
+        image: r.image ?? undefined,
       }));
     } catch (err) {
       this.log.warn(`CoinGecko list failed: ${(err as Error).message}`);
@@ -80,6 +82,7 @@ export class CryptoProvider {
         type: 'crypto',
         price: r.current_price,
         change24h: r.price_change_percentage_24h ?? 0,
+        image: r.image ?? undefined,
         marketCap: r.market_cap ?? 0,
         high24h: r.high_24h ?? 0,
         low24h: r.low_24h ?? 0,

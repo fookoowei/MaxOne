@@ -8,11 +8,13 @@ export interface PriceInfo {
   symbol: string;
   name: string;
   price: number;
+  image?: string;
 }
 export interface HoldingRow {
   id: string;
   symbol: string;
   name: string;
+  image?: string;
   quantity: number;
   currentPrice: number;
   value: number;
@@ -25,6 +27,7 @@ export interface Portfolio {
   totalValue: number;
   totalInvested: number;
   totalPnl: number;
+  totalPnlPct: number;
 }
 
 // Join holdings with live prices → value + profit/loss per holding and overall. A holding whose
@@ -41,6 +44,7 @@ export function computePortfolio(holdings: Holding[], prices: PriceInfo[]): Port
       id: p.id,
       symbol: h.symbol,
       name: p.name,
+      image: p.image,
       quantity: h.quantity,
       currentPrice: p.price,
       value,
@@ -51,5 +55,13 @@ export function computePortfolio(holdings: Holding[], prices: PriceInfo[]): Port
   }
   const totalValue = rows.reduce((s, r) => s + r.value, 0);
   const totalInvested = rows.reduce((s, r) => s + r.invested, 0);
-  return { rows, totalValue, totalInvested, totalPnl: totalValue - totalInvested };
+  const totalPnl = totalValue - totalInvested;
+  return {
+    rows,
+    totalValue,
+    totalInvested,
+    totalPnl,
+    // Nothing invested → no percentage to speak of (and no divide by zero).
+    totalPnlPct: totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0,
+  };
 }
