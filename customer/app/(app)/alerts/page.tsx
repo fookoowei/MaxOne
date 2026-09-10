@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { BellPlus } from 'lucide-react';
 import { serverApi } from '@/lib/api/server';
 import { computeAlerts, type Alert, type PriceInfo } from '@/lib/alerts/compute';
 import { buttonVariants } from '@/components/ui/button';
@@ -16,7 +17,8 @@ export default async function AlertsPage() {
   return (
     <div className="space-y-6 lg:max-w-[720px]">
       <PageHeader title="Price alerts" description="Checked automatically — you'll get a toast the moment one triggers.">
-        <Link href="/alerts/new" className={buttonVariants({ variant: 'secondary' })}>
+        <Link href="/alerts/new" className={buttonVariants({ variant: 'secondary', size: 'lg' })}>
+          <BellPlus data-icon="inline-start" aria-hidden />
           New alert
         </Link>
       </PageHeader>

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { Plus } from 'lucide-react';
 import { serverApi } from '@/lib/api/server';
 import { computePortfolio, type Holding, type PriceInfo } from '@/lib/portfolio/compute';
 import { buttonVariants } from '@/components/ui/button';
@@ -16,7 +17,8 @@ export default async function PortfolioPage() {
   return (
     <div className="space-y-6 lg:max-w-[720px]">
       <PageHeader title="Portfolio" description="What you hold, valued at today's prices." back={{ href: '/markets', label: 'Markets' }}>
-        <Link href="/portfolio/new" className={buttonVariants({ variant: 'secondary' })}>
+        <Link href="/portfolio/new" className={buttonVariants({ variant: 'secondary', size: 'lg' })}>
+          <Plus data-icon="inline-start" aria-hidden />
           Add holding
         </Link>
       </PageHeader>

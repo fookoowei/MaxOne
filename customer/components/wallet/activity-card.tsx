@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { ArrowDownToLine, ArrowUpDown, ArrowUpFromLine, History, Send } from 'lucide-react';
+import { CardLink } from '@/components/layout/card-link';
 import { MoneyText } from '@/components/money-text';
 import { EmptyState } from '@/components/layout/empty-state';
 import { RelativeTime } from '@/components/layout/relative-time';
@@ -31,9 +31,7 @@ export function ActivityCard({ transactions, currency, limit, seeAllHref, title 
       <div className="flex items-center justify-between py-3">
         <h2 className="text-sm font-semibold">{title}</h2>
         {seeAllHref && transactions.length > (limit ?? 0) && (
-          <Link href={seeAllHref} className="text-[13px] font-medium text-primary">
-            See all
-          </Link>
+          <CardLink href={seeAllHref}>See all</CardLink>
         )}
       </div>
       {rows.length === 0 ? (

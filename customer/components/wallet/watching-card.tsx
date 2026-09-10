@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { formatPrice } from '@/lib/format/price';
+import { CardLink } from '@/components/layout/card-link';
 import { cn } from '@/lib/utils';
 
 export interface WatchedAsset {
@@ -17,9 +18,7 @@ export function WatchingCard({ assets }: { assets: WatchedAsset[] }) {
     <section className="rounded-[20px] border bg-card p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">Watching</h2>
-        <Link href="/markets" className="text-[13px] font-medium text-primary">
-          Markets
-        </Link>
+        <CardLink href="/markets">Markets</CardLink>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-3">
         {assets.slice(0, 3).map((a) => (

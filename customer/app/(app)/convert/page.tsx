@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Coins } from 'lucide-react';
+import { Coins, Wallet } from 'lucide-react';
 import { serverApi } from '@/lib/api/server';
 import { buttonVariants } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
@@ -22,6 +22,7 @@ export default async function ConvertPage() {
           description="Converting needs two wallets — one to take from and one to put into."
           action={
             <Link href="/wallets/new" className={buttonVariants({ size: 'xl' })}>
+              <Wallet data-icon="inline-start" aria-hidden />
               Add a currency
             </Link>
           }

@@ -1,6 +1,9 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { BellRing, PieChart } from 'lucide-react';
 import { serverApi } from '@/lib/api/server';
+import { buttonVariants } from '@/components/ui/button';
+import { CardLink } from '@/components/layout/card-link';
 import { computePortfolio, type Holding, type PriceInfo } from '@/lib/portfolio/compute';
 import { formatPrice } from '@/lib/format/price';
 import { PageHeader } from '@/components/layout/page-header';
@@ -31,7 +34,7 @@ export default async function MarketsPage() {
             <section className="rounded-[20px] border bg-card p-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold">Your portfolio</h2>
-                <Link href="/portfolio" className="text-[13px] font-medium text-primary">Open</Link>
+                <CardLink href="/portfolio">Open</CardLink>
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">Holdings you track, not custody.</p>
               <p className="mt-3 text-xl font-bold tabular">{formatPrice(portfolio.totalValue)}</p>
@@ -46,8 +49,14 @@ export default async function MarketsPage() {
     >
       <div className="space-y-5">
         <PageHeader title="Markets" description="Live prices, informational only.">
-          <Link href="/portfolio" className="text-sm font-medium text-primary">Portfolio</Link>
-          <Link href="/alerts" className="text-sm font-medium text-primary">Alerts</Link>
+          <Link href="/portfolio" className={buttonVariants({ variant: 'secondary', size: 'lg' })}>
+            <PieChart data-icon="inline-start" aria-hidden />
+            Portfolio
+          </Link>
+          <Link href="/alerts" className={buttonVariants({ variant: 'secondary', size: 'lg' })}>
+            <BellRing data-icon="inline-start" aria-hidden />
+            Alerts
+          </Link>
         </PageHeader>
         <MarketsView initialAssets={assets} followedSymbols={followedSymbols} />
       </div>

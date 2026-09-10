@@ -3,6 +3,7 @@ import { Bell } from 'lucide-react';
 import { formatPrice } from '@/lib/format/price';
 import { PriceChart } from '@/components/markets/price-chart';
 import { buttonVariants } from '@/components/ui/button';
+import { CardLink } from '@/components/layout/card-link';
 import { cn } from '@/lib/utils';
 import type { MarketAsset } from '@/components/markets/market-list';
 
@@ -15,9 +16,7 @@ export function FeaturedAsset({ asset, chart }: { asset: MarketAsset; chart: { p
           <p className="text-sm font-semibold">{asset.name}</p>
           <p className="text-xs text-muted-foreground">{asset.symbol} · 7 days</p>
         </div>
-        <Link href={`/markets/${asset.id}`} className="text-[13px] font-medium text-primary">
-          Details
-        </Link>
+        <CardLink href={`/markets/${asset.id}`}>Details</CardLink>
       </div>
       <p className="text-[28px] leading-9 font-bold tracking-tight tabular">
         {formatPrice(asset.price)}{' '}
@@ -28,7 +27,7 @@ export function FeaturedAsset({ asset, chart }: { asset: MarketAsset; chart: { p
       </p>
       <PriceChart id={asset.id} initial={chart} />
       <Link href={`/alerts/new?symbol=${encodeURIComponent(asset.symbol)}`} className={buttonVariants({ variant: 'outline', className: 'h-10 w-full' })}>
-        <Bell aria-hidden />
+        <Bell data-icon="inline-start" aria-hidden />
         Set a price alert
       </Link>
     </section>
