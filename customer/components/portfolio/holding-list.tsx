@@ -3,6 +3,7 @@ import { PieChart, Plus } from 'lucide-react';
 import { formatPrice } from '@/lib/format/price';
 import { buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/layout/empty-state';
+import { CoinIcon } from '@/components/markets/coin-icon';
 import { RemoveHoldingButton } from '@/components/portfolio/remove-holding-button';
 import type { HoldingRow } from '@/lib/portfolio/compute';
 
@@ -26,11 +27,14 @@ export function HoldingList({ rows }: { rows: HoldingRow[] }) {
     <ul className="divide-y divide-border">
       {rows.map((r) => (
         <li key={r.symbol} className="flex items-center justify-between py-3">
-          <Link href={`/markets/${r.id}`} className="flex-1">
-            <p className="text-sm font-medium">{r.name}</p>
-            <p className="text-xs text-muted-foreground">
-              {r.quantity} {r.symbol}
-            </p>
+          <Link href={`/markets/${r.id}`} className="flex min-w-0 flex-1 items-center gap-2.5">
+            <CoinIcon src={r.image} symbol={r.symbol} className="size-8 text-[10px]" />
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-medium">{r.name}</span>
+              <span className="block text-xs text-muted-foreground">
+                {r.quantity} {r.symbol}
+              </span>
+            </span>
           </Link>
           <div className="mr-2 text-right">
             <p className="text-sm font-semibold tabular-nums">{formatPrice(r.value)}</p>

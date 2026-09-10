@@ -4,6 +4,7 @@ import { formatPrice } from '@/lib/format/price';
 import { PriceChart } from '@/components/markets/price-chart';
 import { buttonVariants } from '@/components/ui/button';
 import { CardLink } from '@/components/layout/card-link';
+import { CoinIcon } from '@/components/markets/coin-icon';
 import { cn } from '@/lib/utils';
 import type { MarketAsset } from '@/components/markets/market-list';
 
@@ -11,10 +12,13 @@ import type { MarketAsset } from '@/components/markets/market-list';
 export function FeaturedAsset({ asset, chart }: { asset: MarketAsset; chart: { points: number[]; labels: string[] } }) {
   return (
     <section className="space-y-3 rounded-[20px] border bg-card p-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold">{asset.name}</p>
-          <p className="text-xs text-muted-foreground">{asset.symbol} · 7 days</p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <CoinIcon src={asset.image} symbol={asset.symbol} className="size-8 text-[10px]" />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">{asset.name}</p>
+            <p className="text-xs text-muted-foreground">{asset.symbol} · 7 days</p>
+          </div>
         </div>
         <CardLink href={`/markets/${asset.id}`}>Details</CardLink>
       </div>

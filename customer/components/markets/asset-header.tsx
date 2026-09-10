@@ -1,4 +1,5 @@
 import { formatPrice } from '@/lib/format/price';
+import { CoinIcon } from '@/components/markets/coin-icon';
 
 export interface AssetDetail {
   id: string;
@@ -10,14 +11,18 @@ export interface AssetDetail {
   marketCap: number;
   high24h: number;
   low24h: number;
+  image?: string;
 }
 
 export function AssetHeader({ asset }: { asset: AssetDetail }) {
   return (
     <div className="space-y-2">
-      <div>
-        <h1 className="text-xl font-semibold">{asset.name}</h1>
-        <p className="text-xs text-muted-foreground">{asset.symbol}</p>
+      <div className="flex items-center gap-3">
+        <CoinIcon src={asset.image} symbol={asset.symbol} className="size-11" />
+        <div className="min-w-0">
+          <h1 className="truncate text-xl font-semibold">{asset.name}</h1>
+          <p className="text-xs text-muted-foreground">{asset.symbol}</p>
+        </div>
       </div>
       <p className="text-3xl font-bold tabular-nums">{formatPrice(asset.price)}</p>
       <p

@@ -7,6 +7,7 @@ const coingeckoRow = {
   name: 'Bitcoin',
   current_price: 43000.5,
   price_change_percentage_24h: 2.34,
+  image: 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
 };
 
 describe('CryptoProvider', () => {
@@ -29,6 +30,8 @@ describe('CryptoProvider', () => {
         type: 'crypto',
         price: 43000.5,
         change24h: 2.34,
+        image:
+          'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
       },
     ]);
   });
@@ -36,6 +39,20 @@ describe('CryptoProvider', () => {
   it('fails soft (returns []) on a network error', async () => {
     jest.spyOn(global, 'fetch').mockRejectedValue(new Error('down'));
     expect(await provider.fetchAssets()).toEqual([]);
+  });
+
+  it('leaves image undefined when the provider sends none (client falls back to its badge)', async () => {
+    const noImage: Partial<typeof coingeckoRow> = { ...coingeckoRow };
+    delete noImage.image;
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([noImage]),
+    } as unknown as Response);
+
+    const [asset] = await provider.fetchAssets();
+
+    expect(asset.image).toBeUndefined();
+    expect(asset.symbol).toBe('BTC');
   });
 
   it('fails soft (returns []) on a non-OK response — and says why in the log', async () => {
@@ -80,6 +97,7 @@ describe('CryptoProvider.fetchOne', () => {
     name: 'Bitcoin',
     current_price: 43000,
     price_change_percentage_24h: 2.34,
+    image: 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
     market_cap: 800000000000,
     high_24h: 44000,
     low_24h: 42000,
@@ -100,6 +118,8 @@ describe('CryptoProvider.fetchOne', () => {
       type: 'crypto',
       price: 43000,
       change24h: 2.34,
+      image:
+        'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
       marketCap: 800000000000,
       high24h: 44000,
       low24h: 42000,

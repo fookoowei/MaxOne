@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { formatPrice } from '@/lib/format/price';
 import { WatchButton } from '@/components/markets/watch-button';
+import { CoinIcon } from '@/components/markets/coin-icon';
 import { cn } from '@/lib/utils';
 
 export interface MarketAsset {
@@ -10,6 +11,7 @@ export interface MarketAsset {
   type: 'crypto' | 'stock';
   price: number;
   change24h: number;
+  image?: string; // provider logo; absent → CoinIcon falls back to the lettered badge
 }
 
 // One row per asset: ticker avatar, name, price + 24h (colour = direction, always with a sign),
@@ -24,9 +26,7 @@ export function MarketList({ assets, followedSymbols, emptyText = 'Markets are u
         <li key={`${a.type}:${a.symbol}`} className="flex items-center gap-3 py-3">
           <Link href={`/markets/${a.id}`} className="flex min-w-0 flex-1 items-center justify-between gap-3">
             <span className="flex min-w-0 items-center gap-3">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground" aria-hidden>
-                {a.symbol.slice(0, 4)}
-              </span>
+              <CoinIcon src={a.image} symbol={a.symbol} />
               <span className="min-w-0">
                 <span className="block truncate text-sm font-medium">{a.name}</span>
                 <span className="block text-xs text-muted-foreground">{a.symbol}</span>

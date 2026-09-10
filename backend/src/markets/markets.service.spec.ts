@@ -1,7 +1,14 @@
 import { MarketsService } from './markets.service';
 import { MarketAsset } from './market-asset';
 
-const btc: MarketAsset = { id: 'bitcoin', symbol: 'BTC', name: 'Bitcoin', type: 'crypto', price: 43000, change24h: 2 };
+const btc: MarketAsset = {
+  id: 'bitcoin',
+  symbol: 'BTC',
+  name: 'Bitcoin',
+  type: 'crypto',
+  price: 43000,
+  change24h: 2,
+};
 
 /** Cache stand-in: remembers what was stored (and with which TTL) so the next call is a hit. */
 function fakeCache() {
@@ -10,10 +17,16 @@ function fakeCache() {
   return {
     store,
     ttls,
-    wrap: async (key: string, ttl: number, fn: () => Promise<unknown>, cacheable = (v: unknown) => v != null && !(Array.isArray(v) && v.length === 0)) => {
+    wrap: async (
+      key: string,
+      ttl: number,
+      fn: () => Promise<unknown>,
+      cacheable = (v: unknown) =>
+        v != null && !(Array.isArray(v) && v.length === 0),
+    ) => {
       if (store.has(key)) return store.get(key);
       const v = await fn();
-      if (cacheable(v as never)) {
+      if (cacheable(v)) {
         store.set(key, v);
         ttls.set(key, ttl);
       }
@@ -24,12 +37,18 @@ function fakeCache() {
 
 describe('MarketsService.list', () => {
   it('returns the crypto provider assets', async () => {
-    const service = new MarketsService({ fetchAssets: () => Promise.resolve([btc]) } as any, fakeCache() as any);
+    const service = new MarketsService(
+      { fetchAssets: () => Promise.resolve([btc]) } as any,
+      fakeCache() as any,
+    );
     expect(await service.list()).toEqual([btc]);
   });
 
   it('returns [] when the provider is empty (fail-soft — never throws)', async () => {
-    const service = new MarketsService({ fetchAssets: () => Promise.resolve([]) } as any, fakeCache() as any);
+    const service = new MarketsService(
+      { fetchAssets: () => Promise.resolve([]) } as any,
+      fakeCache() as any,
+    );
     expect(await service.list()).toEqual([]);
   });
 
@@ -48,8 +67,12 @@ describe('MarketsService.detail / chart', () => {
   it('keys detail and chart by id (and days) with their own TTLs', async () => {
     const cache = fakeCache();
     const provider = {
-      fetchOne: jest.fn().mockResolvedValue({ ...btc, marketCap: 1, high24h: 1, low24h: 1 }),
-      fetchChart: jest.fn().mockResolvedValue({ points: [1, 2], labels: ['a', 'b'] }),
+      fetchOne: jest
+        .fn()
+        .mockResolvedValue({ ...btc, marketCap: 1, high24h: 1, low24h: 1 }),
+      fetchChart: jest
+        .fn()
+        .mockResolvedValue({ points: [1, 2], labels: ['a', 'b'] }),
     };
     const service = new MarketsService(provider as any, cache as any);
     await service.detail('bitcoin');
@@ -60,7 +83,9 @@ describe('MarketsService.detail / chart', () => {
 
   it('does not cache an empty chart ("Chart unavailable" is retried next time)', async () => {
     const cache = fakeCache();
-    const provider = { fetchChart: jest.fn().mockResolvedValue({ points: [], labels: [] }) };
+    const provider = {
+      fetchChart: jest.fn().mockResolvedValue({ points: [], labels: [] }),
+    };
     const service = new MarketsService(provider as any, cache as any);
     await service.chart('bitcoin', 1);
     await service.chart('bitcoin', 1);

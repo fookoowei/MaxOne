@@ -8,11 +8,13 @@ export interface PriceInfo {
   symbol: string;
   name: string;
   price: number;
+  image?: string;
 }
 export interface HoldingRow {
   id: string;
   symbol: string;
   name: string;
+  image?: string;
   quantity: number;
   currentPrice: number;
   value: number;
@@ -42,6 +44,7 @@ export function computePortfolio(holdings: Holding[], prices: PriceInfo[]): Port
       id: p.id,
       symbol: h.symbol,
       name: p.name,
+      image: p.image,
       quantity: h.quantity,
       currentPrice: p.price,
       value,
