@@ -43,4 +43,9 @@ describe('MarketsView', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Watching' }));
     expect(screen.getByText(/star assets/i)).toBeInTheDocument();
   });
+  it('explains paused market data instead of a search box when the catalog is empty', () => {
+    render(<MarketsView initialAssets={[]} followedSymbols={[]} />);
+    expect(screen.getByRole('status')).toHaveTextContent(/live market data is paused/i);
+    expect(screen.queryByLabelText('Search coins')).toBeNull();
+  });
 });

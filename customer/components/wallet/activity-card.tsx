@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { ArrowDownToLine, ArrowUpDown, ArrowUpFromLine, History, Send } from 'lucide-react';
+import { CardLink } from '@/components/layout/card-link';
 import { MoneyText } from '@/components/money-text';
 import { EmptyState } from '@/components/layout/empty-state';
 import { RelativeTime } from '@/components/layout/relative-time';
@@ -24,21 +24,34 @@ export function isCredit(type: string): boolean {
 
 // A statement, not a log: what it was, whether it's settled, and the amount signed by direction.
 // Colour appears only on money that arrived; pending is a pill, never a colour on the amount.
-export function ActivityCard({ transactions, currency, limit, seeAllHref, title = 'Recent activity' }: { transactions: Transaction[]; currency: string; limit?: number; seeAllHref?: string; title?: string }) {
+export function ActivityCard({
+  transactions,
+  currency,
+  limit,
+  seeAllHref,
+  title = 'Recent activity',
+  empty = { title: 'No activity yet', description: 'Add money to get started.' },
+}: {
+  transactions: Transaction[];
+  currency: string;
+  limit?: number;
+  seeAllHref?: string;
+  title?: string;
+  /** What to say when there are no rows — a filtered card (e.g. transfers only) needs its own hint. */
+  empty?: { title: string; description?: string };
+}) {
   const rows = limit ? transactions.slice(0, limit) : transactions;
   return (
     <section className="rounded-[20px] border bg-card px-4 pb-1 pt-1">
       <div className="flex items-center justify-between py-3">
         <h2 className="text-sm font-semibold">{title}</h2>
         {seeAllHref && transactions.length > (limit ?? 0) && (
-          <Link href={seeAllHref} className="text-[13px] font-medium text-primary">
-            See all
-          </Link>
+          <CardLink href={seeAllHref}>See all</CardLink>
         )}
       </div>
       {rows.length === 0 ? (
         <div className="pb-3">
-          <EmptyState icon={History} title="No activity yet" description="Add money to get started." />
+          <EmptyState icon={History} title={empty.title} description={empty.description} />
         </div>
       ) : (
         <ul className="divide-y">

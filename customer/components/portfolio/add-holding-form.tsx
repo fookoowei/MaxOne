@@ -8,6 +8,7 @@ import { holdingSchema, type HoldingInput } from '@/lib/schemas/holding';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NativeSelect } from '@/components/ui/native-select';
 
 export function AddHoldingForm({ assets }: { assets: { symbol: string; name: string }[] }) {
   const router = useRouter();
@@ -39,17 +40,13 @@ export function AddHoldingForm({ assets }: { assets: { symbol: string; name: str
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="space-y-1">
         <Label htmlFor="symbol">Asset</Label>
-        <select
-          id="symbol"
-          {...register('symbol')}
-          className="w-full rounded-md border bg-background p-2 text-sm"
-        >
+        <NativeSelect id="symbol" {...register('symbol')}>
           {assets.map((a) => (
             <option key={a.symbol} value={a.symbol}>
               {a.symbol} — {a.name}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </div>
       <div className="space-y-1">
         <Label htmlFor="quantity">Quantity</Label>

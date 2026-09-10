@@ -6,6 +6,7 @@ import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { MarketList, type MarketAsset } from '@/components/markets/market-list';
+import { MarketDataNotice } from '@/components/markets/market-data-notice';
 import { connectSocket } from '@/lib/realtime/socket';
 import { mergeLivePrices } from '@/lib/markets/live-prices';
 
@@ -50,6 +51,10 @@ export function MarketsView({ initialAssets, followedSymbols }: { initialAssets:
   }, [assets, q, chip, followedSymbols]);
 
   const empty = chip === 'watching' && !q ? 'Star assets to build your watchlist.' : q ? `Nothing matches “${q}”.` : undefined;
+
+  // No catalog at all (provider throttled on the hosted demo): search and chips would be filtering
+  // nothing, so say what's going on instead. The socket never adds assets, so this is stable.
+  if (assets.length === 0) return <MarketDataNotice />;
 
   return (
     <div className="space-y-4">

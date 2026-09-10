@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { PieChart } from 'lucide-react';
+import { PieChart, Plus } from 'lucide-react';
 import { formatPrice } from '@/lib/format/price';
 import { buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/layout/empty-state';
@@ -15,6 +15,7 @@ export function HoldingList({ rows }: { rows: HoldingRow[] }) {
         description="Add what you hold elsewhere to see its value and P/L here."
         action={
           <Link href="/portfolio/new" className={buttonVariants({ size: 'xl' })}>
+            <Plus data-icon="inline-start" aria-hidden />
             Add a holding
           </Link>
         }

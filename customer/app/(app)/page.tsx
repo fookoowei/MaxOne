@@ -5,6 +5,7 @@ import { serverApi } from '@/lib/api/server';
 import { getSessionUser } from '@/lib/auth/session';
 import { formatMoney } from '@/lib/format/money';
 import { WithAside } from '@/components/layout/with-aside';
+import { CardLink } from '@/components/layout/card-link';
 import { LiveBalance } from '@/components/wallet/live-balance';
 import { QuickActions } from '@/components/wallet/quick-actions';
 import { ActivityCard, type Transaction } from '@/components/wallet/activity-card';
@@ -72,9 +73,9 @@ export default async function HomePage() {
           <section className="rounded-[20px] border bg-card px-4 py-1">
             <div className="flex items-center justify-between py-3">
               <h2 className="text-sm font-semibold">Your currencies</h2>
-              <div className="flex gap-3 text-[13px] font-medium">
-                <Link href="/convert" className="text-primary">Convert</Link>
-                <Link href="/wallets/new" className="text-primary">Add</Link>
+              <div className="flex gap-3">
+                <CardLink href="/convert">Convert</CardLink>
+                <CardLink href="/wallets/new">Add</CardLink>
               </div>
             </div>
             <ul className="divide-y">

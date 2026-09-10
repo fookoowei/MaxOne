@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { SUPPORTED_CURRENCIES } from '@/lib/currencies';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { NativeSelect } from '@/components/ui/native-select';
 
 // `held` = currency codes the customer already has, so we don't offer duplicates.
 export function AddWalletForm({ held }: { held: string[] }) {
@@ -37,18 +38,13 @@ export function AddWalletForm({ held }: { held: string[] }) {
     <div className="space-y-4">
       <div className="space-y-1">
         <Label htmlFor="currency">Currency</Label>
-        <select
-          id="currency"
-          value={currency}
-          onChange={(e) => setCurrency(e.target.value)}
-          className="w-full rounded-md border bg-background p-2 text-sm"
-        >
+        <NativeSelect id="currency" value={currency} onChange={(e) => setCurrency(e.target.value)}>
           {options.map((c) => (
             <option key={c.code} value={c.code}>
               {c.code} — {c.name}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </div>
       <Button type="button" size="xl" className="w-full" onClick={submit} pending={busy}>
         Add wallet

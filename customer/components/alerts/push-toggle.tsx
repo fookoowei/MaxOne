@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import { Bell, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { subscribeToPush, unsubscribeFromPush } from '@/lib/push/subscribe';
+import { cn } from '@/lib/utils';
 
-// One row: what push does, and a button that reads as its current state.
-export function PushToggle() {
+// One row: what push does, and a button that reads as its current state. `stacked` keeps the
+// button under the text at every width — for the 360px desktop aside.
+export function PushToggle({ stacked = false }: { stacked?: boolean }) {
   const [perm, setPerm] = useState<NotificationPermission>('default');
   const [busy, setBusy] = useState(false);
 
@@ -30,7 +32,7 @@ export function PushToggle() {
 
   const on = perm === 'granted';
   return (
-    <div className="flex flex-col gap-3 rounded-[20px] border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className={cn('flex flex-col gap-3 rounded-[20px] border bg-card px-4 py-3', !stacked && 'sm:flex-row sm:items-center sm:justify-between')}>
       <div className="min-w-0">
         <p className="text-sm font-medium">Push notifications</p>
         <p className="text-xs text-muted-foreground">

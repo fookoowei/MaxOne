@@ -90,7 +90,7 @@ GitHub Actions secrets: `RENDER_DEPLOY_HOOK`, `VERCEL_DEPLOY_HOOK`, `VERCEL_CUST
 1. `curl https://maxone-backend.onrender.com/health` → `{"status":"ok","db":"up","redis":"up","rabbitmq":"up",…}` (200). `degraded` tells you which dependency to look at; 503 = Postgres.
 2. `curl …/metrics | grep maxone_` → the five gauges.
 3. Render → API → Logs: `Connected to RabbitMQ`, `in-process consumer subscribed (boot)` (or, with a paid worker: maxone-worker → `Worker up`).
-4. Customer app: sign up, subscribe to push; staff console: approve a deposit → toast in the open tab, push on the closed device; worker log shows `push sent id=… req=<the API request id>`.
+4. Customer app: sign up, subscribe to push; staff console: approve a withdrawal (deposits settle instantly) → toast in the open tab, push on the closed device; worker log shows `push sent id=… req=<the API request id>`.
 5. CloudAMQP → RabbitMQ Manager: `notifications.push.dead` = 0. If not, the API log has `ALERT dead-letters` (and Sentry, if configured).
 
 ## Local development

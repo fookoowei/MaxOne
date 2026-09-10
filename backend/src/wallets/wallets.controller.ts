@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
@@ -37,23 +46,30 @@ export class WalletsController {
   }
 
   @Get(':id')
-  getOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() actor: AuthUser) {
+  getOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthUser,
+  ) {
     return this.wallets.getWallet(id, actor);
   }
 
   @Get(':id/transactions')
-  listTransactions(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() actor: AuthUser) {
+  listTransactions(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthUser,
+  ) {
     return this.wallets.listTransactions(id, actor);
   }
 
+  // Deposits settle on the spot (no staff review — see WalletsService.deposit); withdrawals queue.
   @Post(':id/deposits')
   @Idempotent({ required: true })
-  requestDeposit(
+  deposit(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() actor: AuthUser,
     @Body() dto: MoneyAmountDto,
   ) {
-    return this.wallets.requestDeposit(id, actor, dto.amount, dto.note);
+    return this.wallets.deposit(id, actor, dto.amount, dto.note);
   }
 
   @Post(':id/withdrawals')

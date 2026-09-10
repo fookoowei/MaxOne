@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { BellRing } from 'lucide-react';
+import { BellPlus, BellRing } from 'lucide-react';
 import { formatPrice } from '@/lib/format/price';
 import { buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/layout/empty-state';
@@ -15,6 +15,7 @@ export function AlertList({ rows }: { rows: AlertRow[] }) {
         description="Pick an asset and a price, and we'll watch it for you."
         action={
           <Link href="/alerts/new" className={buttonVariants({ size: 'xl' })}>
+            <BellPlus data-icon="inline-start" aria-hidden />
             Set an alert
           </Link>
         }

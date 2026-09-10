@@ -54,7 +54,9 @@ describe('SendMoneyWizard', () => {
     wizard();
     await userEvent.type(screen.getByLabelText(/send to/i), 'meme');
     expect(await screen.findByText(/can't send to yourself/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    // Dismiss the dropdown (while it is open the rest of the page is aria-hidden, as with any popup).
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled());
   });
 
   it('says when nobody has that handle', async () => {
@@ -62,6 +64,38 @@ describe('SendMoneyWizard', () => {
     wizard();
     await userEvent.type(screen.getByLabelText(/send to/i), 'ghost');
     expect(await screen.findByText(/no one found/i)).toBeInTheDocument();
+  });
+
+  it('offers the match in a dropdown; picking it fills the handle and pins the recipient', async () => {
+    mockFetch(() => alice());
+    wizard();
+    const box = screen.getByRole('combobox', { name: /send to/i });
+    await userEvent.type(box, 'alice');
+    const option = await screen.findByRole('option', { name: /alice lee/i });
+    expect(box).toHaveAttribute('aria-expanded', 'true');
+    await userEvent.click(option);
+    expect(box).toHaveValue('alice');
+    await waitFor(() => expect(box).toHaveAttribute('aria-expanded', 'false'));
+    expect(screen.getByRole('status')).toHaveTextContent('@alice · USD wallet'); // pinned under the field
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  it('is keyboard operable: ArrowDown + Enter picks the match', async () => {
+    mockFetch(() => alice());
+    wizard();
+    const box = screen.getByRole('combobox', { name: /send to/i });
+    await userEvent.type(box, 'alice');
+    await screen.findByRole('option', { name: /alice lee/i });
+    await userEvent.keyboard('{ArrowDown}{Enter}');
+    await waitFor(() => expect(box).toHaveAttribute('aria-expanded', 'false'));
+    expect(screen.getByRole('status')).toHaveTextContent('@alice · USD wallet');
+  });
+
+  it('shows a looking-up status in the dropdown before the lookup resolves', async () => {
+    vi.spyOn(global, 'fetch').mockImplementation(() => new Promise<Response>(() => {})); // never resolves
+    wizard();
+    await userEvent.type(screen.getByRole('combobox', { name: /send to/i }), 'alice');
+    expect(await screen.findByText(/looking up @alice/i)).toBeInTheDocument();
   });
 
   it('step-up: a 403 STEP_UP_REQUIRED prompts for a code on the confirm step, then retries with the grant', async () => {
