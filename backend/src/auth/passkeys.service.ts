@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   generateAuthenticationOptions,
@@ -47,9 +51,15 @@ export class PasskeysService {
         id: c.credentialId,
         transports: c.transports as AuthenticatorTransport[],
       })),
-      authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
+      authenticatorSelection: {
+        residentKey: 'preferred',
+        userVerification: 'preferred',
+      },
     });
-    const challengeToken = await this.tokens.issueWebAuthnChallenge(options.challenge, user.id);
+    const challengeToken = await this.tokens.issueWebAuthnChallenge(
+      options.challenge,
+      user.id,
+    );
     return { options, challengeToken };
   }
 
@@ -59,8 +69,10 @@ export class PasskeysService {
     challengeToken: string,
     label?: string,
   ) {
-    const { challenge, userId: bound } = await this.tokens.verifyWebAuthnChallenge(challengeToken);
-    if (bound !== userId) throw new UnauthorizedException('Challenge does not belong to this user');
+    const { challenge, userId: bound } =
+      await this.tokens.verifyWebAuthnChallenge(challengeToken);
+    if (bound !== userId)
+      throw new UnauthorizedException('Challenge does not belong to this user');
     const result = await verifyRegistrationResponse({
       response,
       expectedChallenge: challenge,
@@ -70,7 +82,8 @@ export class PasskeysService {
     if (!result.verified || !result.registrationInfo) {
       throw new UnauthorizedException('Passkey registration failed');
     }
-    const { credential, credentialDeviceType, credentialBackedUp } = result.registrationInfo;
+    const { credential, credentialDeviceType, credentialBackedUp } =
+      result.registrationInfo;
     return this.prisma.passkey.create({
       data: {
         userId,
@@ -93,7 +106,9 @@ export class PasskeysService {
       rpID: this.rpID,
       userVerification: 'preferred',
     });
-    const challengeToken = await this.tokens.issueWebAuthnChallenge(options.challenge);
+    const challengeToken = await this.tokens.issueWebAuthnChallenge(
+      options.challenge,
+    );
     return { options, challengeToken };
   }
 
@@ -103,8 +118,11 @@ export class PasskeysService {
     challengeToken: string,
     expectUserId?: string,
   ): Promise<string> {
-    const { challenge } = await this.tokens.verifyWebAuthnChallenge(challengeToken);
-    const passkey = await this.prisma.passkey.findUnique({ where: { credentialId: response.id } });
+    const { challenge } =
+      await this.tokens.verifyWebAuthnChallenge(challengeToken);
+    const passkey = await this.prisma.passkey.findUnique({
+      where: { credentialId: response.id },
+    });
     if (!passkey) throw new UnauthorizedException('Unknown passkey');
     if (expectUserId && passkey.userId !== expectUserId) {
       throw new UnauthorizedException('Passkey belongs to another user');
@@ -118,14 +136,18 @@ export class PasskeysService {
         id: passkey.credentialId,
         publicKey: new Uint8Array(passkey.publicKey),
         counter: passkey.counter,
-        transports: passkey.transports as AuthenticatorTransport[],
+        transports: passkey.transports,
       },
     });
-    if (!result.verified) throw new UnauthorizedException('Passkey verification failed');
+    if (!result.verified)
+      throw new UnauthorizedException('Passkey verification failed');
     // The counter must only ever go up — a replayed old count means a cloned authenticator.
     await this.prisma.passkey.update({
       where: { id: passkey.id },
-      data: { counter: result.authenticationInfo.newCounter, lastUsedAt: new Date() },
+      data: {
+        counter: result.authenticationInfo.newCounter,
+        lastUsedAt: new Date(),
+      },
     });
     return passkey.userId;
   }
@@ -133,7 +155,14 @@ export class PasskeysService {
   list(userId: string) {
     return this.prisma.passkey.findMany({
       where: { userId },
-      select: { id: true, label: true, deviceType: true, backedUp: true, createdAt: true, lastUsedAt: true },
+      select: {
+        id: true,
+        label: true,
+        deviceType: true,
+        backedUp: true,
+        createdAt: true,
+        lastUsedAt: true,
+      },
       orderBy: { createdAt: 'asc' },
     });
   }

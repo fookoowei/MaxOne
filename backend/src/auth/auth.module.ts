@@ -27,7 +27,14 @@ import { PasskeysService } from './passkeys.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, TokensService, JwtStrategy, TwoFactorService, StepUpGuard, PasskeysService],
+  providers: [
+    AuthService,
+    TokensService,
+    JwtStrategy,
+    TwoFactorService,
+    StepUpGuard,
+    PasskeysService,
+  ],
   exports: [TokensService, StepUpGuard],
 })
 export class AuthModule {}

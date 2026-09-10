@@ -5,7 +5,8 @@ export class RegisterDto {
   email!: string;
 
   @Matches(/^[a-z][a-z0-9_]{2,19}$/, {
-    message: 'Handle must be 3–20 chars: lowercase letters, digits or _, starting with a letter',
+    message:
+      'Handle must be 3–20 chars: lowercase letters, digits or _, starting with a letter',
   })
   handle!: string;
 

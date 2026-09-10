@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { TokensService } from './tokens.service';
 import type { AuthUser } from './jwt.strategy';
 
@@ -11,9 +16,10 @@ export class StepUpGuard implements CanActivate {
   constructor(private readonly tokens: TokensService) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
-    const req = ctx
-      .switchToHttp()
-      .getRequest<{ user?: AuthUser; headers: Record<string, string | undefined> }>();
+    const req = ctx.switchToHttp().getRequest<{
+      user?: AuthUser;
+      headers: Record<string, string | undefined>;
+    }>();
     const user = req.user;
     if (!user) throw new ForbiddenException(); // defensive: JwtAuthGuard runs first
     if (!user.totpEnabled) return true; // no second factor → nothing to step up

@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { TokensService } from './tokens.service';
 
 describe('TokensService.issueWsTicket', () => {
@@ -16,7 +16,12 @@ describe('TokensService.issueWsTicket', () => {
   });
 });
 
-const userRow = { id: 'u1', email: 'u1@x.com', role: { name: 'user' } };
+const userRow = {
+  id: 'u1',
+  email: 'u1@x.com',
+  role: { name: 'user' },
+  status: 'active',
+};
 function tokensWith(refreshToken: any) {
   const jwt = { signAsync: jest.fn().mockResolvedValue('access.jwt') };
   const prisma: any = { refreshToken };
@@ -143,6 +148,29 @@ describe('TokensService.rotate reuse detection', () => {
       UnauthorizedException,
     );
     expect(del).toHaveBeenCalledWith({ where: { id: 'rt1' } });
+  });
+
+  it('refuses to refresh a suspended user (defence in depth behind the token sweep)', async () => {
+    // updateStatus already deletes a suspended user's refresh rows, so this is the second lock:
+    // a row that survives by any other route must still not mint tokens.
+    const create = jest.fn();
+    const findUnique = jest.fn().mockResolvedValue({
+      ...base,
+      usedAt: null,
+      user: { ...userRow, status: 'suspended' },
+    });
+    const { service } = tokensWith({
+      findUnique,
+      create,
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+    });
+
+    await expect(service.rotate('raw')).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(create).not.toHaveBeenCalled();
   });
 
   it('rejects an unknown token', async () => {

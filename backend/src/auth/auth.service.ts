@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { RolesService } from '../users/roles.service';
@@ -10,7 +15,10 @@ import { RegisterDto } from './dto/register.dto';
 // Precomputed once at startup. When an email doesn't exist we still run one
 // bcrypt.compare against this dummy hash, so login takes ~constant time and
 // can't be used as a timing oracle to discover which emails have accounts.
-const DUMMY_PASSWORD_HASH = bcrypt.hashSync('a-non-matching-dummy-password', 10);
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync(
+  'a-non-matching-dummy-password',
+  10,
+);
 
 @Injectable()
 export class AuthService {
@@ -23,8 +31,12 @@ export class AuthService {
 
   // The non-sensitive user shape every auth response returns.
   private toPublic(user: {
-    id: string; email: string; role: { name: string };
-    firstName: string; lastName: string; handle: string | null;
+    id: string;
+    email: string;
+    role: { name: string };
+    firstName: string;
+    lastName: string;
+    handle: string | null;
   }) {
     return {
       id: user.id,
@@ -76,12 +88,17 @@ export class AuthService {
       dto.password,
       user?.passwordHash ?? DUMMY_PASSWORD_HASH,
     );
-    if (!user || !passwordMatches) throw new UnauthorizedException('Invalid credentials');
+    if (!user || !passwordMatches)
+      throw new UnauthorizedException('Invalid credentials');
+    this.assertActive(user);
 
     // 2FA on → do NOT issue tokens yet. Hand back a short-lived challenge that proves
     // "password verified"; the real tokens come from login2fa once a code is presented.
     if (user.totpEnabled) {
-      return { requires2fa: true as const, challengeToken: await this.tokens.issue2faChallenge(user.id) };
+      return {
+        requires2fa: true as const,
+        challengeToken: await this.tokens.issue2faChallenge(user.id),
+      };
     }
 
     const tokens = await this.tokens.issueTokens(user);
@@ -98,6 +115,8 @@ export class AuthService {
     if (!user || !(await this.twoFactor.verifyForLogin(userId, code))) {
       throw new UnauthorizedException('Invalid code');
     }
+    // Re-checked here too: the challenge could have been issued moments before suspension.
+    this.assertActive(user);
     const tokens = await this.tokens.issueTokens(user);
     return { user: this.toPublic(user), tokens };
   }
@@ -105,8 +124,24 @@ export class AuthService {
   // Passkey sign-in: possession + biometric/PIN is a stronger factor than TOTP, so no 2-step.
   async loginWithPasskey(userId: string) {
     const user = await this.users.findByIdRaw(userId);
-    if (!user || user.status !== 'active') throw new UnauthorizedException('Invalid credentials');
+    if (!user) throw new UnauthorizedException('Invalid credentials');
+    this.assertActive(user);
     const tokens = await this.tokens.issueTokens(user);
     return { user: this.toPublic(user), tokens };
+  }
+
+  /**
+   * A suspended account may not obtain tokens by ANY route (password, TOTP, passkey). Every
+   * caller reaches this only after the factor itself has been verified, so naming the reason
+   * tells an attacker nothing they don't already have — and it saves a suspended customer from
+   * a login that "succeeds" and then 401s on every screen. 403, not 401: the credentials were
+   * right, the account is the problem.
+   */
+  private assertActive(user: { status: string }) {
+    if (user.status !== 'active') {
+      throw new ForbiddenException(
+        'This account has been suspended. Please contact support.',
+      );
+    }
   }
 }
