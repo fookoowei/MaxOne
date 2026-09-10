@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useController, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Bell, Check, Search } from 'lucide-react';
+import { Bell, Check } from 'lucide-react';
 import { transferSchema, type TransferInput } from '@/lib/schemas/transfer';
 import { parseAmountToMinor } from '@/lib/format/parse-amount';
 import { formatMoney } from '@/lib/format/money';
@@ -17,6 +17,7 @@ import { Stepper } from '@/components/layout/stepper';
 import { MoneyText } from '@/components/money-text';
 import { AmountDisplay } from '@/components/wallet/amount-display';
 import { RecipientCard, type RecipientState } from './recipient-card';
+import { RecipientCombobox } from './recipient-combobox';
 import { StepUpPrompt } from './step-up-prompt';
 
 interface Recipient { walletId: string; currency: string; recipientName: string }
@@ -34,37 +35,45 @@ export function SendMoneyWizard({ myWalletId, myCurrency, balance, prefillHandle
   const router = useRouter();
   const idem = useIdempotencyKey();
   const [step, setStep] = useState(1);
-  const [recipient, setRecipient] = useState<Recipient | null>(null);
-  const [lookup, setLookup] = useState<RecipientState>({ kind: 'idle' });
+  // What the last lookup resolved, tagged with the handle it was for: the recipient and the
+  // dropdown state are DERIVED from this + what is currently typed, so typing something new
+  // drops a stale match immediately without any setState-in-effect.
+  const [resolved, setResolved] = useState<{ handle: string; recipient: Recipient | null; state: RecipientState }>({ handle: '', recipient: null, state: { kind: 'idle' } });
   const [values, setValues] = useState<TransferInput | null>(null);
   const [stepUp, setStepUp] = useState(false);
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<{ id: string } | null>(null);
   const form = useForm<TransferInput>({ resolver: zodResolver(transferSchema), defaultValues: { handle: prefillHandle.toLowerCase(), amount: '', note: '' } });
-  const handle = form.watch('handle');
+  // The handle field is a Base UI Autocomplete, which owns the <input>, so it's a controlled
+  // field rather than a register()ed one. `open` is ours: Base UI asks to open on typing and to
+  // close on pick / Escape / outside press; we only let it open once there's something to show.
+  const { field: handleField } = useController({ name: 'handle', control: form.control });
+  const handle = handleField.value;
+  const [open, setOpen] = useState(false);
   const symbol = symbolOf(myCurrency);
   const minor = values ? parseAmountToMinor(values.amount) : 0;
+
+  const typed = (handle ?? '').trim().toLowerCase();
+  const typedIsHandle = /^[a-z][a-z0-9_]{2,19}$/.test(typed);
+  const current = resolved.handle === typed ? resolved : null;
+  const recipient = current?.recipient ?? null;
+  const lookup: RecipientState = current ? current.state : typedIsHandle ? { kind: 'looking' } : { kind: 'idle' };
 
   // Resolve the handle 400ms after the user stops typing. The rules (not yourself, same currency)
   // are the same ones the old Find button enforced.
   useEffect(() => {
-    const h = (handle ?? '').trim().toLowerCase();
-    setRecipient(null);
-    if (!/^[a-z][a-z0-9_]{2,19}$/.test(h)) {
-      setLookup({ kind: 'idle' });
-      return;
-    }
-    setLookup({ kind: 'looking' });
+    if (!typedIsHandle) return;
+    const h = typed;
+    const fail = (message: string) => setResolved({ handle: h, recipient: null, state: { kind: 'error', message } });
     const t = setTimeout(async () => {
       const r = await apiRequest<Recipient>(`/api/wallets/lookup?handle=${encodeURIComponent(h)}`);
-      if (!r.ok) return setLookup({ kind: 'error', message: 'No one found with that handle.' });
-      if (r.data.walletId === myWalletId) return setLookup({ kind: 'error', message: "You can't send to yourself." });
-      if (r.data.currency !== myCurrency) return setLookup({ kind: 'error', message: 'Cross-currency sending is coming soon.' });
-      setRecipient(r.data);
-      setLookup({ kind: 'found', name: r.data.recipientName, handle: h, currency: r.data.currency });
+      if (!r.ok) return fail('No one found with that handle.');
+      if (r.data.walletId === myWalletId) return fail("You can't send to yourself.");
+      if (r.data.currency !== myCurrency) return fail('Cross-currency sending is coming soon.');
+      setResolved({ handle: h, recipient: r.data, state: { kind: 'found', name: r.data.recipientName, handle: h, currency: r.data.currency } });
     }, 400);
     return () => clearTimeout(t);
-  }, [handle, myWalletId, myCurrency]);
+  }, [typed, typedIsHandle, myWalletId, myCurrency]);
 
   function toConfirm(v: TransferInput) {
     if (!recipient) return;
@@ -107,13 +116,11 @@ export function SendMoneyWizard({ myWalletId, myCurrency, balance, prefillHandle
         <form onSubmit={form.handleSubmit(toConfirm)} className="space-y-5" noValidate>
           <div className="space-y-1.5">
             <Label htmlFor="handle" className="text-xs text-muted-foreground">Send to</Label>
-            <div className="relative">
-              <Input id="handle" placeholder="@handle" autoCapitalize="none" autoCorrect="off" className="h-11 pr-10 text-base" {...form.register('handle')} />
-              <Search className="pointer-events-none absolute top-1/2 right-3 size-[18px] -translate-y-1/2 text-muted-foreground" aria-hidden />
-            </div>
+            <RecipientCombobox id="handle" value={handle ?? ''} onValueChange={handleField.onChange} state={lookup} open={open && lookup.kind !== 'idle'} onOpenChange={setOpen} />
             {form.formState.errors.handle && <p className="text-sm text-destructive">{form.formState.errors.handle.message}</p>}
           </div>
-          <RecipientCard state={lookup} />
+          {/* Pinned only once the dropdown is closed, so the match isn't shown twice. */}
+          {!open && <RecipientCard state={lookup} />}
           <section className="space-y-4 rounded-[20px] border bg-card p-5">
             <Label htmlFor="amount" className="text-xs text-muted-foreground">Amount</Label>
             <AmountDisplay id="amount" symbol={symbol} invalid={!!form.formState.errors.amount} {...form.register('amount')} />
@@ -192,7 +199,7 @@ export function SendMoneyWizard({ myWalletId, myCurrency, balance, prefillHandle
             </div>
           </section>
           <div className="flex flex-col gap-2.5">
-            <Button type="button" variant="outline" size="xl" onClick={() => { form.reset({ handle: '', amount: '', note: '' }); setRecipient(null); setLookup({ kind: 'idle' }); setValues(null); setResult(null); setStep(1); }}>
+            <Button type="button" variant="outline" size="xl" onClick={() => { form.reset({ handle: '', amount: '', note: '' }); setResolved({ handle: '', recipient: null, state: { kind: 'idle' } }); setOpen(false); setValues(null); setResult(null); setStep(1); }}>
               Send again
             </Button>
             <Button type="button" size="xl" onClick={() => router.push('/')}>
