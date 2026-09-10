@@ -3,7 +3,6 @@ import { getSessionUser } from '@/lib/auth/session';
 import { roleHasPermission } from '@/lib/auth/permissions';
 import { serverApi } from '@/lib/api/server';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import { Toaster } from '@/components/ui/sonner';
 import { AppSidebar } from '@/components/shell/app-sidebar';
 import { PageBar } from '@/components/shell/page-bar';
 
@@ -27,7 +26,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <PageBar />
         <main className="mx-auto w-full max-w-7xl flex-1 p-4 md:p-6 lg:p-8">{children}</main>
       </SidebarInset>
-      <Toaster position="top-right" richColors closeButton />
     </SidebarProvider>
   );
 }
