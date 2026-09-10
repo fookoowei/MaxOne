@@ -3,8 +3,11 @@ import { formatPrice } from '@/lib/format/price';
 import { cn } from '@/lib/utils';
 import type { WatchedAsset } from '@/components/wallet/watching-card';
 
-// Desktop aside: the top few assets, server-rendered from the 15s-cached list.
+// Desktop aside: the top few assets, server-rendered from the 15s-cached list. Hidden entirely
+// when the catalog is empty (provider throttled) — an empty shell labelled "live · 15s" is worse
+// than nothing.
 export function MarketsTicker({ assets }: { assets: (WatchedAsset & { name: string })[] }) {
+  if (assets.length === 0) return null;
   return (
     <section className="rounded-[20px] border bg-card p-4">
       <div className="flex items-center justify-between">
