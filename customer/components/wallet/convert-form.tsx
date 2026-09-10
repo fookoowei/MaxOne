@@ -9,6 +9,7 @@ import { formatMoney } from '@/lib/format/money';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NativeSelect } from '@/components/ui/native-select';
 import type { WalletSummary } from '@/components/wallet/wallet-list';
 
 export function ConvertForm({ wallets }: { wallets: WalletSummary[] }) {
@@ -71,39 +72,37 @@ export function ConvertForm({ wallets }: { wallets: WalletSummary[] }) {
     <div className="space-y-4">
       <div className="space-y-1">
         <Label htmlFor="from">From</Label>
-        <select
+        <NativeSelect
           id="from"
           value={fromId}
           onChange={(e) => {
             setFromId(e.target.value);
             setQuote(null);
           }}
-          className="w-full rounded-md border bg-background p-2 text-sm"
         >
           {wallets.map((w) => (
             <option key={w.id} value={w.id}>
               {w.currency} — {formatMoney(w.balance, w.currency)}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </div>
       <div className="space-y-1">
         <Label htmlFor="to">To</Label>
-        <select
+        <NativeSelect
           id="to"
           value={toId}
           onChange={(e) => {
             setToId(e.target.value);
             setQuote(null);
           }}
-          className="w-full rounded-md border bg-background p-2 text-sm"
         >
           {wallets.map((w) => (
             <option key={w.id} value={w.id}>
               {w.currency}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </div>
       <div className="space-y-1">
         <Label htmlFor="amount">Amount ({from?.currency})</Label>

@@ -8,6 +8,7 @@ import { alertSchema, type AlertInput } from '@/lib/schemas/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NativeSelect } from '@/components/ui/native-select';
 
 export function AddAlertForm({ assets }: { assets: { symbol: string; name: string }[] }) {
   const router = useRouter();
@@ -39,20 +40,20 @@ export function AddAlertForm({ assets }: { assets: { symbol: string; name: strin
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="space-y-1">
         <Label htmlFor="symbol">Asset</Label>
-        <select id="symbol" {...register('symbol')} className="w-full rounded-md border bg-background p-2 text-sm">
+        <NativeSelect id="symbol" {...register('symbol')}>
           {assets.map((a) => (
             <option key={a.symbol} value={a.symbol}>
               {a.symbol} — {a.name}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </div>
       <div className="space-y-1">
         <Label htmlFor="direction">Direction</Label>
-        <select id="direction" {...register('direction')} className="w-full rounded-md border bg-background p-2 text-sm">
+        <NativeSelect id="direction" {...register('direction')}>
           <option value="above">Goes above</option>
           <option value="below">Goes below</option>
-        </select>
+        </NativeSelect>
       </div>
       <div className="space-y-1">
         <Label htmlFor="targetPrice">Target price (USD)</Label>
