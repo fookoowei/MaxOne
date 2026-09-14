@@ -1,5 +1,5 @@
 export interface MarketAsset {
-  id: string; // CoinGecko id, e.g. "bitcoin" (used for detail routing + charts)
+  id: string; // our stable id, e.g. "bitcoin" (used for detail routing + charts) — see COINS below
   symbol: string; // "BTC"
   name: string; // "Bitcoin"
   // 'stock' is kept in the union so stocks can be re-added later as a provider swap without a
@@ -12,7 +12,8 @@ export interface MarketAsset {
   image?: string;
 }
 
-// A single asset's detail — the list fields plus a few stats CoinGecko already returns.
+// A single asset's detail — the list fields plus a few more stats: market cap is COMPUTED
+// (price x CoinLore supply, see candle-math.ts), high/low come from Kraken's ticker.
 export interface AssetDetail extends MarketAsset {
   marketCap: number;
   high24h: number;
@@ -62,6 +63,11 @@ export interface Coin {
 
 // Names and logos are static: five coins, they don't change, and no provider is required for
 // them. CoinIcon's lettered badge remains the fallback if an image 404s.
+//
+// The `image` URLs still hotlink assets.coingecko.com — deliberate, not a leftover: it's the
+// BROWSER that loads them (no server egress, so it can't be blocked the way the price/candle API
+// calls were), and CoinIcon's lettered-badge fallback means a 404 here is cosmetic, never a
+// missing-data outage. Kraken and CoinLore don't offer coin artwork.
 export const COINS: Coin[] = [
   { id: 'bitcoin',  symbol: 'BTC',  name: 'Bitcoin',  krakenPair: 'XBTUSD', krakenBase: 'XBT', coinloreId: '90',    image: 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png' },
   { id: 'ethereum', symbol: 'ETH',  name: 'Ethereum', krakenPair: 'ETHUSD', krakenBase: 'ETH', coinloreId: '80',    image: 'https://assets.coingecko.com/coins/images/279/large/ethereum.png' },

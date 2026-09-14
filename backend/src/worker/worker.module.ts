@@ -9,7 +9,7 @@ import { NotificationConsumer } from './notification.consumer';
 
 /**
  * Only what the consumer needs. Booting AppModule here would start the Socket.IO gateway (no HTTP
- * server to attach to) and a second price tick (double-polling CoinGecko).
+ * server to attach to) and a second price tick (double-polling Kraken).
  */
 @Module({
   imports: [
