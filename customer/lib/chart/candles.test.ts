@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toBars, toLine, priceFormat } from './candles';
+import { toBars, toLine, priceFormat, formatAxisPrice } from './candles';
 
 const candles = [
   { t: 1789361700, o: 10, h: 12, l: 9, c: 11 },
@@ -28,5 +28,12 @@ describe('priceFormat', () => {
   it('gives cheap coins more decimals than expensive ones', () => {
     expect(priceFormat(77684)).toEqual({ type: 'price', precision: 2, minMove: 0.01 });
     expect(priceFormat(0.0843)).toEqual({ type: 'price', precision: 5, minMove: 0.00001 });
+  });
+});
+
+describe('formatAxisPrice', () => {
+  it('agrees with priceFormat on precision, since the price scale formatter overrides it', () => {
+    expect(formatAxisPrice(77684.3)).toBe('$77,684.30');
+    expect(formatAxisPrice(0.0843)).toBe('$0.08430');
   });
 });

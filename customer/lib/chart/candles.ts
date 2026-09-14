@@ -23,3 +23,13 @@ export const priceFormat = (price: number) =>
   price < 1
     ? { type: 'price' as const, precision: 5, minMove: 0.00001 }
     : { type: 'price' as const, precision: 2, minMove: 0.01 };
+
+// Axis and crosshair labels. Must agree with priceFormat() above — the price scale's own
+// formatter overrides the series precision, so the two would otherwise disagree.
+export const formatAxisPrice = (p: number): string =>
+  `$${p.toLocaleString(
+    'en-US',
+    p < 1
+      ? { minimumFractionDigits: 5, maximumFractionDigits: 5 }
+      : { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+  )}`;

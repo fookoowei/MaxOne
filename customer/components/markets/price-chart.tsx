@@ -10,7 +10,7 @@ import {
   type ISeriesApi,
 } from 'lightweight-charts';
 import { Button } from '@/components/ui/button';
-import { toBars, toLine, priceFormat, type Candle } from '@/lib/chart/candles';
+import { toBars, toLine, priceFormat, formatAxisPrice, type Candle } from '@/lib/chart/candles';
 
 const RANGES = ['1m', '5m', '15m', '1h', '4h', '1D'] as const;
 type Range = (typeof RANGES)[number];
@@ -40,7 +40,7 @@ export function PriceChart({ id, initial }: { id: string; initial: { candles: Ca
       rightPriceScale: { borderColor: grid },
       timeScale: { borderColor: grid, timeVisible: true, secondsVisible: false },
       crosshair: { mode: 1 },
-      localization: { priceFormatter: (p: number) => `$${p.toLocaleString('en-US')}` },
+      localization: { priceFormatter: formatAxisPrice },
     });
     series.current =
       mode === 'candle'
@@ -65,22 +65,37 @@ export function PriceChart({ id, initial }: { id: string; initial: { candles: Ca
     };
   }, [mode, dark]);
 
-  // Feed the series. setData (not update) — a range switch replaces the whole history.
+  // Feed the series. setData (not update) — a range switch replaces the whole history. `dark` is
+  // a dependency too: effect 1 tears down and rebuilds the chart+series on a theme change (it
+  // runs first, since effects run in declaration order), and without re-feeding here the rebuilt
+  // series would stay empty — which happens on most first page loads, since next-themes resolves
+  // `resolvedTheme` from undefined right after hydration.
   useEffect(() => {
     if (!series.current || candles.length === 0) return;
     series.current.applyOptions({ priceFormat: priceFormat(candles[candles.length - 1].c) });
     if (mode === 'candle') (series.current as ISeriesApi<'Candlestick'>).setData(toBars(candles));
     else (series.current as ISeriesApi<'Area'>).setData(toLine(candles));
     chart.current?.timeScale().fitContent();
-  }, [candles, mode]);
+  }, [candles, mode, dark]);
+
+  // A token per request: if a later select() resolves before an earlier one, the earlier one's
+  // response is discarded instead of overwriting the still-selected range's data.
+  const requestId = useRef(0);
 
   async function select(next: Range) {
     if (next === range) return;
     setRange(next);
     setBusy(true);
-    const res = await fetch(`/api/markets/${id}/chart?range=${next}`);
-    setBusy(false);
-    if (res.ok) setCandles(((await res.json()) as { candles: Candle[] }).candles);
+    const thisRequest = ++requestId.current;
+    try {
+      const res = await fetch(`/api/markets/${id}/chart?range=${next}`);
+      if (thisRequest !== requestId.current) return; // superseded by a newer selection
+      if (res.ok) setCandles(((await res.json()) as { candles: Candle[] }).candles);
+    } catch {
+      // Network error: leave the existing candles in place rather than blanking the chart.
+    } finally {
+      if (thisRequest === requestId.current) setBusy(false);
+    }
   }
 
   return (
@@ -100,11 +115,17 @@ export function PriceChart({ id, initial }: { id: string; initial: { candles: Ca
           {mode === 'candle' ? 'Line' : 'Candles'}
         </Button>
       </div>
-      {candles.length > 0 ? (
+      <div className="relative">
+        {/* Always mounted, even with no data — the chart-creation effect only runs once (on
+            mode/theme change) and needs box.current to exist from first mount, or it never
+            creates a chart/series for later data to land in. */}
         <div ref={box} className={busy ? 'opacity-50 transition-opacity' : 'transition-opacity'} />
-      ) : (
-        <p className="py-8 text-center text-sm text-muted-foreground">Chart unavailable.</p>
-      )}
+        {candles.length === 0 && (
+          <p className="absolute inset-0 flex items-center justify-center text-center text-sm text-muted-foreground">
+            Chart unavailable.
+          </p>
+        )}
+      </div>
       <p className="text-[11px] text-muted-foreground">Prices via Kraken · informational only</p>
     </div>
   );
