@@ -32,4 +32,28 @@ describe('SupplyProvider', () => {
     expect(await provider.fetchSupply()).toEqual({});
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('429'));
   });
+
+  it('omits coins with zero supply', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([
+        { id: '90', symbol: 'BTC', csupply: '19970852.00' },
+        { id: '80', symbol: 'ETH', csupply: '0' },
+      ]),
+    } as unknown as Response);
+
+    expect(await provider.fetchSupply()).toEqual({ BTC: 19970852 });
+  });
+
+  it('omits coins with unparseable supply', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([
+        { id: '90', symbol: 'BTC', csupply: '19970852.00' },
+        { id: '80', symbol: 'ETH', csupply: 'N/A' },
+      ]),
+    } as unknown as Response);
+
+    expect(await provider.fetchSupply()).toEqual({ BTC: 19970852 });
+  });
 });
