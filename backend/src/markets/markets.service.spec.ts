@@ -4,10 +4,20 @@ import type { Candle } from './market-asset';
 const candles = (closes: number[]): Candle[] =>
   closes.map((c, i) => ({ t: i * 3600, o: c, h: c, l: c, c }));
 
-// A cache that simply calls through — caching is CacheService's job and is tested there; here we
-// care about the composition rules.
-const passthroughCache = {
-  wrap: jest.fn(<T>(_k: string, _ttl: number, fn: () => Promise<T>) => fn()),
+// A cache that really caches, so "is an empty result cached?" is a behavioural question.
+const store = new Map<string, unknown>();
+const cache = {
+  wrap: async <T>(
+    key: string,
+    _ttl: number,
+    fn: () => Promise<T>,
+    cacheable: (value: T) => boolean = () => true,
+  ): Promise<T> => {
+    if (store.has(key)) return store.get(key) as T;
+    const value = await fn();
+    if (cacheable(value)) store.set(key, value);
+    return value;
+  },
 };
 
 describe('MarketsService', () => {
@@ -19,11 +29,12 @@ describe('MarketsService', () => {
   const service = new MarketsService(
     crypto as never,
     supply as never,
-    passthroughCache as never,
+    cache as never,
   );
 
   beforeEach(() => {
     jest.clearAllMocks();
+    store.clear();
     crypto.fetchTickers.mockResolvedValue([
       { symbol: 'BTC', price: 110, high24h: 120, low24h: 90 },
     ]);
@@ -75,7 +86,13 @@ describe('MarketsService', () => {
   it('never caches an empty provider result (an outage is not pinned for a TTL)', async () => {
     crypto.fetchTickers.mockResolvedValue([]);
     await service.list();
-    const cacheable = passthroughCache.wrap.mock.calls[0][3] as (v: unknown[]) => boolean;
-    expect(cacheable([])).toBe(false);
+    await service.list();
+    expect(crypto.fetchTickers).toHaveBeenCalledTimes(2); // refetched, not served stale
+  });
+
+  it('caches a good result, so N callers cost one upstream call', async () => {
+    await service.list();
+    await service.list();
+    expect(crypto.fetchTickers).toHaveBeenCalledTimes(1);
   });
 });
