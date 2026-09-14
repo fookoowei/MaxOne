@@ -78,12 +78,16 @@ CI fires the hooks only when every job is green — the same gate the backend ha
 | `SERVICE_NAME` | ✔ | ✔ | | | `api` / `worker` (tags every log line) |
 | `CONSUMER_IN_PROCESS` | ✔ | | | | `true` (free tier) / `false` when a separate worker runs |
 | `SENTRY_DSN` | opt | opt | | | Sentry project DSN; unset = disabled |
-| `COINGECKO_API_KEY` | opt | | | | CoinGecko free Demo key (`x-cg-demo-api-key`); unset = keyless, which Render's shared IP gets rate-limited on → empty Markets. Failures are logged as `CoinGecko <status> …` |
 | `API_BASE_URL` | | | ✔ | ✔ | `https://maxone-backend.onrender.com` |
 | `NEXT_PUBLIC_WS_URL` | | | | ✔ | `https://maxone-backend.onrender.com` |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | | | | ✔ | = `VAPID_PUBLIC_KEY` |
 
 GitHub Actions secrets: `RENDER_DEPLOY_HOOK`, `VERCEL_DEPLOY_HOOK`, `VERCEL_CUSTOMER_DEPLOY_HOOK`.
+
+Markets has no env var of its own: the API egresses to `api.kraken.com` (prices, candles) and
+`api.coinlore.net` (circulating supply), both keyless — no key to configure, no rate limit tied to
+one. If Markets goes empty, it isn't a missing env var; grep the API log for `Kraken` / `CoinLore`
+(both log a warning, never fail silently) to see which upstream is unhappy and why.
 
 ## 5. Smoke checklist after a deploy
 
