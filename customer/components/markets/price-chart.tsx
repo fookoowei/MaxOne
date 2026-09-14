@@ -37,6 +37,12 @@ export function PriceChart({ id, initial, live, compact = false }: {
     const grid = dark ? '#27272a' : '#f4f4f5';
     const c = createChart(box.current, {
       height: compact ? 180 : 280,
+      // autoSize uses a ResizeObserver on the container, unlike a 'resize' listener: the compact
+      // chart mounts inside the desktop aside (`hidden … xl:block`), which is `display:none`
+      // below 1280px — clientWidth reads 0 there, and a window resize is the only thing that used
+      // to fix it up. ResizeObserver fires as soon as the container's own box actually changes
+      // (e.g. the aside becoming visible), with no dependency on the window ever resizing.
+      autoSize: true,
       layout: { background: { color: 'transparent' }, textColor: text, attributionLogo: false },
       grid: { vertLines: { color: grid }, horzLines: { color: grid } },
       rightPriceScale: { borderColor: grid },
@@ -56,16 +62,12 @@ export function PriceChart({ id, initial, live, compact = false }: {
             bottomColor: 'oklch(0.48 0.16 285 / 0.02)', lineWidth: 2,
           });
     chart.current = c;
-    const resize = () => c.applyOptions({ width: box.current?.clientWidth ?? 0 });
-    resize();
-    window.addEventListener('resize', resize);
     return () => {
-      window.removeEventListener('resize', resize);
       c.remove();
       chart.current = null;
       series.current = null;
     };
-  }, [mode, dark]);
+  }, [mode, dark, compact]);
 
   // Feed the series. setData (not update) — a range switch replaces the whole history. `dark` is
   // a dependency too: effect 1 tears down and rebuilds the chart+series on a theme change (it
@@ -148,7 +150,11 @@ export function PriceChart({ id, initial, live, compact = false }: {
         {/* Always mounted, even with no data — the chart-creation effect only runs once (on
             mode/theme change) and needs box.current to exist from first mount, or it never
             creates a chart/series for later data to land in. */}
-        <div ref={box} className={busy ? 'opacity-50 transition-opacity' : 'transition-opacity'} />
+        {/* autoSize (below) sizes the chart off THIS element's own box via ResizeObserver, which
+            only works if the box has a definite height of its own — lightweight-charts' internal
+            layout is height:100%, which resolves to 0 against an "auto" parent. */}
+        <div ref={box} style={{ height: compact ? 180 : 280 }}
+          className={busy ? 'opacity-50 transition-opacity' : 'transition-opacity'} />
         {candles.length === 0 && (
           <p className="absolute inset-0 flex items-center justify-center text-center text-sm text-muted-foreground">
             Chart unavailable.
