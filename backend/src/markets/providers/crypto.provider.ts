@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { COINS } from '../market-asset';
-import { pickResult } from './kraken-shape';
+import { COINS, Candle, Coin, KRAKEN_INTERVAL, Range } from '../market-asset';
+import { nums, pickResult } from './kraken-shape';
 
 export interface Ticker {
   symbol: string;
@@ -64,5 +64,20 @@ export class CryptoProvider {
       });
     }
     return out;
+  }
+
+  // 720 candles at any interval, oldest -> newest, in one call. Row shape:
+  // [time, open, high, low, close, vwap, volume, count] — all numbers as strings.
+  async fetchCandles(coin: Coin, range: Range): Promise<Candle[]> {
+    const result = await this.get<Record<string, (string | number)[][]>>(
+      `/OHLC?pair=${coin.krakenPair}&interval=${KRAKEN_INTERVAL[range]}`,
+    );
+    if (!result) return [];
+    const rows = pickResult<(string | number)[][]>(result);
+    if (!rows) return [];
+    return rows.map((row) => {
+      const [t, o, h, l, c] = nums(row);
+      return { t, o, h, l, c };
+    });
   }
 }

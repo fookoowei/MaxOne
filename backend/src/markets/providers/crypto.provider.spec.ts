@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { COINS } from '../market-asset';
 import { CryptoProvider } from './crypto.provider';
 
 const ok = (body: unknown) =>
@@ -49,5 +50,43 @@ describe('CryptoProvider.fetchTickers', () => {
   it('fails soft when Kraken reports an error array', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(ok({ error: ['EQuery:Unknown asset pair'], result: {} }));
     expect(await provider.fetchTickers()).toEqual([]);
+  });
+});
+
+describe('CryptoProvider.fetchCandles', () => {
+  const provider = new CryptoProvider();
+  const btc = COINS[0];
+  beforeEach(() => jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined));
+  afterEach(() => jest.restoreAllMocks());
+
+  const ohlcBody = {
+    error: [],
+    result: {
+      XXBTZUSD: [
+        [1789361700, '77600.0', '77650.0', '77590.0', '77620.0', '77610.0', '5.6', 54],
+        [1789361760, '77621.3', '77622.9', '77610.4', '77614.5', '77616.6', '5.6', 54],
+      ],
+      last: 1789361760,
+    },
+  };
+
+  it('maps OHLC rows to candles, coercing strings, ignoring vwap/volume/count', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(ok(ohlcBody));
+
+    expect(await provider.fetchCandles(btc, '1m')).toEqual([
+      { t: 1789361700, o: 77600, h: 77650, l: 77590, c: 77620 },
+      { t: 1789361760, o: 77621.3, h: 77622.9, l: 77610.4, c: 77614.5 },
+    ]);
+  });
+
+  it('asks Kraken for the interval matching the range', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(ok(ohlcBody));
+    await provider.fetchCandles(btc, '4h');
+    expect(fetchSpy).toHaveBeenCalledWith(expect.stringContaining('interval=240'));
+  });
+
+  it('fails soft (returns []) when Kraken is unreachable', async () => {
+    jest.spyOn(global, 'fetch').mockRejectedValue(new Error('down'));
+    expect(await provider.fetchCandles(btc, '1h')).toEqual([]);
   });
 });
