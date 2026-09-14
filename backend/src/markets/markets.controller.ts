@@ -23,7 +23,7 @@ export class MarketsController {
   // Declared before @Get(':id') so the two-segment path is matched first.
   @Get(':id/chart')
   chart(@Param('id') id: string, @Query() q: ChartQueryDto) {
-    return this.markets.chart(id, q.days);
+    return this.markets.chart(id, q.range);
   }
 
   @Get(':id')
