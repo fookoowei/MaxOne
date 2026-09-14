@@ -20,9 +20,16 @@ import {
 //  - CANDLE_TTL covers closed candles only (30 keys total: 5 coins x 6 ranges). The OPEN candle
 //    is never served from cache — it is restated from the live price on the way out.
 //  - Supply barely changes, so an hour.
+//  - NEGATIVE_TTL: an outage result is cached too, just briefly — "never pinned for a TTL" does
+//    NOT mean "never cached at all". list() alone costs one /Ticker plus one /OHLC per coin; with
+//    no cache at all, a Kraken outage means every single page view and every 15s tick re-runs the
+//    full fan-out, hitting the upstream hardest exactly when it is already failing (and turning a
+//    transient 429 into a self-inflicted IP ban). A few seconds of negative caching absorbs that
+//    stampede while still recovering within one tick of the outage actually clearing.
 const TICKER_TTL = 15;
 const CANDLE_TTL = 60;
 const SUPPLY_TTL = 3600;
+const NEGATIVE_TTL = 8;
 
 @Injectable()
 export class MarketsService {
@@ -39,7 +46,7 @@ export class MarketsService {
       'markets:tickers',
       TICKER_TTL,
       () => this.crypto.fetchTickers(),
-      (t) => t.length > 0, // an outage is never pinned for a TTL
+      (t) => t.length > 0 || NEGATIVE_TTL, // an outage is cached briefly, never for a full TTL
     );
   }
 
@@ -50,7 +57,7 @@ export class MarketsService {
       `markets:candles:${id}:${range}`,
       CANDLE_TTL,
       () => this.crypto.fetchCandles(coin, range),
-      (c) => c.length > 0,
+      (c) => c.length > 0 || NEGATIVE_TTL,
     );
   }
 

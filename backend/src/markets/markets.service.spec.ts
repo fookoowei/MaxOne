@@ -4,18 +4,25 @@ import type { Candle } from './market-asset';
 const candles = (closes: number[]): Candle[] =>
   closes.map((c, i) => ({ t: i * 3600, o: c, h: c, l: c, c }));
 
-// A cache that really caches, so "is an empty result cached?" is a behavioural question.
-const store = new Map<string, unknown>();
+// A cache that really caches AND really expires, so "is an empty result cached, and for how
+// long?" is a behavioural question rather than one answered by inspecting call args.
+let now = 0;
+const store = new Map<string, { value: unknown; expiresAt: number }>();
 const cache = {
   wrap: async <T>(
     key: string,
-    _ttl: number,
+    ttlSeconds: number,
     fn: () => Promise<T>,
-    cacheable: (value: T) => boolean = () => true,
+    cacheable: (value: T) => boolean | number = () => true,
   ): Promise<T> => {
-    if (store.has(key)) return store.get(key) as T;
+    const hit = store.get(key);
+    if (hit && hit.expiresAt > now) return hit.value as T;
     const value = await fn();
-    if (cacheable(value)) store.set(key, value);
+    const decision = cacheable(value);
+    if (decision !== false) {
+      const ttl = typeof decision === 'number' ? decision : ttlSeconds;
+      store.set(key, { value, expiresAt: now + ttl * 1000 });
+    }
     return value;
   },
 };
@@ -35,6 +42,7 @@ describe('MarketsService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     store.clear();
+    now = 0;
     crypto.fetchTickers.mockResolvedValue([
       { symbol: 'BTC', price: 110, high24h: 120, low24h: 90 },
     ]);
@@ -99,16 +107,24 @@ describe('MarketsService', () => {
     expect(await service.chart('nope', '1h')).toEqual({ candles: [] });
   });
 
-  it('never caches an empty provider result (an outage is not pinned for a TTL)', async () => {
-    crypto.fetchTickers.mockResolvedValue([]);
-    await service.list();
-    await service.list();
-    expect(crypto.fetchTickers).toHaveBeenCalledTimes(2); // refetched, not served stale
-  });
-
   it('caches a good result, so N callers cost one upstream call', async () => {
     await service.list();
     await service.list();
     expect(crypto.fetchTickers).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not re-hit the provider for a second immediate call during an outage', async () => {
+    crypto.fetchTickers.mockResolvedValue([]);
+    await service.list();
+    await service.list(); // same instant — must be served from the negative cache
+    expect(crypto.fetchTickers).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not pin an empty result for a full TTL — it is refetched once the short negative-cache window passes', async () => {
+    crypto.fetchTickers.mockResolvedValue([]);
+    await service.list();
+    now += 9_000; // past the negative-cache window, still well inside the 15s ticker TTL
+    await service.list();
+    expect(crypto.fetchTickers).toHaveBeenCalledTimes(2); // refetched, not served stale
   });
 });

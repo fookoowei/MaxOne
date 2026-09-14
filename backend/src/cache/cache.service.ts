@@ -72,17 +72,28 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /** Cache-aside: hit → return it; miss → run `fn`, store the result (if cacheable), return it. */
+  /**
+   * Cache-aside: hit → return it; miss → run `fn`, store the result (if cacheable), return it.
+   *
+   * `cacheable` may return a number instead of `true` to store the value for THAT many seconds
+   * instead of `ttlSeconds` — e.g. a short negative-cache TTL for an empty/outage result, so it
+   * isn't re-fetched on every single request (a stampede against an already-failing upstream)
+   * while still recovering fast once the upstream is back, instead of being pinned for the full
+   * TTL like a good result.
+   */
   async wrap<T>(
     key: string,
     ttlSeconds: number,
     fn: () => Promise<T>,
-    cacheable: (value: T) => boolean = defaultCacheable,
+    cacheable: (value: T) => boolean | number = defaultCacheable,
   ): Promise<T> {
     const hit = await this.get<T>(key);
     if (hit !== null) return hit;
     const value = await fn();
-    if (cacheable(value)) await this.set(key, value, ttlSeconds);
+    const decision = cacheable(value);
+    if (decision !== false) {
+      await this.set(key, value, typeof decision === 'number' ? decision : ttlSeconds);
+    }
     return value;
   }
 
