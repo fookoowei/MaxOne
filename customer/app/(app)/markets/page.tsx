@@ -11,6 +11,7 @@ import { WithAside } from '@/components/layout/with-aside';
 import type { MarketAsset } from '@/components/markets/market-list';
 import { MarketsView } from '@/components/markets/markets-view';
 import { FeaturedAsset } from '@/components/markets/featured-asset';
+import type { Candle } from '@/lib/chart/candles';
 
 interface WatchItem { symbol: string }
 
@@ -22,7 +23,11 @@ export default async function MarketsPage() {
   const holdings = holdingsRes.ok ? ((await holdingsRes.json()) as Holding[]) : [];
   const followedSymbols = watch.map((w) => w.symbol);
   const featured = assets.find((a) => followedSymbols.includes(a.symbol)) ?? assets[0];
-  const chart = featured ? await serverApi(`/markets/${featured.id}/chart?days=7`).then(async (r) => (r.ok ? ((await r.json()) as { points: number[]; labels: string[] }) : { points: [], labels: [] })).catch(() => ({ points: [], labels: [] })) : null;
+  const chart = featured
+    ? await serverApi(`/markets/${featured.id}/chart?range=15m`)
+        .then(async (r) => (r.ok ? ((await r.json()) as { candles: Candle[] }) : { candles: [] }))
+        .catch(() => ({ candles: [] }))
+    : null;
   const portfolio = computePortfolio(holdings, assets as unknown as PriceInfo[]);
 
   return (

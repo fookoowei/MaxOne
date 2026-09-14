@@ -17,13 +17,15 @@ type Range = (typeof RANGES)[number];
 
 // A real trading chart: candles (open/high/low/close), a time axis and a price axis, scroll and
 // zoom. The old Chart.js line hid both axes and only ever showed the close.
-export function PriceChart({ id, initial }: { id: string; initial: { candles: Candle[] } }) {
+export function PriceChart({ id, initial, live, compact = false }: {
+  id: string; initial: { candles: Candle[] }; live?: number; compact?: boolean;
+}) {
   const box = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
   const series = useRef<ISeriesApi<'Candlestick'> | ISeriesApi<'Area'> | null>(null);
   const [candles, setCandles] = useState(initial.candles);
   const [range, setRange] = useState<Range>('1h');
-  const [mode, setMode] = useState<'candle' | 'line'>('candle');
+  const [mode, setMode] = useState<'candle' | 'line'>(compact ? 'line' : 'candle');
   const [busy, setBusy] = useState(false);
   const { resolvedTheme } = useTheme();
   const dark = resolvedTheme === 'dark';
@@ -34,7 +36,7 @@ export function PriceChart({ id, initial }: { id: string; initial: { candles: Ca
     const text = dark ? '#a1a1aa' : '#71717a';
     const grid = dark ? '#27272a' : '#f4f4f5';
     const c = createChart(box.current, {
-      height: 280,
+      height: compact ? 180 : 280,
       layout: { background: { color: 'transparent' }, textColor: text, attributionLogo: false },
       grid: { vertLines: { color: grid }, horzLines: { color: grid } },
       rightPriceScale: { borderColor: grid },
@@ -78,6 +80,16 @@ export function PriceChart({ id, initial }: { id: string; initial: { candles: Ca
     chart.current?.timeScale().fitContent();
   }, [candles, mode, dark]);
 
+  // The open candle follows the same number the header shows.
+  useEffect(() => {
+    if (!live) return;
+    setCandles((prev) => {
+      if (prev.length === 0) return prev;
+      const open = prev[prev.length - 1];
+      return [...prev.slice(0, -1), { ...open, c: live, h: Math.max(open.h, live), l: Math.min(open.l, live) }];
+    });
+  }, [live]);
+
   // A token per request: if a later select() resolves before an earlier one, the earlier one's
   // response is discarded instead of overwriting the still-selected range's data.
   const requestId = useRef(0);
@@ -100,21 +112,23 @@ export function PriceChart({ id, initial }: { id: string; initial: { candles: Ca
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex gap-1" role="group" aria-label="Timeframe">
-          {RANGES.map((r) => (
-            <Button key={r} type="button" size="sm" variant={range === r ? 'default' : 'outline'}
-              aria-pressed={range === r} className="h-8 rounded-full px-3 text-xs"
-              onClick={() => select(r)}>
-              {r}
-            </Button>
-          ))}
+      {!compact && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-1" role="group" aria-label="Timeframe">
+            {RANGES.map((r) => (
+              <Button key={r} type="button" size="sm" variant={range === r ? 'default' : 'outline'}
+                aria-pressed={range === r} className="h-8 rounded-full px-3 text-xs"
+                onClick={() => select(r)}>
+                {r}
+              </Button>
+            ))}
+          </div>
+          <Button type="button" size="sm" variant="ghost" className="ml-auto h-8 text-xs"
+            onClick={() => setMode(mode === 'candle' ? 'line' : 'candle')}>
+            {mode === 'candle' ? 'Line' : 'Candles'}
+          </Button>
         </div>
-        <Button type="button" size="sm" variant="ghost" className="ml-auto h-8 text-xs"
-          onClick={() => setMode(mode === 'candle' ? 'line' : 'candle')}>
-          {mode === 'candle' ? 'Line' : 'Candles'}
-        </Button>
-      </div>
+      )}
       <div className="relative">
         {/* Always mounted, even with no data — the chart-creation effect only runs once (on
             mode/theme change) and needs box.current to exist from first mount, or it never

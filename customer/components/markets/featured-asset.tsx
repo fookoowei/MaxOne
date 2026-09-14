@@ -7,9 +7,10 @@ import { CardLink } from '@/components/layout/card-link';
 import { CoinIcon } from '@/components/markets/coin-icon';
 import { cn } from '@/lib/utils';
 import type { MarketAsset } from '@/components/markets/market-list';
+import type { Candle } from '@/lib/chart/candles';
 
 // Desktop aside on Markets: one asset in depth — the first watched one, else the top of the list.
-export function FeaturedAsset({ asset, chart }: { asset: MarketAsset; chart: { points: number[]; labels: string[] } }) {
+export function FeaturedAsset({ asset, chart }: { asset: MarketAsset; chart: { candles: Candle[] } }) {
   return (
     <section className="space-y-3 rounded-[20px] border bg-card p-5">
       <div className="flex items-center justify-between gap-3">
@@ -29,7 +30,7 @@ export function FeaturedAsset({ asset, chart }: { asset: MarketAsset; chart: { p
           {asset.change24h.toFixed(2)}%
         </span>
       </p>
-      <PriceChart id={asset.id} initial={chart} />
+      <PriceChart id={asset.id} initial={chart} compact />
       <Link href={`/alerts/new?symbol=${encodeURIComponent(asset.symbol)}`} className={buttonVariants({ variant: 'outline', className: 'h-10 w-full' })}>
         <Bell data-icon="inline-start" aria-hidden />
         Set a price alert
