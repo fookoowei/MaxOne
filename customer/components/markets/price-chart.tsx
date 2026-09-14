@@ -73,7 +73,13 @@ export function PriceChart({ id, initial, live, compact = false }: {
   // series would stay empty — which happens on most first page loads, since next-themes resolves
   // `resolvedTheme` from undefined right after hydration.
   useEffect(() => {
-    if (!series.current || candles.length === 0) return;
+    if (!series.current) return;
+    if (candles.length === 0) {
+      // Clear the series rather than leaving the previous timeframe's bars drawn underneath the
+      // "Chart unavailable." overlay — an empty `candles` must mean an empty canvas too.
+      (series.current as ISeriesApi<'Candlestick'>).setData([]);
+      return;
+    }
     series.current.applyOptions({ priceFormat: priceFormat(candles[candles.length - 1].c) });
     if (mode === 'candle') (series.current as ISeriesApi<'Candlestick'>).setData(toBars(candles));
     else (series.current as ISeriesApi<'Area'>).setData(toLine(candles));
@@ -96,15 +102,24 @@ export function PriceChart({ id, initial, live, compact = false }: {
 
   async function select(next: Range) {
     if (next === range) return;
+    const previous = range;
     setRange(next);
     setBusy(true);
     const thisRequest = ++requestId.current;
     try {
       const res = await fetch(`/api/markets/${id}/chart?range=${next}`);
       if (thisRequest !== requestId.current) return; // superseded by a newer selection
-      if (res.ok) setCandles(((await res.json()) as { candles: Candle[] }).candles);
+      if (!res.ok) {
+        // The fetch failed: the chart still shows `previous`, so the controls must say so too —
+        // otherwise the active button and the canvas disagree about which timeframe is on screen.
+        setRange(previous);
+        return;
+      }
+      setCandles(((await res.json()) as { candles: Candle[] }).candles);
     } catch {
-      // Network error: leave the existing candles in place rather than blanking the chart.
+      // Network error: leave the existing candles in place rather than blanking the chart, but
+      // still revert the selected range so it isn't left claiming data it never got.
+      if (thisRequest === requestId.current) setRange(previous);
     } finally {
       if (thisRequest === requestId.current) setBusy(false);
     }
