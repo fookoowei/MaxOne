@@ -51,6 +51,53 @@ describe('CryptoProvider.fetchTickers', () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(ok({ error: ['EQuery:Unknown asset pair'], result: {} }));
     expect(await provider.fetchTickers()).toEqual([]);
   });
+
+  it('fails soft (returns []) rather than throwing when a 200 row is missing a field', async () => {
+    // Present row, but no `h` — a partial/degraded 200, not a network failure.
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      ok({ error: [], result: { XXBTZUSD: { c: ['77684.3', '0.01'] } } }),
+    );
+    expect(await provider.fetchTickers()).toEqual([]);
+  });
+
+  it('omits a coin whose price is an empty string rather than zero-filling it', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      ok({
+        error: [],
+        result: {
+          XXBTZUSD: { c: ['', '0.01'], h: ['77000.0', '77829.5'], l: ['76500.0', '76349.8'] },
+          SOLUSD: { c: ['101.50000', '1.0'], h: ['101.0', '101.93000'], l: ['99.0', '98.95000'] },
+        },
+      }),
+    );
+    expect((await provider.fetchTickers()).map((t) => t.symbol)).toEqual(['SOL']);
+  });
+
+  it('omits a coin whose price is unparseable ("N/A") rather than NaN-filling it', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      ok({
+        error: [],
+        result: {
+          XXBTZUSD: { c: ['N/A', '0.01'], h: ['77000.0', '77829.5'], l: ['76500.0', '76349.8'] },
+          SOLUSD: { c: ['101.50000', '1.0'], h: ['101.0', '101.93000'], l: ['99.0', '98.95000'] },
+        },
+      }),
+    );
+    expect((await provider.fetchTickers()).map((t) => t.symbol)).toEqual(['SOL']);
+  });
+
+  it('logs a sustained outage once, not once per call (dedupe on message)', async () => {
+    const fresh = new CryptoProvider();
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false, status: 429, text: () => Promise.resolve('rate limited'),
+    } as unknown as Response);
+
+    await fresh.fetchTickers();
+    await fresh.fetchTickers();
+
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('CryptoProvider.fetchCandles', () => {
@@ -88,5 +135,29 @@ describe('CryptoProvider.fetchCandles', () => {
   it('fails soft (returns []) when Kraken is unreachable', async () => {
     jest.spyOn(global, 'fetch').mockRejectedValue(new Error('down'));
     expect(await provider.fetchCandles(btc, '1h')).toEqual([]);
+  });
+
+  it('fails soft (returns []) rather than throwing when the row is not the expected array shape', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(ok({ error: [], result: { XXBTZUSD: {} } }));
+    expect(await provider.fetchCandles(btc, '1h')).toEqual([]);
+  });
+
+  it('drops a candle row with a non-numeric field instead of charting a NaN', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      ok({
+        error: [],
+        result: {
+          XXBTZUSD: [
+            [1789361700, '77600.0', 'N/A', '77590.0', '77620.0', '77610.0', '5.6', 54],
+            [1789361760, '77621.3', '77622.9', '77610.4', '77614.5', '77616.6', '5.6', 54],
+          ],
+          last: 1789361760,
+        },
+      }),
+    );
+
+    expect(await provider.fetchCandles(btc, '1m')).toEqual([
+      { t: 1789361760, o: 77621.3, h: 77622.9, l: 77610.4, c: 77614.5 },
+    ]);
   });
 });
