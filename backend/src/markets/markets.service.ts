@@ -7,6 +7,7 @@ import {
   AssetDetail,
   Candle,
   ChartData,
+  Coin,
   COINS,
   coinById,
   MarketAsset,
@@ -53,22 +54,32 @@ export class MarketsService {
     );
   }
 
+  // Shared by list() and detail(): both need the same MarketAsset shape built from a coin + its
+  // ticker. change24h is derived from the candles restated with THIS ticker's price, not the raw
+  // cached history — history's last close can be up to CANDLE_TTL stale while `price` comes from
+  // the 15s ticker cache, and putting two clocks on one object is exactly the bug this method
+  // exists to close (the header price and the % must always agree).
+  private async marketAsset(coin: Coin, ticker: Ticker): Promise<MarketAsset> {
+    const history = await this.candles(coin.id, '1h');
+    return {
+      id: coin.id,
+      symbol: coin.symbol,
+      name: coin.name,
+      type: 'crypto',
+      price: ticker.price,
+      change24h: changeFromCandles(restateOpenCandle(history, ticker.price)),
+      image: coin.image,
+    };
+  }
+
   async list(): Promise<MarketAsset[]> {
     const tickers = await this.tickers();
     const bySymbol = new Map(tickers.map((t) => [t.symbol, t]));
-    const assets = await Promise.all(
-      COINS.filter((c) => bySymbol.has(c.symbol)).map(async (coin) => ({
-        id: coin.id,
-        symbol: coin.symbol,
-        name: coin.name,
-        type: 'crypto' as const,
-        price: bySymbol.get(coin.symbol)!.price,
-        // The 1h candles are cached and shared with the chart page, so this is usually free.
-        change24h: changeFromCandles(await this.candles(coin.id, '1h')),
-        image: coin.image,
-      })),
+    return Promise.all(
+      COINS.filter((c) => bySymbol.has(c.symbol)).map((coin) =>
+        this.marketAsset(coin, bySymbol.get(coin.symbol)!),
+      ),
     );
-    return assets;
   }
 
   async detail(id: string): Promise<AssetDetail | null> {
@@ -82,14 +93,9 @@ export class MarketsService {
       () => this.supply.fetchSupply(),
       (s) => Object.keys(s).length > 0,
     );
+    const asset = await this.marketAsset(coin, ticker);
     return {
-      id: coin.id,
-      symbol: coin.symbol,
-      name: coin.name,
-      type: 'crypto',
-      price: ticker.price,
-      change24h: changeFromCandles(await this.candles(coin.id, '1h')),
-      image: coin.image,
+      ...asset,
       marketCap: marketCap(ticker.price, supply[coin.symbol] ?? null),
       high24h: ticker.high24h,
       low24h: ticker.low24h,

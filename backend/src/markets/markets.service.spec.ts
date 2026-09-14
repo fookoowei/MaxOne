@@ -60,7 +60,23 @@ describe('MarketsService', () => {
 
   it('takes the detail price from the same source as the list, so they cannot drift', async () => {
     const [listed] = await service.list();
+    // The ticker cache is warm from list() above; a live upstream change must NOT reach detail()
+    // until that cache expires — otherwise this test would pass even if list()/detail() each hit
+    // the provider independently instead of sharing tickers().
+    crypto.fetchTickers.mockResolvedValue([
+      { symbol: 'BTC', price: 999, high24h: 999, low24h: 999 },
+    ]);
     expect((await service.detail('bitcoin'))?.price).toBe(listed.price);
+  });
+
+  it('derives change24h from the live ticker price, not the stale cached candle close', async () => {
+    // Candles (from beforeEach) close at 100 x24 then 110. A ticker jump to 121 must flow into
+    // change24h via the restated open candle, not stay pinned to the 110 close.
+    crypto.fetchTickers.mockResolvedValue([
+      { symbol: 'BTC', price: 121, high24h: 130, low24h: 100 },
+    ]);
+    const [listed] = await service.list();
+    expect(listed.change24h).toBe(21); // (121 - 100) / 100 * 100, not (110 - 100) / 100 * 100
   });
 
   it('returns null for an unknown id', async () => {
