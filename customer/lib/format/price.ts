@@ -9,3 +9,15 @@ export function formatPrice(value: number, currency = 'USD'): string {
     maximumFractionDigits: digits,
   }).format(value);
 }
+
+// Market cap is a trillion-scale number: spelled out in full it overflows its column on a phone
+// (it collided with "24h high" at 390px). Compact notation keeps the magnitude legible.
+export function formatCompactPrice(value: number, currency = 'USD'): string {
+  if (value === 0) return '—';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    notation: 'compact',
+    maximumFractionDigits: 2,
+  }).format(value);
+}

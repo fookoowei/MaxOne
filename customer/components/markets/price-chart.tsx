@@ -45,7 +45,7 @@ export function PriceChart({ id, initial, live, compact = false }: {
       autoSize: true,
       layout: { background: { color: 'transparent' }, textColor: text, attributionLogo: false },
       grid: { vertLines: { color: grid }, horzLines: { color: grid } },
-      rightPriceScale: { borderColor: grid },
+      rightPriceScale: { borderColor: grid, scaleMargins: { top: 0.12, bottom: 0.12 } },
       timeScale: { borderColor: grid, timeVisible: true, secondsVisible: false },
       crosshair: { mode: 1 },
       localization: { priceFormatter: formatAxisPrice },
@@ -58,8 +58,11 @@ export function PriceChart({ id, initial, live, compact = false }: {
             wickUpColor: '#16a34a', wickDownColor: '#dc2626',
           })
         : c.addSeries(AreaSeries, {
-            lineColor: 'oklch(0.48 0.16 285)', topColor: 'oklch(0.48 0.16 285 / 0.28)',
-            bottomColor: 'oklch(0.48 0.16 285 / 0.02)', lineWidth: 2,
+            // Hex/rgba, NOT the theme's oklch() tokens: lightweight-charts parses colours itself
+            // and throws "Failed to parse color" on oklch, which silently leaves the whole series
+            // unrendered — a blank chart in line mode. #5849b2 IS oklch(0.48 0.16 285) converted.
+            lineColor: '#5849b2', topColor: 'rgba(88, 73, 178, 0.28)',
+            bottomColor: 'rgba(88, 73, 178, 0.02)', lineWidth: 2,
           });
     chart.current = c;
     return () => {
