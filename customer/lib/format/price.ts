@@ -18,6 +18,10 @@ export function formatCompactPrice(value: number, currency = 'USD'): string {
     style: 'currency',
     currency,
     notation: 'compact',
+    // Explicit 0: with style 'currency' the minimum otherwise defaults to the currency's 2 digits
+    // (spec behaviour, seen on Node 22 in CI), yielding "$308.70B" instead of "$308.7B". Node 24
+    // happens to print "$308.7B" either way, which is why this only broke in CI.
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(value);
 }
