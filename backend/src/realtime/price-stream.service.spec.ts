@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { PriceStreamService } from './price-stream.service';
 
 const btc = { id: 'bitcoin', symbol: 'BTC', name: 'Bitcoin', type: 'crypto', price: 43000, change24h: 2 };
@@ -49,5 +50,14 @@ describe('PriceStreamService.tick cost guard', () => {
     await service.tick();
     expect(realtime.broadcastPrices).not.toHaveBeenCalled();
     expect(alertCheck.check).not.toHaveBeenCalled();
+  });
+
+  it('a rejected fetch does not escape the timer — it fails soft and logs, not silently', async () => {
+    const { service, markets } = build(2, 1);
+    markets.list.mockRejectedValue(new Error('boom'));
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+    await expect(service.tick()).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('boom'));
   });
 });

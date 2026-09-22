@@ -1,173 +1,163 @@
 import { Logger } from '@nestjs/common';
+import { COINS } from '../market-asset';
 import { CryptoProvider } from './crypto.provider';
 
-const coingeckoRow = {
-  id: 'bitcoin',
-  symbol: 'btc',
-  name: 'Bitcoin',
-  current_price: 43000.5,
-  price_change_percentage_24h: 2.34,
-  image: 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
+const ok = (body: unknown) =>
+  ({ ok: true, json: () => Promise.resolve(body) }) as unknown as Response;
+
+const tickerBody = {
+  error: [],
+  result: {
+    XXBTZUSD: { c: ['77684.30000', '0.01'], h: ['77000.0', '77829.50000'], l: ['76500.0', '76349.80000'] },
+    SOLUSD: { c: ['101.50000', '1.0'], h: ['101.0', '101.93000'], l: ['99.0', '98.95000'] },
+  },
 };
 
-describe('CryptoProvider', () => {
+describe('CryptoProvider.fetchTickers', () => {
   const provider = new CryptoProvider();
+  beforeEach(() => jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined));
   afterEach(() => jest.restoreAllMocks());
 
-  it('maps CoinGecko rows to normalized MarketAssets', async () => {
-    jest.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve([coingeckoRow]),
-    } as unknown as Response);
+  it('maps Kraken rows to tickers, coercing strings and taking the 24h high/low', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(ok(tickerBody));
 
-    const assets = await provider.fetchAssets();
+    const tickers = await provider.fetchTickers();
 
-    expect(assets).toEqual([
-      {
-        id: 'bitcoin',
-        symbol: 'BTC',
-        name: 'Bitcoin',
-        type: 'crypto',
-        price: 43000.5,
-        change24h: 2.34,
-        image:
-          'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
-      },
-    ]);
+    expect(tickers).toContainEqual({ symbol: 'BTC', price: 77684.3, high24h: 77829.5, low24h: 76349.8 });
+    expect(tickers).toContainEqual({ symbol: 'SOL', price: 101.5, high24h: 101.93, low24h: 98.95 });
+  });
+
+  it('skips coins Kraken did not return rather than inventing a zero price', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(ok(tickerBody));
+    expect((await provider.fetchTickers()).map((t) => t.symbol)).toEqual(['BTC', 'SOL']);
   });
 
   it('fails soft (returns []) on a network error', async () => {
     jest.spyOn(global, 'fetch').mockRejectedValue(new Error('down'));
-    expect(await provider.fetchAssets()).toEqual([]);
+    expect(await provider.fetchTickers()).toEqual([]);
   });
 
-  it('leaves image undefined when the provider sends none (client falls back to its badge)', async () => {
-    const noImage: Partial<typeof coingeckoRow> = { ...coingeckoRow };
-    delete noImage.image;
+  it('logs the status and body when Kraken answers non-OK, then fails soft', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     jest.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve([noImage]),
+      ok: false, status: 403, text: () => Promise.resolve('banned'),
     } as unknown as Response);
 
-    const [asset] = await provider.fetchAssets();
-
-    expect(asset.image).toBeUndefined();
-    expect(asset.symbol).toBe('BTC');
+    expect(await provider.fetchTickers()).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('403'));
   });
 
-  it('fails soft (returns []) on a non-OK response — and says why in the log', async () => {
-    const warn = jest
-      .spyOn(Logger.prototype, 'warn')
-      .mockImplementation(() => undefined);
-    jest.spyOn(global, 'fetch').mockResolvedValue({
-      ok: false,
-      status: 429,
-      text: () => Promise.resolve('Throttled'),
-    } as unknown as Response);
+  it('fails soft when Kraken reports an error array', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(ok({ error: ['EQuery:Unknown asset pair'], result: {} }));
+    expect(await provider.fetchTickers()).toEqual([]);
+  });
 
-    expect(await provider.fetchAssets()).toEqual([]);
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringMatching(/CoinGecko 429 .*Throttled/),
+  it('fails soft (returns []) rather than throwing when a 200 row is missing a field', async () => {
+    // Present row, but no `h` — a partial/degraded 200, not a network failure.
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      ok({ error: [], result: { XXBTZUSD: { c: ['77684.3', '0.01'] } } }),
     );
+    expect(await provider.fetchTickers()).toEqual([]);
   });
 
-  it('is keyless by default, and sends x-cg-demo-api-key when COINGECKO_API_KEY is set', async () => {
-    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve([]),
+  it('omits a coin whose price is an empty string rather than zero-filling it', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      ok({
+        error: [],
+        result: {
+          XXBTZUSD: { c: ['', '0.01'], h: ['77000.0', '77829.5'], l: ['76500.0', '76349.8'] },
+          SOLUSD: { c: ['101.50000', '1.0'], h: ['101.0', '101.93000'], l: ['99.0', '98.95000'] },
+        },
+      }),
+    );
+    expect((await provider.fetchTickers()).map((t) => t.symbol)).toEqual(['SOL']);
+  });
+
+  it('omits a coin whose price is unparseable ("N/A") rather than NaN-filling it', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      ok({
+        error: [],
+        result: {
+          XXBTZUSD: { c: ['N/A', '0.01'], h: ['77000.0', '77829.5'], l: ['76500.0', '76349.8'] },
+          SOLUSD: { c: ['101.50000', '1.0'], h: ['101.0', '101.93000'], l: ['99.0', '98.95000'] },
+        },
+      }),
+    );
+    expect((await provider.fetchTickers()).map((t) => t.symbol)).toEqual(['SOL']);
+  });
+
+  it('logs a sustained outage once, not once per call (dedupe on message)', async () => {
+    const fresh = new CryptoProvider();
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false, status: 429, text: () => Promise.resolve('rate limited'),
     } as unknown as Response);
 
-    delete process.env.COINGECKO_API_KEY;
-    await provider.fetchAssets();
-    expect(fetchSpy.mock.calls[0][1]).toBeUndefined();
+    await fresh.fetchTickers();
+    await fresh.fetchTickers();
 
-    process.env.COINGECKO_API_KEY = 'demo-123';
-    await provider.fetchAssets();
-    expect(fetchSpy.mock.calls[1][1]).toEqual({
-      headers: { 'x-cg-demo-api-key': 'demo-123' },
-    });
-    delete process.env.COINGECKO_API_KEY;
+    expect(warn).toHaveBeenCalledTimes(1);
   });
 });
 
-describe('CryptoProvider.fetchOne', () => {
-  const detailRow = {
-    id: 'bitcoin',
-    symbol: 'btc',
-    name: 'Bitcoin',
-    current_price: 43000,
-    price_change_percentage_24h: 2.34,
-    image: 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
-    market_cap: 800000000000,
-    high_24h: 44000,
-    low_24h: 42000,
+describe('CryptoProvider.fetchCandles', () => {
+  const provider = new CryptoProvider();
+  const btc = COINS[0];
+  beforeEach(() => jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined));
+  afterEach(() => jest.restoreAllMocks());
+
+  const ohlcBody = {
+    error: [],
+    result: {
+      XXBTZUSD: [
+        [1789361700, '77600.0', '77650.0', '77590.0', '77620.0', '77610.0', '5.6', 54],
+        [1789361760, '77621.3', '77622.9', '77610.4', '77614.5', '77616.6', '5.6', 54],
+      ],
+      last: 1789361760,
+    },
   };
-  const provider = new CryptoProvider();
-  afterEach(() => jest.restoreAllMocks());
 
-  it('maps a one-coin markets row to a rich AssetDetail', async () => {
-    jest.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve([detailRow]),
-    } as unknown as Response);
+  it('maps OHLC rows to candles, coercing strings, ignoring vwap/volume/count', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(ok(ohlcBody));
 
-    expect(await provider.fetchOne('bitcoin')).toEqual({
-      id: 'bitcoin',
-      symbol: 'BTC',
-      name: 'Bitcoin',
-      type: 'crypto',
-      price: 43000,
-      change24h: 2.34,
-      image:
-        'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
-      marketCap: 800000000000,
-      high24h: 44000,
-      low24h: 42000,
-    });
+    expect(await provider.fetchCandles(btc, '1m')).toEqual([
+      { t: 1789361700, o: 77600, h: 77650, l: 77590, c: 77620 },
+      { t: 1789361760, o: 77621.3, h: 77622.9, l: 77610.4, c: 77614.5 },
+    ]);
   });
 
-  it('returns null when the coin is not found', async () => {
-    jest.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve([]),
-    } as unknown as Response);
-    expect(await provider.fetchOne('nope')).toBeNull();
+  it('asks Kraken for the interval matching the range', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(ok(ohlcBody));
+    await provider.fetchCandles(btc, '4h');
+    expect(fetchSpy).toHaveBeenCalledWith(expect.stringContaining('interval=240'));
   });
 
-  it('returns null on error', async () => {
+  it('fails soft (returns []) when Kraken is unreachable', async () => {
     jest.spyOn(global, 'fetch').mockRejectedValue(new Error('down'));
-    expect(await provider.fetchOne('bitcoin')).toBeNull();
+    expect(await provider.fetchCandles(btc, '1h')).toEqual([]);
   });
-});
 
-describe('CryptoProvider.fetchChart', () => {
-  const provider = new CryptoProvider();
-  afterEach(() => jest.restoreAllMocks());
+  it('fails soft (returns []) rather than throwing when the row is not the expected array shape', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(ok({ error: [], result: { XXBTZUSD: {} } }));
+    expect(await provider.fetchCandles(btc, '1h')).toEqual([]);
+  });
 
-  it('maps CoinGecko prices to points + labels (same length, ordered)', async () => {
-    jest.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          prices: [
-            [1000, 100],
-            [2000, 110],
-            [3000, 105],
+  it('drops a candle row with a non-numeric field instead of charting a NaN', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      ok({
+        error: [],
+        result: {
+          XXBTZUSD: [
+            [1789361700, '77600.0', 'N/A', '77590.0', '77620.0', '77610.0', '5.6', 54],
+            [1789361760, '77621.3', '77622.9', '77610.4', '77614.5', '77616.6', '5.6', 54],
           ],
-        }),
-    } as unknown as Response);
+          last: 1789361760,
+        },
+      }),
+    );
 
-    const chart = await provider.fetchChart('bitcoin', 7);
-
-    expect(chart.points).toEqual([100, 110, 105]);
-    expect(chart.labels).toHaveLength(3);
-  });
-
-  it('fails soft to empty on error', async () => {
-    jest.spyOn(global, 'fetch').mockRejectedValue(new Error('down'));
-    expect(await provider.fetchChart('bitcoin', 7)).toEqual({
-      points: [],
-      labels: [],
-    });
+    expect(await provider.fetchCandles(btc, '1m')).toEqual([
+      { t: 1789361760, o: 77621.3, h: 77622.9, l: 77610.4, c: 77614.5 },
+    ]);
   });
 });

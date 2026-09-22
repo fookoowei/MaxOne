@@ -49,8 +49,9 @@ services:
         sync: false                   # same customer origin (CORS for the browser WebSocket)
       - key: SENTRY_DSN
         sync: false                   # optional — leave empty to disable
-      - key: COINGECKO_API_KEY
-        sync: false                   # optional — free Demo key; keyless = shared-IP rate limit (Markets goes empty)
+      # Markets (crypto prices/candles/supply) needs no env var: Kraken and CoinLore are both
+      # keyless public REST APIs. If Markets goes empty, it's not a missing key here — grep the
+      # API log for "Kraken" / "CoinLore" instead.
 
   # OPTIONAL — the separate worker. Render background workers are NOT on the free tier (Starter,
   # ~$7/mo). If you enable this, set CONSUMER_IN_PROCESS=false on the API so pushes aren't consumed

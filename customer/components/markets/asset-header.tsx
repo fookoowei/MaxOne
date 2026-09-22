@@ -1,4 +1,4 @@
-import { formatPrice } from '@/lib/format/price';
+import { formatCompactPrice, formatPrice } from '@/lib/format/price';
 import { CoinIcon } from '@/components/markets/coin-icon';
 
 export interface AssetDetail {
@@ -36,7 +36,7 @@ export function AssetHeader({ asset }: { asset: AssetDetail }) {
       <dl className="grid grid-cols-3 gap-2 pt-2 text-xs">
         <div>
           <dt className="text-muted-foreground">Market cap</dt>
-          <dd className="font-medium tabular-nums">{formatPrice(asset.marketCap)}</dd>
+          <dd className="font-medium tabular-nums">{formatCompactPrice(asset.marketCap)}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">24h high</dt>
