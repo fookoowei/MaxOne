@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Bell, Check } from 'lucide-react';
 import { transferSchema, type TransferInput } from '@/lib/schemas/transfer';
 import { parseAmountToMinor } from '@/lib/format/parse-amount';
+import { sanitizeAmount, withSanitizer } from '@/lib/format/sanitize-number';
 import { formatMoney } from '@/lib/format/money';
 import { apiRequest, toastApiError } from '@/lib/api/client';
 import { useIdempotencyKey } from '@/lib/idempotency/key';
@@ -123,7 +124,7 @@ export function SendMoneyWizard({ myWalletId, myCurrency, balance, prefillHandle
           {!open && <RecipientCard state={lookup} />}
           <section className="space-y-4 rounded-[20px] border bg-card p-5">
             <Label htmlFor="amount" className="text-xs text-muted-foreground">Amount</Label>
-            <AmountDisplay id="amount" symbol={symbol} invalid={!!form.formState.errors.amount} {...form.register('amount')} />
+            <AmountDisplay id="amount" symbol={symbol} invalid={!!form.formState.errors.amount} {...withSanitizer(form.register('amount'), sanitizeAmount)} />
             {form.formState.errors.amount && <p className="text-sm text-destructive">{form.formState.errors.amount.message}</p>}
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Available</span>

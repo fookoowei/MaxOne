@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { alertSchema, type AlertInput } from '@/lib/schemas/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { sanitizePrice, withSanitizer } from '@/lib/format/sanitize-number';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 
@@ -57,7 +58,7 @@ export function AddAlertForm({ assets }: { assets: { symbol: string; name: strin
       </div>
       <div className="space-y-1">
         <Label htmlFor="targetPrice">Target price (USD)</Label>
-        <Input id="targetPrice" inputMode="decimal" placeholder="80000" {...register('targetPrice')} />
+        <Input id="targetPrice" inputMode="decimal" placeholder="80000" {...withSanitizer(register('targetPrice'), sanitizePrice)} />
         {errors.targetPrice && <p className="text-sm text-destructive">{errors.targetPrice.message}</p>}
       </div>
       <Button type="submit" className="w-full" pending={isSubmitting}>

@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Check } from 'lucide-react';
 import { amountSchema, type AmountInput } from '@/lib/schemas/amount';
 import { parseAmountToMinor } from '@/lib/format/parse-amount';
+import { sanitizeAmount, withSanitizer } from '@/lib/format/sanitize-number';
 import { formatMoney } from '@/lib/format/money';
 import { apiRequest, toastApiError } from '@/lib/api/client';
 import { useIdempotencyKey } from '@/lib/idempotency/key';
@@ -78,7 +79,7 @@ export function MoneyRequestWizard({ mode, walletId, currency, balance }: { mode
             <Label htmlFor="amount" className="text-xs text-muted-foreground">
               {mode === 'deposit' ? 'Amount to add' : 'Amount to withdraw'}
             </Label>
-            <AmountDisplay id="amount" symbol={symbol} invalid={!!form.formState.errors.amount} {...form.register('amount')} />
+            <AmountDisplay id="amount" symbol={symbol} invalid={!!form.formState.errors.amount} {...withSanitizer(form.register('amount'), sanitizeAmount)} />
             {form.formState.errors.amount && <p className="text-sm text-destructive">{form.formState.errors.amount.message}</p>}
             <div className="flex flex-wrap gap-2" role="group" aria-label="Quick amounts">
               {QUICK.map((q) => (

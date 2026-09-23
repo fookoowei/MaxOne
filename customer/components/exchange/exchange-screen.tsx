@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowUpDown, Info } from 'lucide-react';
-import { sanitizeAmount } from '@/lib/exchange/amount-input';
+import { sanitizeAmount } from '@/lib/format/sanitize-number';
 import { parseAmountToMinor } from '@/lib/format/parse-amount';
 import { formatMoney } from '@/lib/format/money';
 import { useIdempotencyKey } from '@/lib/idempotency/key';
