@@ -1,4 +1,5 @@
 import { formatCompactPrice, formatPrice } from '@/lib/format/price';
+import { ChangeText } from '@/components/markets/change-text';
 import { CoinIcon } from '@/components/markets/coin-icon';
 
 export interface AssetDetail {
@@ -25,14 +26,7 @@ export function AssetHeader({ asset }: { asset: AssetDetail }) {
         </div>
       </div>
       <p className="text-3xl font-bold tabular-nums">{formatPrice(asset.price)}</p>
-      <p
-        className={`text-sm tabular-nums ${
-          asset.change24h >= 0 ? 'text-status-approved' : 'text-destructive'
-        }`}
-      >
-        {asset.change24h >= 0 ? '+' : ''}
-        {asset.change24h.toFixed(2)}% (24h)
-      </p>
+      <ChangeText pct={asset.change24h} suffix=" (24h)" className="block text-sm font-medium tabular" />
       <dl className="grid grid-cols-3 gap-2 pt-2 text-xs">
         <div>
           <dt className="text-muted-foreground">Market cap</dt>

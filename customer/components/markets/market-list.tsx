@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { formatPrice } from '@/lib/format/price';
+import { ChangeText } from '@/components/markets/change-text';
 import { WatchButton } from '@/components/markets/watch-button';
 import { CoinIcon } from '@/components/markets/coin-icon';
-import { cn } from '@/lib/utils';
 
 export interface MarketAsset {
   id: string;
@@ -28,16 +28,13 @@ export function MarketList({ assets, followedSymbols, emptyText = 'Markets are u
             <span className="flex min-w-0 items-center gap-3">
               <CoinIcon src={a.image} symbol={a.symbol} />
               <span className="min-w-0">
-                <span className="block truncate text-sm font-medium">{a.name}</span>
+                <span className="block truncate text-sm font-semibold">{a.name}</span>
                 <span className="block text-xs text-muted-foreground">{a.symbol}</span>
               </span>
             </span>
             <span className="shrink-0 text-right">
               <span className="block text-sm font-semibold tabular">{formatPrice(a.price)}</span>
-              <span className={cn('block text-xs tabular', a.change24h >= 0 ? 'text-status-approved' : 'text-destructive')}>
-                {a.change24h >= 0 ? '+' : ''}
-                {a.change24h.toFixed(2)}%
-              </span>
+              <ChangeText pct={a.change24h} className="block text-xs tabular" />
             </span>
           </Link>
           {followedSymbols && <WatchButton symbol={a.symbol} type={a.type} followed={followedSymbols.includes(a.symbol)} />}

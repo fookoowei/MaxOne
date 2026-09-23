@@ -20,11 +20,11 @@ export function ThemeToggle() {
   const current = mounted ? (theme ?? 'system') : 'system';
 
   return (
-    <div role="radiogroup" aria-label="Appearance" className="grid grid-cols-3 gap-1 rounded-2xl bg-secondary p-1">
+    <div role="radiogroup" aria-label="Appearance" className="grid grid-cols-3 gap-1 rounded-full bg-secondary p-1">
       {OPTIONS.map(({ value, label, icon: Icon }) => {
         const on = current === value;
         return (
-          <button key={value} type="button" role="radio" aria-checked={on} onClick={() => setTheme(value)} className={cn('flex h-10 items-center justify-center gap-1.5 rounded-xl text-sm font-medium transition-colors', on ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+          <button key={value} type="button" role="radio" aria-checked={on} onClick={() => setTheme(value)} className={cn('flex h-10 items-center justify-center gap-1.5 rounded-full text-[13px] font-medium transition-colors sm:text-sm', on ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
             <Icon className="size-4" aria-hidden />
             {label}
           </button>

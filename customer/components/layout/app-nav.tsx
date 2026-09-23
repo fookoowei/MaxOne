@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ScanLine, type LucideIcon } from 'lucide-react';
 import { NAV_ITEMS, isActivePath } from '@/lib/nav';
 import { cn } from '@/lib/utils';
+import { initials } from '@/lib/format/initials';
 
 export interface NavUser {
   name: string;
@@ -16,6 +18,15 @@ const Mark = ({ className }: { className?: string }) => (
   </svg>
 );
 
+function Tab({ href, label, icon: Icon, active }: { href: string; label: string; icon: LucideIcon; active: boolean }) {
+  return (
+    <Link href={href} aria-current={active ? 'page' : undefined} className={cn('flex min-h-11 flex-1 flex-col items-center gap-1 py-3 text-xs font-medium transition-colors', active ? 'text-primary' : 'text-muted-foreground')}>
+      <Icon className="size-5" aria-hidden />
+      {label}
+    </Link>
+  );
+}
+
 /**
  * One navigation, three shapes, chosen by CSS breakpoint (no JS media queries, no layout flash):
  *  ≤767  bottom tab bar (thumb reach)
@@ -27,18 +38,23 @@ const Mark = ({ className }: { className?: string }) => (
 export function AppNav({ user }: { user: NavUser }) {
   const pathname = usePathname();
   const items = NAV_ITEMS.map((i) => ({ ...i, active: isActivePath(i.href, pathname) }));
-  const initials = user.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase() || 'ME';
 
   return (
     <>
-      {/* phone: bottom tabs */}
-      <nav aria-label="Primary" data-shape="tabs" className="fixed inset-x-0 bottom-0 z-10 flex border-t bg-card/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-        {items.map(({ href, label, icon: Icon, active }) => (
-          <Link key={href} href={href} aria-current={active ? 'page' : undefined} className={cn('flex min-h-11 flex-1 flex-col items-center gap-1 py-3 text-xs font-medium', active ? 'text-primary' : 'text-muted-foreground')}>
-            <Icon className="size-5" aria-hidden />
-            {label}
+      {/* phone: bottom tabs, with Scan raised in the middle — the one action a person reaches for
+          while standing at a counter, so it gets the thumb's best spot and the brand colour. */}
+      <nav aria-label="Primary" data-shape="tabs" className="fixed inset-x-0 bottom-0 z-10 md:hidden">
+        <div className="flex items-end border-t bg-card/90 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+          {items.slice(0, 2).map((item) => <Tab key={item.href} {...item} />)}
+          <Link
+            href="/pay/scan"
+            aria-label="Scan to pay"
+            className="relative -top-4 mx-1 flex size-14 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/25 ring-4 ring-card transition-transform duration-200 active:scale-95"
+          >
+            <ScanLine className="size-6" aria-hidden />
           </Link>
-        ))}
+          {items.slice(2).map((item) => <Tab key={item.href} {...item} />)}
+        </div>
       </nav>
 
       {/* tablet: icon rail */}
@@ -68,7 +84,7 @@ export function AppNav({ user }: { user: NavUser }) {
         ))}
         <div className="flex-1" />
         <Link href="/profile" className="flex items-center gap-2.5 border-t px-2 pt-3">
-          <span className="flex size-8 items-center justify-center rounded-[10px] bg-secondary text-xs font-bold text-secondary-foreground">{initials}</span>
+          <span className="flex size-8 items-center justify-center rounded-[10px] bg-secondary text-xs font-bold text-secondary-foreground">{initials(user.name)}</span>
           <span className="grid leading-tight">
             <span className="text-[13px] font-medium">{user.name}</span>
             {user.handle && <span className="text-xs text-muted-foreground">@{user.handle}</span>}

@@ -5,6 +5,7 @@ import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import type { RecipientState } from './recipient-card';
+import { initials } from '@/lib/format/initials';
 
 // `{ value, label }` is the shape Base UI fills the input from on item press, no mapper needed.
 interface RecipientItem {
@@ -14,7 +15,6 @@ interface RecipientItem {
   currency: string;
 }
 
-const initials = (name: string) => name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
 
 /**
  * The @handle field as a search box: what the lookup found drops down UNDER the input — a

@@ -1,17 +1,12 @@
 import { AtSign, Mail } from 'lucide-react';
 
-const initials = (name: string) =>
-  name
-    .split(' ')
-    .map((p) => p[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase() || 'ME';
+import { initials } from '@/lib/format/initials';
+import { Panel } from '@/components/layout/panel';
 
 // Desktop aside on Profile: who is signed in, at a glance.
 export function AccountSummaryCard({ name, handle, email }: { name: string; handle?: string; email: string }) {
   return (
-    <section className="rounded-[20px] border bg-card p-4">
+    <Panel padded>
       <div className="flex items-center gap-3">
         <span className="flex size-12 shrink-0 items-center justify-center rounded-[16px] bg-secondary text-sm font-bold text-secondary-foreground" aria-hidden>
           {initials(name)}
@@ -35,6 +30,6 @@ export function AccountSummaryCard({ name, handle, email }: { name: string; hand
           <dd className="truncate">{email}</dd>
         </div>
       </dl>
-    </section>
+    </Panel>
   );
 }

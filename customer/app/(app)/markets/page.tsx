@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { BellRing, PieChart } from 'lucide-react';
-import { serverApi } from '@/lib/api/server';
+import { serverApi, serverApiJson } from '@/lib/api/server';
 import { buttonVariants } from '@/components/ui/button';
 import { CardLink } from '@/components/layout/card-link';
+import { Panel } from '@/components/layout/panel';
 import { computePortfolio, type Holding, type PriceInfo } from '@/lib/portfolio/compute';
 import { formatPrice } from '@/lib/format/price';
 import { PageHeader } from '@/components/layout/page-header';
@@ -24,9 +25,7 @@ export default async function MarketsPage() {
   const followedSymbols = watch.map((w) => w.symbol);
   const featured = assets.find((a) => followedSymbols.includes(a.symbol)) ?? assets[0];
   const chart = featured
-    ? await serverApi(`/markets/${featured.id}/chart?range=15m`)
-        .then(async (r) => (r.ok ? ((await r.json()) as { candles: Candle[] }) : { candles: [] }))
-        .catch(() => ({ candles: [] }))
+    ? await serverApiJson<{ candles: Candle[] }>(`/markets/${featured.id}/chart?range=15m`, { candles: [] })
     : null;
   const portfolio = computePortfolio(holdings, assets as unknown as PriceInfo[]);
 
@@ -35,16 +34,12 @@ export default async function MarketsPage() {
       aside={
         <>
           {featured && chart && <FeaturedAsset asset={featured} chart={chart} />}
-          <section className="rounded-[20px] border bg-card p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Your portfolio</h2>
-              <CardLink href="/portfolio">Open</CardLink>
-            </div>
+          <Panel padded title="Your portfolio" action={<CardLink href="/portfolio">Open</CardLink>}>
             <p className="mt-0.5 text-xs text-muted-foreground">Holdings you track, not custody.</p>
             {assets.length > 0 ? (
               <>
                 <p className="mt-3 text-xl font-bold tabular">{formatPrice(portfolio.totalValue)}</p>
-                <p className={`text-xs tabular ${portfolio.totalPnl >= 0 ? 'text-status-approved' : 'text-destructive'}`}>
+                <p className={`text-xs tabular ${portfolio.totalPnl >= 0 ? 'text-status-approved' : 'text-status-rejected'}`}>
                   {portfolio.totalPnl >= 0 ? '+' : ''}
                   {formatPrice(portfolio.totalPnl)} total P/L
                 </p>
@@ -53,7 +48,7 @@ export default async function MarketsPage() {
               // Without prices computePortfolio yields $0.00, which would read as a real balance.
               <p className="mt-3 text-sm text-muted-foreground">Valued once live prices are back.</p>
             )}
-          </section>
+          </Panel>
         </>
       }
     >

@@ -85,3 +85,11 @@ describe('MoneyRequestWizard', () => {
     expect(screen.getByText('Pending review')).toBeInTheDocument();
   });
 });
+
+describe('MoneyRequestWizard (amount field hygiene)', () => {
+  it('ignores symbols and letters and caps decimals as you type', async () => {
+    render(<MoneyRequestWizard mode="deposit" walletId="w1" currency="USD" balance={0} />);
+    await userEvent.type(screen.getByLabelText(/amount to add/i), '$1,2a5.678');
+    expect(screen.getByLabelText(/amount to add/i)).toHaveValue('125.67');
+  });
+});

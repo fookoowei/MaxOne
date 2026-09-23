@@ -9,7 +9,7 @@ export function PortfolioSummary({ totalValue, totalPnl, totalPnlPct }: { totalV
   const up = totalPnl >= 0;
   const Arrow = up ? TrendingUp : TrendingDown;
   return (
-    <section className="rounded-3xl bg-gradient-to-br from-primary to-[oklch(0.38_0.15_290)] p-6 text-primary-foreground shadow-lg shadow-primary/20">
+    <section className="rounded-[28px] bg-gradient-to-br from-primary to-[oklch(0.38_0.15_290)] p-6 text-primary-foreground shadow-lg shadow-primary/20">
       <p className="text-sm/6 opacity-80">Portfolio value</p>
       <p className="mt-1 text-4xl font-bold tracking-tight tabular-nums">{formatPrice(totalValue)}</p>
       <p className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-white/15 py-1 pr-3 pl-2.5 text-sm font-medium tabular-nums">

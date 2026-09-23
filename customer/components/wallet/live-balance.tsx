@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import type { Socket } from 'socket.io-client';
+import { useState } from 'react';
 import { BalanceCard } from '@/components/wallet/balance-card';
-import { connectSocket } from '@/lib/realtime/socket';
+import { useSocket } from '@/lib/realtime/use-socket';
 
 interface BalanceEvent {
   walletId: string;
@@ -16,34 +15,21 @@ export function LiveBalance({
   currency,
   initialBalance,
   pendingCount = 0,
+  variant = 'card',
 }: {
   walletId: string;
   currency: string;
   initialBalance: number;
   pendingCount?: number;
+  variant?: 'card' | 'hero';
 }) {
   const [balance, setBalance] = useState(initialBalance);
 
-  useEffect(() => {
-    let socket: Socket | undefined;
-    let cancelled = false;
-
-    (async () => {
-      const res = await fetch('/api/ws-ticket', { method: 'POST' });
-      if (!res.ok || cancelled) return; // real-time is an enhancement — SSR balance stays
-      const { ticket } = (await res.json()) as { ticket: string };
-      if (cancelled) return;
-      socket = connectSocket(ticket);
-      socket.on('balance.updated', (p: BalanceEvent) => {
-        if (p.walletId === walletId) setBalance(p.balance);
-      });
-    })();
-
-    return () => {
-      cancelled = true;
-      socket?.disconnect();
-    };
+  useSocket((socket) => {
+    socket.on('balance.updated', (p: BalanceEvent) => {
+      if (p.walletId === walletId) setBalance(p.balance);
+    });
   }, [walletId]);
 
-  return <BalanceCard balance={balance} currency={currency} pendingCount={pendingCount} />;
+  return <BalanceCard balance={balance} currency={currency} pendingCount={pendingCount} variant={variant} />;
 }

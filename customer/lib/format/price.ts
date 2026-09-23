@@ -25,3 +25,8 @@ export function formatCompactPrice(value: number, currency = 'USD'): string {
     maximumFractionDigits: 2,
   }).format(value);
 }
+
+// A 24h / P&L change, always signed and always two decimals, so every list agrees: "+3.84%".
+export function formatChangePct(pct: number): string {
+  return `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
+}

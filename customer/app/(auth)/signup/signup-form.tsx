@@ -7,6 +7,7 @@ import { signupSchema, type SignupInput } from '@/lib/schemas/auth';
 import { apiRequest, toastApiError } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FieldError } from '@/components/ui/field-error';
 import { Label } from '@/components/ui/label';
 
 export function SignupForm() {
@@ -37,27 +38,27 @@ export function SignupForm() {
       <div className="space-y-1">
         <Label htmlFor="firstName">First name</Label>
         <Input id="firstName" {...register('firstName')} />
-        {errors.firstName && <p className="text-sm text-destructive">{errors.firstName.message}</p>}
+        <FieldError message={errors.firstName?.message} />
       </div>
       <div className="space-y-1">
         <Label htmlFor="lastName">Last name</Label>
         <Input id="lastName" {...register('lastName')} />
-        {errors.lastName && <p className="text-sm text-destructive">{errors.lastName.message}</p>}
+        <FieldError message={errors.lastName?.message} />
       </div>
       <div className="space-y-1">
         <Label htmlFor="handle">Handle</Label>
         <Input id="handle" placeholder="yourhandle" {...register('handle')} />
-        {errors.handle && <p className="text-sm text-destructive">{errors.handle.message}</p>}
+        <FieldError message={errors.handle?.message} />
       </div>
       <div className="space-y-1">
         <Label htmlFor="email">Email</Label>
         <Input id="email" type="email" {...register('email')} />
-        {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+        <FieldError message={errors.email?.message} />
       </div>
       <div className="space-y-1">
         <Label htmlFor="password">Password</Label>
         <Input id="password" type="password" {...register('password')} />
-        {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
+        <FieldError message={errors.password?.message} />
       </div>
       <Button type="submit" className="w-full" pending={isSubmitting}>
         {isSubmitting ? 'Creating…' : 'Create account'}

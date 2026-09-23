@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FieldError } from '@/components/ui/field-error';
+import { Check } from 'lucide-react';
+import { sanitizeDigits } from '@/lib/format/sanitize-number';
 
 type Phase = 'idle' | 'qr' | 'recovery' | 'enabled' | 'disabling';
 const JSON_HEADERS = { 'content-type': 'application/json' };
@@ -60,16 +63,19 @@ export function TwoFactorSetup({ initialEnabled }: { initialEnabled: boolean }) 
     setPhase('idle');
   }
 
-  const codeField = (id: string) => (
+  // The setup code is always the authenticator's six digits. Disabling also accepts a recovery
+  // code (letters and dashes), so that field is left free-form.
+  const codeField = (id: string, digitsOnly: boolean) => (
     <div className="space-y-1">
       <Label htmlFor={id}>Authentication code</Label>
       <Input
         id={id}
-        inputMode="numeric"
+        inputMode={digitsOnly ? 'numeric' : 'text'}
         autoComplete="one-time-code"
-        placeholder="6-digit code"
+        placeholder={digitsOnly ? '6-digit code' : '6-digit code or a recovery code'}
+        maxLength={digitsOnly ? 6 : undefined}
         value={code}
-        onChange={(e) => setCode(e.target.value)}
+        onChange={(e) => setCode(digitsOnly ? sanitizeDigits(e.target.value, 6) : e.target.value)}
       />
     </div>
   );
@@ -81,7 +87,7 @@ export function TwoFactorSetup({ initialEnabled }: { initialEnabled: boolean }) 
         <Button onClick={start} disabled={busy}>
           {busy ? 'Starting…' : 'Enable 2FA'}
         </Button>
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        <FieldError message={error ?? undefined} />
       </div>
     );
   }
@@ -90,9 +96,9 @@ export function TwoFactorSetup({ initialEnabled }: { initialEnabled: boolean }) 
     return (
       <form onSubmit={verify} className="space-y-4" noValidate>
         <p className="text-sm">Scan this with Google Authenticator or Authy, then enter the code it shows.</p>
-        {qr && <img src={qr} alt="Scan with your authenticator app" className="h-44 w-44 rounded-md bg-white p-2" />}
-        {codeField('setup-code')}
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {qr && <img src={qr} alt="Scan with your authenticator app" className="h-44 w-44 rounded-2xl bg-white p-2" />}
+        {codeField('setup-code', true)}
+        <FieldError message={error ?? undefined} />
         <Button type="submit" disabled={busy || !code}>
           {busy ? 'Verifying…' : 'Verify & enable'}
         </Button>
@@ -107,7 +113,7 @@ export function TwoFactorSetup({ initialEnabled }: { initialEnabled: boolean }) 
         <p className="text-xs text-muted-foreground">
           If you lose your phone, a recovery code is the only way back in. They won’t be shown again.
         </p>
-        <ul className="grid grid-cols-2 gap-1 rounded-md border bg-muted/40 p-3 font-mono text-sm">
+        <ul className="grid grid-cols-2 gap-1 rounded-2xl border bg-muted/40 p-3 font-mono text-sm">
           {recoveryCodes.map((c) => (
             <li key={c}>{c}</li>
           ))}
@@ -121,8 +127,8 @@ export function TwoFactorSetup({ initialEnabled }: { initialEnabled: boolean }) 
     return (
       <form onSubmit={disable} className="space-y-4" noValidate>
         <p className="text-sm">Enter a current code — or one of your recovery codes — to turn 2FA off.</p>
-        {codeField('disable-code')}
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {codeField('disable-code', false)}
+        <FieldError message={error ?? undefined} />
         <div className="flex gap-2">
           <Button type="submit" variant="destructive" disabled={busy || !code}>
             {busy ? 'Turning off…' : 'Turn off 2FA'}
@@ -137,7 +143,10 @@ export function TwoFactorSetup({ initialEnabled }: { initialEnabled: boolean }) 
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-emerald-600">✓ Two-factor authentication is on.</p>
+      <p className="inline-flex items-center gap-1.5 text-sm font-medium text-status-approved">
+        <Check className="size-4" aria-hidden />
+        Two-factor authentication is on.
+      </p>
       <Button variant="outline" onClick={() => setPhase('disabling')}>
         Turn off
       </Button>

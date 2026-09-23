@@ -5,6 +5,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/layout/empty-state';
 import { RemoveAlertButton } from '@/components/alerts/remove-alert-button';
 import { CoinIcon } from '@/components/markets/coin-icon';
+import { StatusPill } from '@/components/status-pill';
 import type { AlertRow } from '@/lib/alerts/compute';
 
 export function AlertList({ rows }: { rows: AlertRow[] }) {
@@ -27,10 +28,10 @@ export function AlertList({ rows }: { rows: AlertRow[] }) {
     <ul className="divide-y divide-border">
       {rows.map((r) => (
         <li key={r.id} className="flex items-center justify-between py-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <CoinIcon src={r.image} symbol={r.symbol} className="size-8 text-[10px]" />
+          <div className="flex min-w-0 items-center gap-3">
+            <CoinIcon src={r.image} symbol={r.symbol} />
             <div className="min-w-0">
-              <p className="text-sm font-medium">{r.symbol}</p>
+              <p className="text-sm font-semibold">{r.symbol}</p>
               <p className="text-xs text-muted-foreground">
                 {r.direction === 'above' ? 'Above' : 'Below'} {formatPrice(r.targetPrice)}
                 {r.currentPrice !== null && <> · now {formatPrice(r.currentPrice)}</>}
@@ -38,9 +39,7 @@ export function AlertList({ rows }: { rows: AlertRow[] }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`inline-flex h-5 items-center rounded-full px-2 text-xs font-medium ${r.triggeredAt ? 'bg-status-approved/12 text-status-approved' : 'bg-muted text-muted-foreground'}`}>
-              {r.triggeredAt ? 'Reached' : 'Watching'}
-            </span>
+            <StatusPill tone={r.triggeredAt ? 'approved' : 'neutral'}>{r.triggeredAt ? 'Reached' : 'Watching'}</StatusPill>
             <RemoveAlertButton id={r.id} symbol={r.symbol} />
           </div>
         </li>

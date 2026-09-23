@@ -5,30 +5,34 @@ import { serverApi } from '@/lib/api/server';
 import { buttonVariants } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
 import { EmptyState } from '@/components/layout/empty-state';
-import { ConvertForm } from '@/components/wallet/convert-form';
+import { ExchangeScreen } from '@/components/exchange/exchange-screen';
 import type { WalletSummary } from '@/components/wallet/wallet-list';
+
+export const metadata = { title: 'Exchange' };
 
 export default async function ConvertPage() {
   const res = await serverApi('/wallets');
   if (res.status === 401) redirect('/login');
   const wallets = (await res.json()) as WalletSummary[];
   return (
-    <div className="space-y-6 lg:max-w-[560px]">
-      <PageHeader title="Convert" description="Move money between your currency wallets." back={{ href: '/', label: 'Back' }} />
+    <div className="lg:max-w-[440px]">
       {wallets.length < 2 ? (
-        <EmptyState
-          icon={Coins}
-          title="Add a second currency first"
-          description="Converting needs two wallets — one to take from and one to put into."
-          action={
-            <Link href="/wallets/new" className={buttonVariants({ size: 'xl' })}>
-              <Wallet data-icon="inline-start" aria-hidden />
-              Add a currency
-            </Link>
-          }
-        />
+        <div className="space-y-6">
+          <PageHeader title="Exchange" description="Move money between your currency wallets." back={{ href: '/', label: 'Back' }} />
+          <EmptyState
+            icon={Coins}
+            title="Add a second currency first"
+            description="Exchanging needs two wallets — one to take from and one to put into."
+            action={
+              <Link href="/wallets/new" className={buttonVariants({ size: 'xl' })}>
+                <Wallet data-icon="inline-start" aria-hidden />
+                Add a currency
+              </Link>
+            }
+          />
+        </div>
       ) : (
-        <ConvertForm wallets={wallets} />
+        <ExchangeScreen wallets={wallets} />
       )}
     </div>
   );

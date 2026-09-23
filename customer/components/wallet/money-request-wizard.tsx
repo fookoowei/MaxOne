@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Check } from 'lucide-react';
 import { amountSchema, type AmountInput } from '@/lib/schemas/amount';
 import { parseAmountToMinor } from '@/lib/format/parse-amount';
+import { sanitizeAmount, withSanitizer } from '@/lib/format/sanitize-number';
 import { formatMoney } from '@/lib/format/money';
 import { apiRequest, toastApiError } from '@/lib/api/client';
 import { useIdempotencyKey } from '@/lib/idempotency/key';
@@ -16,6 +17,9 @@ import { Label } from '@/components/ui/label';
 import { Stepper } from '@/components/layout/stepper';
 import { MoneyText } from '@/components/money-text';
 import { AmountDisplay } from './amount-display';
+import { StatusPill } from '@/components/status-pill';
+import { Panel } from '@/components/layout/panel';
+import { FieldError } from '@/components/ui/field-error';
 
 const QUICK = [5000, 10000, 25000, 50000];
 const STEPS = ['Amount', 'Review', 'Done'];
@@ -78,8 +82,8 @@ export function MoneyRequestWizard({ mode, walletId, currency, balance }: { mode
             <Label htmlFor="amount" className="text-xs text-muted-foreground">
               {mode === 'deposit' ? 'Amount to add' : 'Amount to withdraw'}
             </Label>
-            <AmountDisplay id="amount" symbol={symbol} invalid={!!form.formState.errors.amount} {...form.register('amount')} />
-            {form.formState.errors.amount && <p className="text-sm text-destructive">{form.formState.errors.amount.message}</p>}
+            <AmountDisplay id="amount" symbol={symbol} invalid={!!form.formState.errors.amount} {...withSanitizer(form.register('amount'), sanitizeAmount)} />
+            <FieldError message={form.formState.errors.amount?.message} />
             <div className="flex flex-wrap gap-2" role="group" aria-label="Quick amounts">
               {QUICK.map((q) => (
                 <Button key={q} type="button" variant="outline" size="sm" className="h-9" onClick={() => form.setValue('amount', (q / 100).toFixed(2), { shouldValidate: true })}>
@@ -113,7 +117,7 @@ export function MoneyRequestWizard({ mode, walletId, currency, balance }: { mode
 
       {step === 2 && values && (
         <div className="space-y-5">
-          <section className="rounded-[20px] border bg-card px-4 py-1">
+          <Panel>
             {[
               ['Amount', <MoneyText key="a" amountMinor={minor} currency={currency} className="font-bold" />],
               [mode === 'deposit' ? 'To' : 'From', 'My Wallet · ' + currency],
@@ -126,7 +130,7 @@ export function MoneyRequestWizard({ mode, walletId, currency, balance }: { mode
                 <span className="font-medium">{v}</span>
               </div>
             ))}
-          </section>
+          </Panel>
           {overBalance ? (
             <p className="rounded-[20px] bg-status-rejected/10 px-4 py-3 text-sm text-status-rejected">That is more than your available balance of {formatMoney(balance, currency)}.</p>
           ) : (
@@ -149,7 +153,7 @@ export function MoneyRequestWizard({ mode, walletId, currency, balance }: { mode
       {step === 3 && result && (
         <div className="space-y-5">
           <section className="flex flex-col items-center gap-3 py-6 text-center">
-            <span className="flex size-[72px] items-center justify-center rounded-3xl bg-status-approved/12 text-status-approved">
+            <span className="flex size-[72px] items-center justify-center rounded-full bg-status-approved/12 text-status-approved">
               <Check className="size-8" aria-hidden />
             </span>
             <h2 className="text-xl font-semibold">{mode === 'deposit' ? 'Money added' : 'Request sent'}</h2>
@@ -157,20 +161,20 @@ export function MoneyRequestWizard({ mode, walletId, currency, balance }: { mode
               {mode === 'deposit' ? `${formatMoney(minor, currency)} is in your wallet.` : `${formatMoney(minor, currency)} is waiting for review. We will notify you when it is approved.`}
             </p>
           </section>
-          <section className="rounded-[20px] border bg-card px-4 py-1 text-sm">
+          <Panel className="text-sm">
             <div className="flex items-center justify-between border-b py-3">
               <span className="text-muted-foreground">Status</span>
               {mode === 'deposit' ? (
-                <span className="inline-flex h-5 items-center rounded-full bg-status-approved/12 px-2 text-xs font-medium text-status-approved">Completed</span>
+                <StatusPill tone="approved">Completed</StatusPill>
               ) : (
-                <span className="inline-flex h-5 items-center rounded-full bg-status-pending/12 px-2 text-xs font-medium text-status-pending">Pending review</span>
+                <StatusPill tone="pending">Pending review</StatusPill>
               )}
             </div>
             <div className="flex items-center justify-between py-3">
               <span className="text-muted-foreground">Reference</span>
               <span className="font-medium tabular">#{result.id.slice(0, 8).toUpperCase()}</span>
             </div>
-          </section>
+          </Panel>
           <div className="flex flex-col gap-2.5">
             <Button type="button" variant="outline" size="xl" onClick={() => { form.reset(); setValues(null); setResult(null); setStep(1); }}>
               {mode === 'deposit' ? 'Add more money' : 'Request another withdrawal'}

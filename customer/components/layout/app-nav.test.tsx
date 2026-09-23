@@ -23,3 +23,16 @@ describe('AppNav (one nav, three shapes)', () => {
     expect(screen.getByText('@janedoe')).toBeInTheDocument();
   });
 });
+
+describe('AppNav (scan shortcut)', () => {
+  it('raises Scan to pay in the middle of the phone tabs only', () => {
+    render(<AppNav user={{ name: 'Jane Doe' }} />);
+    const [tabs, rail, sidebar] = screen.getAllByRole('navigation', { name: 'Primary' });
+    const scan = tabs.querySelector('a[href="/pay/scan"]');
+    expect(scan).toHaveAccessibleName('Scan to pay');
+    const links = Array.from(tabs.querySelectorAll('a')).map((a) => a.getAttribute('href'));
+    expect(links).toEqual(['/', '/pay', '/pay/scan', '/markets', '/profile']);
+    expect(rail.querySelector('a[href="/pay/scan"]')).toBeNull();
+    expect(sidebar.querySelector('a[href="/pay/scan"]')).toBeNull();
+  });
+});
