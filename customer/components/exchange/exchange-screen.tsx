@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowUpDown, Info } from 'lucide-react';
-import { applyKey, formatTyped, type KeypadKey } from '@/lib/exchange/amount-input';
+import { sanitizeAmount } from '@/lib/exchange/amount-input';
 import { parseAmountToMinor } from '@/lib/format/parse-amount';
 import { formatMoney } from '@/lib/format/money';
 import { useIdempotencyKey } from '@/lib/idempotency/key';
@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import { Enter } from '@/components/layout/enter';
 import { CurrencyChip } from './currency-chip';
 import { CurrencyPicker } from './currency-picker';
-import { AmountKeypad } from './amount-keypad';
 import { RollingAmount } from './rolling-amount';
 import { ExchangeSuccessDialog } from './exchange-success-dialog';
 import type { WalletSummary } from '@/components/wallet/wallet-list';
@@ -40,7 +39,7 @@ const rateFmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 4 });
 
 /**
  * Exchange between two of the person's own wallets, laid out like the reference: From over To
- * with a swap button on the seam, the fee/rate card, the action, the keypad. The To amount is a
+ * with a swap button on the seam, the fee/rate card, the action. The To amount is a
  * LIVE quote (debounced) rather than a separate "get quote" step; the money moves only when they
  * press Exchange, through the same idempotent transfer the old form used.
  */
@@ -86,24 +85,6 @@ export function ExchangeScreen({ wallets }: { wallets: WalletSummary[] }) {
       clearTimeout(timer);
     };
   }, [valid, minor, fromCurrency, toCurrency]);
-
-  // Desktop: the physical keyboard drives the same keypad logic.
-  useEffect(() => {
-    if (done || picker) return;
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-      if (/^[0-9]$/.test(e.key) || e.key === '.') {
-        e.preventDefault();
-        setAmount((a) => applyKey(a, e.key as KeypadKey));
-      } else if (e.key === 'Backspace') {
-        e.preventDefault();
-        setAmount((a) => applyKey(a, 'back'));
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [done, picker]);
 
   function swap() {
     setFromId(toId);
@@ -154,7 +135,6 @@ export function ExchangeScreen({ wallets }: { wallets: WalletSummary[] }) {
   // While a fresh quote is in flight, the last answer stays on screen dimmed rather than blinking
   // to zero; with nothing typed, the To side shows a quiet 0.00.
   const shown = current ?? (key ? result : null);
-  const fromDisplay = formatTyped(amount) || '0';
   const toDisplay = shown ? plain.format(shown.converted / 100) : '0.00';
   const updated = current ? current.at.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : null;
 
@@ -178,7 +158,20 @@ export function ExchangeScreen({ wallets }: { wallets: WalletSummary[] }) {
             </div>
             <div className="mt-3 flex items-end justify-between gap-3">
               <CurrencyChip side="From" code={from.currency} onClick={() => setPicker('from')} />
-              <RollingAmount value={fromDisplay} className={cn('text-[32px] font-bold leading-none tracking-tight', amount === '' && 'text-muted-foreground/50', overBalance && 'text-status-rejected')} />
+              <input
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                autoFocus
+                aria-label={`Amount in ${from.currency}`}
+                placeholder="0"
+                value={amount}
+                onChange={(e) => setAmount(sanitizeAmount(e.target.value))}
+                className={cn(
+                  'min-w-0 flex-1 bg-transparent text-right text-[28px] font-bold leading-none tracking-tight tabular outline-none placeholder:text-muted-foreground/50 min-[360px]:text-[32px]',
+                  overBalance && 'text-status-rejected',
+                )}
+              />
             </div>
           </section>
         </Enter>
@@ -199,7 +192,7 @@ export function ExchangeScreen({ wallets }: { wallets: WalletSummary[] }) {
               <CurrencyChip side="To" code={to.currency} onClick={() => setPicker('to')} />
               <RollingAmount
                 value={toDisplay}
-                className={cn('text-[32px] font-bold leading-none tracking-tight transition-opacity duration-200', !shown && 'text-muted-foreground/50', loading && shown && 'opacity-60')}
+                className={cn('text-[28px] font-bold leading-none tracking-tight transition-opacity duration-200 min-[360px]:text-[32px]', !shown && 'text-muted-foreground/50', loading && shown && 'opacity-60')}
               />
             </div>
           </section>
@@ -231,10 +224,6 @@ export function ExchangeScreen({ wallets }: { wallets: WalletSummary[] }) {
         <Button size="xl" className="h-13 w-full rounded-[18px] text-base transition-[background-color,opacity] duration-300" disabled={!canSubmit} pending={busy} onClick={submit}>
           Exchange money
         </Button>
-      </Enter>
-
-      <Enter i={4}>
-        <AmountKeypad onKey={(k) => setAmount((a) => applyKey(a, k))} disabled={busy} />
       </Enter>
 
       <CurrencyPicker open={picker === 'from'} onOpenChange={(o) => setPicker(o ? 'from' : null)} title="Exchange from" wallets={wallets} selectedId={fromId} onPick={(id) => pick('from', id)} />

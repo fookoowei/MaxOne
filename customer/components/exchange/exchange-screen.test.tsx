@@ -20,12 +20,10 @@ function mockFetch(handler: (url: string) => Response) {
   return vi.spyOn(global, 'fetch').mockImplementation((input) => Promise.resolve(handler(String(input))));
 }
 
-async function tap(...keys: string[]) {
-  for (const k of keys) await userEvent.click(screen.getByRole('button', { name: k }));
-}
+const amountField = (currency = 'USD') => screen.getByLabelText(`Amount in ${currency}`);
 
 describe('ExchangeScreen', () => {
-  it('quotes live as the keypad types, then exchanges and shows the completed sheet', async () => {
+  it('quotes live as the amount is typed, then exchanges and shows the completed sheet', async () => {
     const fetchSpy = mockFetch((url) => {
       if (url.includes('/api/rates/quote')) {
         return new Response(JSON.stringify({ converted: 43890, rate: '0.87781' }), { status: 200 });
@@ -37,8 +35,8 @@ describe('ExchangeScreen', () => {
     const cta = screen.getByRole('button', { name: /exchange money/i });
     expect(cta).toBeDisabled();
 
-    await tap('5', '0', '0');
-    expect(screen.getByText('500')).toBeInTheDocument();
+    await userEvent.type(amountField(), '500');
+    expect(amountField()).toHaveValue('500');
 
     expect(await screen.findByText('438.90')).toBeInTheDocument();
     expect(screen.getByText(/1 USD ≈ 0\.8778 EUR/)).toBeInTheDocument();
@@ -62,7 +60,7 @@ describe('ExchangeScreen', () => {
   it('debounces: a burst of keys costs one quote request', async () => {
     const fetchSpy = mockFetch(() => new Response(JSON.stringify({ converted: 1, rate: '1' }), { status: 200 }));
     render(<ExchangeScreen wallets={wallets} />);
-    await tap('1', '2', '3');
+    await userEvent.type(amountField(), '123');
     await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
     await new Promise((r) => setTimeout(r, 400));
     const quotes = fetchSpy.mock.calls.filter(([u]) => String(u).includes('/api/rates/quote'));
@@ -79,23 +77,23 @@ describe('ExchangeScreen', () => {
     expect(screen.getByRole('button', { name: 'From currency: EUR' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'To currency: USD' })).toBeInTheDocument();
 
-    await tap('1');
+    await userEvent.type(amountField('EUR'), '1');
     await waitFor(() => expect(fetchSpy.mock.calls.some(([u]) => String(u).includes('from=EUR&to=USD'))).toBe(true));
   });
 
   it('refuses more than the wallet holds', async () => {
     mockFetch(() => new Response(JSON.stringify({ converted: 1, rate: '1' }), { status: 200 }));
     render(<ExchangeScreen wallets={wallets} />);
-    await tap('2', '0', '0', '0'); // $2,000 > $1,000 available
+    await userEvent.type(amountField(), '2000'); // $2,000 > $1,000 available
     expect(screen.getByText(/more than the USD you have/i)).toBeInTheDocument();
     await new Promise((r) => setTimeout(r, 400));
     expect(screen.getByRole('button', { name: /exchange money/i })).toBeDisabled();
   });
 
-  it('accepts the physical keyboard too', async () => {
+  it('keeps only what an amount can be while typing', async () => {
     mockFetch(() => new Response(JSON.stringify({ converted: 1, rate: '1' }), { status: 200 }));
     render(<ExchangeScreen wallets={wallets} />);
-    await userEvent.keyboard('42.5{Backspace}');
-    expect(screen.getByText('42.')).toBeInTheDocument();
+    await userEvent.type(amountField(), '1,2a.345');
+    expect(amountField()).toHaveValue('12.34');
   });
 });

@@ -48,16 +48,16 @@ export function HomeHero({ greeting, name, handle, wallet, pendingCount = 0 }: {
         <CopyHandle handle={handle} />
       </div>
 
-      <div className="relative mt-5 flex items-center gap-2.5">
-        <Link href="/deposit" className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-white text-sm font-semibold text-neutral-900 transition-transform duration-150 active:scale-[0.97] sm:flex-none sm:px-6">
+      <div className="relative mt-5 flex items-center gap-2">
+        <Link href="/deposit" className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-white px-3 text-[13px] font-semibold text-neutral-900 transition-transform duration-150 active:scale-[0.97] sm:h-12 sm:flex-none sm:px-6 sm:text-sm">
           <Plus className="size-4" aria-hidden />
           Deposit
         </Link>
-        <Link href="/pay/send" className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-white/18 text-sm font-semibold ring-1 ring-white/25 transition-transform duration-150 active:scale-[0.97] sm:flex-none sm:px-6">
+        <Link href="/pay/send" className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-white/18 px-3 text-[13px] font-semibold ring-1 ring-white/25 transition-transform duration-150 active:scale-[0.97] sm:h-12 sm:flex-none sm:px-6 sm:text-sm">
           <Send className="size-4" aria-hidden />
           Send money
         </Link>
-        <Link href="/pay" aria-label="All payment options" className="flex size-12 shrink-0 items-center justify-center rounded-full bg-white/18 ring-1 ring-white/25 transition-transform duration-150 active:scale-[0.97]">
+        <Link href="/pay" aria-label="All payment options" className="hidden size-11 shrink-0 items-center justify-center rounded-full bg-white/18 ring-1 ring-white/25 transition-transform duration-150 active:scale-[0.97] min-[360px]:flex sm:size-12">
           <LayoutGrid className="size-5" aria-hidden />
         </Link>
       </div>

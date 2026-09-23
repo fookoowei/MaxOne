@@ -11,7 +11,7 @@ export function BalanceCard({ balance, currency, pendingCount = 0, variant = 'ca
     return (
       <div>
         <p className="text-sm text-white/70">Total balance</p>
-        <p className="mt-1 flex flex-wrap items-center gap-3 text-[40px] font-bold leading-none tracking-tight tabular">
+        <p className="mt-1 flex flex-wrap items-center gap-3 text-[34px] font-bold leading-none tracking-tight tabular min-[360px]:text-[40px]">
           {formatMoney(balance, currency)}
           {pendingCount > 0 && (
             <span className="inline-flex h-6 items-center rounded-full bg-white/16 px-2.5 text-xs font-medium tracking-normal">

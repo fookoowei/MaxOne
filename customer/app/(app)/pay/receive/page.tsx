@@ -10,7 +10,7 @@ export default async function ReceivePage() {
   const handle = session.handle ?? session.email.split('@')[0];
   return (
     <div className="space-y-6 lg:max-w-[560px]">
-      <PageHeader title="Receive" description="Let someone scan this to pay you." back={{ href: '/pay', label: 'Pay' }} />
+      <PageHeader title="Receive" description="Let someone scan this to pay you." back={{ href: '/pay', label: 'Wallet' }} />
       <ReceiveQr handle={handle} />
     </div>
   );

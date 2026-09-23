@@ -1,13 +1,13 @@
 import { redirect } from 'next/navigation';
 import { serverApi } from '@/lib/api/server';
 import { getSessionUser } from '@/lib/auth/session';
-import { formatMoney } from '@/lib/format/money';
 import { WithAside } from '@/components/layout/with-aside';
 import { CardLink } from '@/components/layout/card-link';
 import { HomeHero } from '@/components/wallet/home-hero';
 import { Enter } from '@/components/layout/enter';
 import { QuickActions } from '@/components/wallet/quick-actions';
 import { ActivityCard, type Transaction } from '@/components/wallet/activity-card';
+import { WalletList } from '@/components/wallet/wallet-list';
 import { WatchingCard } from '@/components/wallet/watching-card';
 import { PendingCard } from '@/components/wallet/pending-card';
 import { MarketsTicker } from '@/components/markets/markets-ticker';
@@ -66,14 +66,7 @@ export default async function HomePage() {
                   <CardLink href="/wallets/new">Add</CardLink>
                 </div>
               </div>
-              <ul className="divide-y">
-                {wallets.map((w) => (
-                  <li key={w.id} className="flex items-center justify-between py-3 text-sm">
-                    <span className="font-medium">{w.currency}</span>
-                    <span className="font-semibold tabular">{formatMoney(w.balance, w.currency)}</span>
-                  </li>
-                ))}
-              </ul>
+              <WalletList wallets={wallets} />
             </section>
           </Enter>
         )}

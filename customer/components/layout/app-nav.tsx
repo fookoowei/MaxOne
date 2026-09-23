@@ -49,7 +49,7 @@ export function AppNav({ user }: { user: NavUser }) {
           <Link
             href="/pay/scan"
             aria-label="Scan to pay"
-            className="relative -top-4 mx-1 flex size-14 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-4 ring-background transition-transform duration-200 active:scale-95"
+            className="relative -top-4 mx-1 flex size-14 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/25 ring-4 ring-card transition-transform duration-200 active:scale-95"
           >
             <ScanLine className="size-6" aria-hidden />
           </Link>
