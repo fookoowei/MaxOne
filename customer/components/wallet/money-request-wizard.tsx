@@ -149,7 +149,7 @@ export function MoneyRequestWizard({ mode, walletId, currency, balance }: { mode
       {step === 3 && result && (
         <div className="space-y-5">
           <section className="flex flex-col items-center gap-3 py-6 text-center">
-            <span className="flex size-[72px] items-center justify-center rounded-3xl bg-status-approved/12 text-status-approved">
+            <span className="flex size-[72px] items-center justify-center rounded-full bg-status-approved/12 text-status-approved">
               <Check className="size-8" aria-hidden />
             </span>
             <h2 className="text-xl font-semibold">{mode === 'deposit' ? 'Money added' : 'Request sent'}</h2>

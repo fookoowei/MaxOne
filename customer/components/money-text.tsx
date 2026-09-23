@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 
 // Money, typeset like a ledger: tabular figures so columns align, the currency symbol lighter than
-// the value, and colour ONLY when the amount carries a direction (credit/debit).
+// the value, and colour only when it says something: green in, red out, orange not yet settled.
 export function MoneyText({
   amountMinor,
   currency,
@@ -10,7 +10,7 @@ export function MoneyText({
 }: {
   amountMinor: number;
   currency: string;
-  tone?: 'neutral' | 'positive' | 'negative';
+  tone?: 'neutral' | 'positive' | 'negative' | 'pending';
   className?: string;
 }) {
   const parts = new Intl.NumberFormat('en-US', { style: 'currency', currency }).formatToParts(amountMinor / 100);
@@ -22,6 +22,7 @@ export function MoneyText({
         'tabular whitespace-nowrap',
         tone === 'positive' && 'text-status-approved',
         tone === 'negative' && 'text-status-rejected',
+        tone === 'pending' && 'text-status-pending',
         className,
       )}
     >

@@ -44,7 +44,7 @@ export default async function MarketsPage() {
             {assets.length > 0 ? (
               <>
                 <p className="mt-3 text-xl font-bold tabular">{formatPrice(portfolio.totalValue)}</p>
-                <p className={`text-xs tabular ${portfolio.totalPnl >= 0 ? 'text-status-approved' : 'text-destructive'}`}>
+                <p className={`text-xs tabular ${portfolio.totalPnl >= 0 ? 'text-status-approved' : 'text-status-rejected'}`}>
                   {portfolio.totalPnl >= 0 ? '+' : ''}
                   {formatPrice(portfolio.totalPnl)} total P/L
                 </p>

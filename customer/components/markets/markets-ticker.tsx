@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { formatPrice } from '@/lib/format/price';
+import { formatChangePct, formatPrice } from '@/lib/format/price';
 import { CoinIcon } from '@/components/markets/coin-icon';
 import { cn } from '@/lib/utils';
 import type { WatchedAsset } from '@/components/wallet/watching-card';
@@ -10,28 +10,25 @@ import type { WatchedAsset } from '@/components/wallet/watching-card';
 export function MarketsTicker({ assets }: { assets: (WatchedAsset & { name: string })[] }) {
   if (assets.length === 0) return null;
   return (
-    <section className="rounded-[20px] border bg-card p-4">
-      <div className="flex items-center justify-between">
+    <section className="rounded-[20px] border bg-card px-4 pb-1 pt-1">
+      <div className="flex items-center justify-between py-3">
         <h2 className="text-sm font-semibold">Markets</h2>
         <span className="text-xs text-muted-foreground">live · 15s</span>
       </div>
-      <ul className="mt-1 divide-y">
+      <ul className="divide-y">
         {assets.slice(0, 4).map((a) => (
           <li key={a.symbol}>
             <Link href={`/markets/${a.id}`} className="flex items-center justify-between gap-3 py-3">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <CoinIcon src={a.image} symbol={a.symbol} className="size-8 text-[10px]" />
+              <div className="flex min-w-0 items-center gap-3">
+                <CoinIcon src={a.image} symbol={a.symbol} />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{a.name}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{a.symbol}</p>
+                  <p className="truncate text-sm font-semibold">{a.name}</p>
+                  <p className="text-xs text-muted-foreground">{a.symbol}</p>
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-sm font-semibold tabular">{formatPrice(a.price)}</p>
-                <p className={cn('mt-0.5 text-xs tabular', a.change24h >= 0 ? 'text-status-approved' : 'text-destructive')}>
-                  {a.change24h >= 0 ? '+' : ''}
-                  {a.change24h.toFixed(2)}%
-                </p>
+                <p className={cn('text-xs tabular', a.change24h >= 0 ? 'text-status-approved' : 'text-status-rejected')}>{formatChangePct(a.change24h)}</p>
               </div>
             </Link>
           </li>

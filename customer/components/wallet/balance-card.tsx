@@ -23,7 +23,7 @@ export function BalanceCard({ balance, currency, pendingCount = 0, variant = 'ca
     );
   }
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-[oklch(0.38_0.15_290)] p-6 text-primary-foreground shadow-lg shadow-primary/20">
+    <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-primary to-[oklch(0.38_0.15_290)] p-6 text-primary-foreground shadow-lg shadow-primary/20">
       <div
         aria-hidden
         className="pointer-events-none absolute -right-10 -top-16 size-40 rounded-full bg-white/10 blur-2xl"

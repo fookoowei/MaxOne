@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Check } from 'lucide-react';
 
 type Phase = 'idle' | 'qr' | 'recovery' | 'enabled' | 'disabling';
 const JSON_HEADERS = { 'content-type': 'application/json' };
@@ -90,7 +91,7 @@ export function TwoFactorSetup({ initialEnabled }: { initialEnabled: boolean }) 
     return (
       <form onSubmit={verify} className="space-y-4" noValidate>
         <p className="text-sm">Scan this with Google Authenticator or Authy, then enter the code it shows.</p>
-        {qr && <img src={qr} alt="Scan with your authenticator app" className="h-44 w-44 rounded-md bg-white p-2" />}
+        {qr && <img src={qr} alt="Scan with your authenticator app" className="h-44 w-44 rounded-2xl bg-white p-2" />}
         {codeField('setup-code')}
         {error && <p className="text-sm text-destructive">{error}</p>}
         <Button type="submit" disabled={busy || !code}>
@@ -107,7 +108,7 @@ export function TwoFactorSetup({ initialEnabled }: { initialEnabled: boolean }) 
         <p className="text-xs text-muted-foreground">
           If you lose your phone, a recovery code is the only way back in. They won’t be shown again.
         </p>
-        <ul className="grid grid-cols-2 gap-1 rounded-md border bg-muted/40 p-3 font-mono text-sm">
+        <ul className="grid grid-cols-2 gap-1 rounded-2xl border bg-muted/40 p-3 font-mono text-sm">
           {recoveryCodes.map((c) => (
             <li key={c}>{c}</li>
           ))}
@@ -137,7 +138,10 @@ export function TwoFactorSetup({ initialEnabled }: { initialEnabled: boolean }) 
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-emerald-600">✓ Two-factor authentication is on.</p>
+      <p className="inline-flex items-center gap-1.5 text-sm font-medium text-status-approved">
+        <Check className="size-4" aria-hidden />
+        Two-factor authentication is on.
+      </p>
       <Button variant="outline" onClick={() => setPhase('disabling')}>
         Turn off
       </Button>

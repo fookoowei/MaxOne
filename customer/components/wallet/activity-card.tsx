@@ -24,7 +24,7 @@ export function isCredit(type: string): boolean {
 }
 
 // A statement, not a log: what it was, whether it's settled, and the amount signed by direction.
-// Colour appears only on money that arrived; pending is a pill, never a colour on the amount.
+// Green on money that arrived, red on money that left, orange on money still waiting for review.
 export function ActivityCard({
   transactions,
   currency,
@@ -88,7 +88,7 @@ export function ActivityCard({
                           </p>
                         </div>
                       </div>
-                      <MoneyText amountMinor={t.amount} currency={currency} tone={pending || rejected ? 'neutral' : credit ? 'positive' : 'negative'} className={cn('shrink-0 font-semibold', (pending || rejected) && 'text-muted-foreground')} />
+                      <MoneyText amountMinor={t.amount} currency={currency} tone={pending ? 'pending' : rejected ? 'neutral' : credit ? 'positive' : 'negative'} className={cn('shrink-0 font-semibold', rejected && 'text-muted-foreground')} />
                     </li>
                   );
                 })}

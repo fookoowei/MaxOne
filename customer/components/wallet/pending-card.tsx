@@ -16,7 +16,7 @@ export function PendingCard({ transactions, currency }: { transactions: Transact
             <li key={t.id} className="flex items-center justify-between gap-3 py-3">
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium capitalize">
-                  {t.type} <MoneyText amountMinor={t.amount} currency={currency} />
+                  {t.type} <MoneyText amountMinor={t.amount} currency={currency} tone="pending" />
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   Waiting for review · <RelativeTime iso={t.createdAt} />

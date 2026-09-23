@@ -31,10 +31,12 @@ export default async function ProfilePage() {
       }
     >
       <div className="space-y-6">
-        <PageHeader
-          title="Profile"
-          description={name + (session?.handle ? ` · @${session.handle}` : '') + (session?.email ? ` · ${session.email}` : '')}
-        />
+        <PageHeader title="Profile" />
+        {session && (
+          <div className="xl:hidden">
+            <AccountSummaryCard name={name} handle={session.handle} email={session.email} />
+          </div>
+        )}
 
         <section className="space-y-3 rounded-[20px] border bg-card p-4">
           <div>

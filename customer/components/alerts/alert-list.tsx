@@ -27,10 +27,10 @@ export function AlertList({ rows }: { rows: AlertRow[] }) {
     <ul className="divide-y divide-border">
       {rows.map((r) => (
         <li key={r.id} className="flex items-center justify-between py-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <CoinIcon src={r.image} symbol={r.symbol} className="size-8 text-[10px]" />
+          <div className="flex min-w-0 items-center gap-3">
+            <CoinIcon src={r.image} symbol={r.symbol} />
             <div className="min-w-0">
-              <p className="text-sm font-medium">{r.symbol}</p>
+              <p className="text-sm font-semibold">{r.symbol}</p>
               <p className="text-xs text-muted-foreground">
                 {r.direction === 'above' ? 'Above' : 'Below'} {formatPrice(r.targetPrice)}
                 {r.currentPrice !== null && <> · now {formatPrice(r.currentPrice)}</>}
