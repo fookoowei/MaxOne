@@ -16,11 +16,13 @@ export function LiveBalance({
   currency,
   initialBalance,
   pendingCount = 0,
+  variant = 'card',
 }: {
   walletId: string;
   currency: string;
   initialBalance: number;
   pendingCount?: number;
+  variant?: 'card' | 'hero';
 }) {
   const [balance, setBalance] = useState(initialBalance);
 
@@ -45,5 +47,5 @@ export function LiveBalance({
     };
   }, [walletId]);
 
-  return <BalanceCard balance={balance} currency={currency} pendingCount={pendingCount} />;
+  return <BalanceCard balance={balance} currency={currency} pendingCount={pendingCount} variant={variant} />;
 }

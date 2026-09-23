@@ -30,3 +30,17 @@ describe('ActivityCard', () => {
     expect(screen.getByText('Send money to someone.')).toBeInTheDocument();
   });
 });
+
+describe('ActivityCard (grouped)', () => {
+  it('files rows under Today / Yesterday like a statement', () => {
+    const today = new Date();
+    const yesterday = new Date(today.getTime() - 86_400_000);
+    const rows = [
+      { id: 'a', type: 'deposit', amount: 1000, status: 'approved', note: null, createdAt: today.toISOString() },
+      { id: 'b', type: 'withdrawal', amount: 500, status: 'approved', note: null, createdAt: yesterday.toISOString() },
+    ];
+    render(<ActivityCard transactions={rows} currency="USD" grouped />);
+    expect(screen.getByText('Today')).toBeInTheDocument();
+    expect(screen.getByText('Yesterday')).toBeInTheDocument();
+  });
+});

@@ -1,12 +1,11 @@
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { Bell } from 'lucide-react';
 import { serverApi } from '@/lib/api/server';
 import { getSessionUser } from '@/lib/auth/session';
 import { formatMoney } from '@/lib/format/money';
 import { WithAside } from '@/components/layout/with-aside';
 import { CardLink } from '@/components/layout/card-link';
-import { LiveBalance } from '@/components/wallet/live-balance';
+import { HomeHero } from '@/components/wallet/home-hero';
+import { Enter } from '@/components/layout/enter';
 import { QuickActions } from '@/components/wallet/quick-actions';
 import { ActivityCard, type Transaction } from '@/components/wallet/activity-card';
 import { WatchingCard } from '@/components/wallet/watching-card';
@@ -51,46 +50,40 @@ export default async function HomePage() {
       }
     >
       <div className="space-y-5 md:space-y-6">
-        <header className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">{greeting}</p>
-            <h1 className="text-lg font-semibold lg:text-2xl">{name}</h1>
-          </div>
-          <Link href="/alerts" aria-label="Price alerts" className="flex size-10 items-center justify-center rounded-[14px] border bg-card hover:bg-accent/40">
-            <Bell className="size-5" aria-hidden />
-          </Link>
-        </header>
+        <HomeHero greeting={greeting} name={name} handle={session?.handle} wallet={primary} pendingCount={pendingCount} />
 
-        {primary ? (
-          <LiveBalance walletId={primary.id} currency={primary.currency} initialBalance={primary.balance} pendingCount={pendingCount} />
-        ) : (
-          <p className="text-sm text-muted-foreground">No wallet found for your account.</p>
-        )}
-
-        <QuickActions />
+        <Enter i={1}>
+          <QuickActions />
+        </Enter>
 
         {wallets.length > 1 && (
-          <section className="rounded-[20px] border bg-card px-4 py-1">
-            <div className="flex items-center justify-between py-3">
-              <h2 className="text-sm font-semibold">Your currencies</h2>
-              <div className="flex gap-3">
-                <CardLink href="/convert">Convert</CardLink>
-                <CardLink href="/wallets/new">Add</CardLink>
+          <Enter i={2}>
+            <section className="rounded-[20px] border bg-card px-4 py-1">
+              <div className="flex items-center justify-between py-3">
+                <h2 className="text-sm font-semibold">Your currencies</h2>
+                <div className="flex gap-3">
+                  <CardLink href="/convert">Exchange</CardLink>
+                  <CardLink href="/wallets/new">Add</CardLink>
+                </div>
               </div>
-            </div>
-            <ul className="divide-y">
-              {wallets.map((w) => (
-                <li key={w.id} className="flex items-center justify-between py-3 text-sm">
-                  <span className="font-medium">{w.currency}</span>
-                  <span className="font-semibold tabular">{formatMoney(w.balance, w.currency)}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
+              <ul className="divide-y">
+                {wallets.map((w) => (
+                  <li key={w.id} className="flex items-center justify-between py-3 text-sm">
+                    <span className="font-medium">{w.currency}</span>
+                    <span className="font-semibold tabular">{formatMoney(w.balance, w.currency)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </Enter>
         )}
 
-        <ActivityCard transactions={transactions} currency={currency} limit={5} seeAllHref="/activity" />
-        <WatchingCard assets={watching} />
+        <Enter i={3}>
+          <ActivityCard title="Transactions" grouped transactions={transactions} currency={currency} limit={6} seeAllHref="/activity" />
+        </Enter>
+        <Enter i={4}>
+          <WatchingCard assets={watching} />
+        </Enter>
       </div>
     </WithAside>
   );
