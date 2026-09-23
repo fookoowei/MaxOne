@@ -64,7 +64,7 @@
   --card-foreground: oklch(0.22 0.03 285);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.22 0.03 285);
-  --primary: oklch(0.48 0.16 285);
+  --primary: oklch(0.45 0.23 278);
   --primary-foreground: oklch(0.98 0.012 285);
   --secondary: oklch(0.96 0.012 285);
   --secondary-foreground: oklch(0.32 0.06 285);
@@ -75,7 +75,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.9 0.012 285);
   --input: oklch(0.9 0.012 285);
-  --ring: oklch(0.48 0.16 285);
+  --ring: oklch(0.45 0.23 278);
   /* Money states — the only place colour carries meaning in data areas. These were mapped in
      @theme inline from the start but never DEFINED here, so every text-status utility silently
      fell back to the inherited foreground and every bg-status tint to transparent: gains rendered
@@ -90,7 +90,7 @@
      .dark — the hero's gradient is dark in both themes. */
   --status-approved-bright: oklch(0.87 0.15 160);
   --status-rejected-bright: oklch(0.83 0.13 25);
-  --chart-1: oklch(0.48 0.16 285);
+  --chart-1: oklch(0.45 0.23 278);
   --chart-2: oklch(0.62 0.14 200);
   --chart-3: oklch(0.7 0.15 150);
   --chart-4: oklch(0.65 0.16 330);
@@ -98,12 +98,12 @@
   --radius: 1rem;
   --sidebar: oklch(0.985 0.004 285);
   --sidebar-foreground: oklch(0.22 0.03 285);
-  --sidebar-primary: oklch(0.48 0.16 285);
+  --sidebar-primary: oklch(0.45 0.23 278);
   --sidebar-primary-foreground: oklch(0.98 0.012 285);
   --sidebar-accent: oklch(0.94 0.03 285);
   --sidebar-accent-foreground: oklch(0.32 0.08 285);
   --sidebar-border: oklch(0.9 0.012 285);
-  --sidebar-ring: oklch(0.48 0.16 285);
+  --sidebar-ring: oklch(0.45 0.23 278);
 }
 
 .dark {
@@ -113,7 +113,7 @@
   --card-foreground: oklch(0.97 0.008 285);
   --popover: oklch(0.21 0.025 285);
   --popover-foreground: oklch(0.97 0.008 285);
-  --primary: oklch(0.62 0.17 285);
+  --primary: oklch(0.66 0.19 278);
   --primary-foreground: oklch(0.99 0.01 285);
   --secondary: oklch(0.27 0.03 285);
   --secondary-foreground: oklch(0.97 0.008 285);
@@ -124,26 +124,26 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.62 0.17 285);
+  --ring: oklch(0.66 0.19 278);
   /* Lighter money states so they carry on the dark ground. The -bright pair is inherited from
      :root unchanged — it is already tuned for a dark surface. */
   --status-pending: oklch(0.78 0.14 70);
   --status-approved: oklch(0.72 0.13 160);
   --status-rejected: oklch(0.7 0.17 25);
   --status-info: oklch(0.72 0.13 255);
-  --chart-1: oklch(0.62 0.17 285);
+  --chart-1: oklch(0.66 0.19 278);
   --chart-2: oklch(0.62 0.14 200);
   --chart-3: oklch(0.7 0.15 150);
   --chart-4: oklch(0.65 0.16 330);
   --chart-5: oklch(0.6 0.14 60);
   --sidebar: oklch(0.21 0.025 285);
   --sidebar-foreground: oklch(0.97 0.008 285);
-  --sidebar-primary: oklch(0.62 0.17 285);
+  --sidebar-primary: oklch(0.66 0.19 278);
   --sidebar-primary-foreground: oklch(0.99 0.01 285);
   --sidebar-accent: oklch(0.3 0.05 285);
   --sidebar-accent-foreground: oklch(0.97 0.008 285);
   --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.62 0.17 285);
+  --sidebar-ring: oklch(0.66 0.19 278);
 }
 
 @layer base {
@@ -162,6 +162,50 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Markets v2b — the motion vocabulary. Four named entrances and one stagger knob (`--i`), so a
+   page choreographs itself with classes instead of per-component timers:
+     enter-up  a section rising into place (home cards, exchange cards)
+     pop-in    something appearing with a little overshoot (the success check)
+     digit-in  a freshly typed or computed digit settling onto the baseline
+     page-in   a screen sliding in from the right, like a navigation stack
+   The reduced-motion block below still zeroes every one of them. */
+@keyframes enter-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes digit-in {
+  from { opacity: 0; transform: translateY(0.35em); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes page-in {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: none; }
+}
+@utility enter-up {
+  animation: enter-up 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+@utility pop-in {
+  animation: pop-in 460ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+@utility digit-in {
+  animation: digit-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@utility page-in {
+  animation: page-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* The home hero: deep indigo at the top fading toward the brand primary, with a soft light bloom
+   low-left like the reference. Dark in both themes on purpose — white text sits on it. */
+@utility hero-gradient {
+  background:
+    radial-gradient(120% 80% at 20% 110%, oklch(0.72 0.14 285 / 0.55), transparent 60%),
+    linear-gradient(180deg, oklch(0.27 0.16 282) 0%, oklch(0.4 0.22 278) 55%, oklch(0.52 0.22 280) 100%);
+}
 /* M18d: people who asked their OS for less motion get exactly that. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
