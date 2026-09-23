@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ScanLine, type LucideIcon } from 'lucide-react';
 import { NAV_ITEMS, isActivePath } from '@/lib/nav';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +16,15 @@ const Mark = ({ className }: { className?: string }) => (
     <path d="M136 372V150l120 132 120-132v222" fill="none" stroke="currentColor" strokeWidth="54" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+
+function Tab({ href, label, icon: Icon, active }: { href: string; label: string; icon: LucideIcon; active: boolean }) {
+  return (
+    <Link href={href} aria-current={active ? 'page' : undefined} className={cn('flex min-h-11 flex-1 flex-col items-center gap-1 py-3 text-xs font-medium transition-colors', active ? 'text-primary' : 'text-muted-foreground')}>
+      <Icon className="size-5" aria-hidden />
+      {label}
+    </Link>
+  );
+}
 
 /**
  * One navigation, three shapes, chosen by CSS breakpoint (no JS media queries, no layout flash):
@@ -31,14 +41,20 @@ export function AppNav({ user }: { user: NavUser }) {
 
   return (
     <>
-      {/* phone: bottom tabs */}
-      <nav aria-label="Primary" data-shape="tabs" className="fixed inset-x-0 bottom-0 z-10 flex border-t bg-card/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-        {items.map(({ href, label, icon: Icon, active }) => (
-          <Link key={href} href={href} aria-current={active ? 'page' : undefined} className={cn('flex min-h-11 flex-1 flex-col items-center gap-1 py-3 text-xs font-medium', active ? 'text-primary' : 'text-muted-foreground')}>
-            <Icon className="size-5" aria-hidden />
-            {label}
+      {/* phone: bottom tabs, with Scan raised in the middle — the one action a person reaches for
+          while standing at a counter, so it gets the thumb's best spot and the brand colour. */}
+      <nav aria-label="Primary" data-shape="tabs" className="fixed inset-x-0 bottom-0 z-10 md:hidden">
+        <div className="flex items-end border-t bg-card/90 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+          {items.slice(0, 2).map((item) => <Tab key={item.href} {...item} />)}
+          <Link
+            href="/pay/scan"
+            aria-label="Scan to pay"
+            className="relative -top-4 mx-1 flex size-14 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-4 ring-background transition-transform duration-200 active:scale-95"
+          >
+            <ScanLine className="size-6" aria-hidden />
           </Link>
-        ))}
+          {items.slice(2).map((item) => <Tab key={item.href} {...item} />)}
+        </div>
       </nav>
 
       {/* tablet: icon rail */}
