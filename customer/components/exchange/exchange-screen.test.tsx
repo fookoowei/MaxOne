@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { mockFetch } from '@/lib/test/mock-fetch';
 import { ExchangeScreen } from './exchange-screen';
 
 const push = vi.fn();
@@ -16,9 +17,6 @@ beforeEach(() => {
   vi.restoreAllMocks();
 });
 
-function mockFetch(handler: (url: string) => Response) {
-  return vi.spyOn(global, 'fetch').mockImplementation((input) => Promise.resolve(handler(String(input))));
-}
 
 const amountField = (currency = 'USD') => screen.getByLabelText(`Amount in ${currency}`);
 

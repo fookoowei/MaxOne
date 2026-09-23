@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { ScanLine, type LucideIcon } from 'lucide-react';
 import { NAV_ITEMS, isActivePath } from '@/lib/nav';
 import { cn } from '@/lib/utils';
+import { initials } from '@/lib/format/initials';
 
 export interface NavUser {
   name: string;
@@ -37,7 +38,6 @@ function Tab({ href, label, icon: Icon, active }: { href: string; label: string;
 export function AppNav({ user }: { user: NavUser }) {
   const pathname = usePathname();
   const items = NAV_ITEMS.map((i) => ({ ...i, active: isActivePath(i.href, pathname) }));
-  const initials = user.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase() || 'ME';
 
   return (
     <>
@@ -84,7 +84,7 @@ export function AppNav({ user }: { user: NavUser }) {
         ))}
         <div className="flex-1" />
         <Link href="/profile" className="flex items-center gap-2.5 border-t px-2 pt-3">
-          <span className="flex size-8 items-center justify-center rounded-[10px] bg-secondary text-xs font-bold text-secondary-foreground">{initials}</span>
+          <span className="flex size-8 items-center justify-center rounded-[10px] bg-secondary text-xs font-bold text-secondary-foreground">{initials(user.name)}</span>
           <span className="grid leading-tight">
             <span className="text-[13px] font-medium">{user.name}</span>
             {user.handle && <span className="text-xs text-muted-foreground">@{user.handle}</span>}

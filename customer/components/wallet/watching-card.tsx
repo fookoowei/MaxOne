@@ -1,8 +1,9 @@
 import Link from 'next/link';
-import { formatChangePct, formatPrice } from '@/lib/format/price';
+import { formatPrice } from '@/lib/format/price';
+import { ChangeText } from '@/components/markets/change-text';
+import { Panel } from '@/components/layout/panel';
 import { CardLink } from '@/components/layout/card-link';
 import { CoinIcon } from '@/components/markets/coin-icon';
-import { cn } from '@/lib/utils';
 
 export interface WatchedAsset {
   id: string;
@@ -18,11 +19,7 @@ export interface WatchedAsset {
 export function WatchingCard({ assets }: { assets: WatchedAsset[] }) {
   if (assets.length === 0) return null;
   return (
-    <section className="rounded-[20px] border bg-card px-4 pb-1 pt-1">
-      <div className="flex items-center justify-between py-3">
-        <h2 className="text-sm font-semibold">Watching</h2>
-        <CardLink href="/markets">Markets</CardLink>
-      </div>
+    <Panel title="Watching" action={<CardLink href="/markets">Markets</CardLink>}>
       <ul className="divide-y">
         {assets.slice(0, 4).map((a) => (
           <li key={a.symbol}>
@@ -34,12 +31,12 @@ export function WatchingCard({ assets }: { assets: WatchedAsset[] }) {
               </span>
               <span className="shrink-0 text-right">
                 <span className="block text-sm font-semibold tabular">{formatPrice(a.price)}</span>
-                <span className={cn('block text-xs tabular', a.change24h >= 0 ? 'text-status-approved' : 'text-status-rejected')}>{formatChangePct(a.change24h)}</span>
+                <ChangeText pct={a.change24h} className="block text-xs tabular" />
               </span>
             </Link>
           </li>
         ))}
       </ul>
-    </section>
+    </Panel>
   );
 }

@@ -17,6 +17,8 @@ import { Label } from '@/components/ui/label';
 import { Stepper } from '@/components/layout/stepper';
 import { MoneyText } from '@/components/money-text';
 import { AmountDisplay } from '@/components/wallet/amount-display';
+import { Panel } from '@/components/layout/panel';
+import { FieldError } from '@/components/ui/field-error';
 import { RecipientCard, type RecipientState } from './recipient-card';
 import { RecipientCombobox } from './recipient-combobox';
 import { StepUpPrompt } from './step-up-prompt';
@@ -118,14 +120,14 @@ export function SendMoneyWizard({ myWalletId, myCurrency, balance, prefillHandle
           <div className="space-y-1.5">
             <Label htmlFor="handle" className="text-xs text-muted-foreground">Send to</Label>
             <RecipientCombobox id="handle" value={handle ?? ''} onValueChange={handleField.onChange} state={lookup} open={open && lookup.kind !== 'idle'} onOpenChange={setOpen} />
-            {form.formState.errors.handle && <p className="text-sm text-destructive">{form.formState.errors.handle.message}</p>}
+            <FieldError message={form.formState.errors.handle?.message} />
           </div>
           {/* Pinned only once the dropdown is closed, so the match isn't shown twice. */}
           {!open && <RecipientCard state={lookup} />}
           <section className="space-y-4 rounded-[20px] border bg-card p-5">
             <Label htmlFor="amount" className="text-xs text-muted-foreground">Amount</Label>
             <AmountDisplay id="amount" symbol={symbol} invalid={!!form.formState.errors.amount} {...withSanitizer(form.register('amount'), sanitizeAmount)} />
-            {form.formState.errors.amount && <p className="text-sm text-destructive">{form.formState.errors.amount.message}</p>}
+            <FieldError message={form.formState.errors.amount?.message} />
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Available</span>
               <MoneyText amountMinor={balance} currency={myCurrency} className="font-medium" />
@@ -143,7 +145,7 @@ export function SendMoneyWizard({ myWalletId, myCurrency, balance, prefillHandle
 
       {step === 2 && values && recipient && (
         <div className="space-y-5">
-          <section className="rounded-[20px] border bg-card px-4 py-1">
+          <Panel>
             {[
               ['To', `${recipient.recipientName} · @${values.handle.toLowerCase()}`],
               ['Amount', <MoneyText key="a" amountMinor={minor} currency={myCurrency} className="font-bold" />],
@@ -156,7 +158,7 @@ export function SendMoneyWizard({ myWalletId, myCurrency, balance, prefillHandle
                 <span className="font-medium">{v}</span>
               </div>
             ))}
-          </section>
+          </Panel>
           {stepUp ? (
             <StepUpPrompt pending={pending} onGrant={(t) => send(t)} />
           ) : (
@@ -189,7 +191,7 @@ export function SendMoneyWizard({ myWalletId, myCurrency, balance, prefillHandle
               {formatMoney(minor, myCurrency)} is on its way to {recipient.recipientName}. It arrives instantly.
             </p>
           </section>
-          <section className="rounded-[20px] border bg-card px-4 py-1 text-sm">
+          <Panel className="text-sm">
             <div className="flex items-center justify-between border-b py-3">
               <span className="text-muted-foreground">To</span>
               <span className="font-medium">{recipient.recipientName}</span>
@@ -198,7 +200,7 @@ export function SendMoneyWizard({ myWalletId, myCurrency, balance, prefillHandle
               <span className="text-muted-foreground">Reference</span>
               <span className="font-medium tabular">#{result.id.slice(0, 8).toUpperCase()}</span>
             </div>
-          </section>
+          </Panel>
           <div className="flex flex-col gap-2.5">
             <Button type="button" variant="outline" size="xl" onClick={() => { form.reset({ handle: '', amount: '', note: '' }); setResolved({ handle: '', recipient: null, state: { kind: 'idle' } }); setOpen(false); setValues(null); setResult(null); setStep(1); }}>
               Send again

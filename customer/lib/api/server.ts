@@ -25,6 +25,17 @@ export async function serverApi(path: string, init: RequestInit = {}): Promise<R
   return callWithToken(path, init, store.get(ACCESS_COOKIE)?.value);
 }
 
+// A read whose failure is not the page's problem: a non-OK status OR a thrown fetch both yield
+// `fallback`. For enhancements (markets strip, watchlist) — not for the data a page exists to show.
+export async function serverApiJson<T>(path: string, fallback: T): Promise<T> {
+  try {
+    const res = await serverApi(path);
+    return res.ok ? ((await res.json()) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 // Write-side. Used inside BFF Route Handlers, which (unlike Server Components) MAY set
 // cookies — so on a 401 we refresh, persist the rotated pair, and retry once.
 export async function serverApiWithRefresh(

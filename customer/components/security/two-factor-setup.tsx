@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FieldError } from '@/components/ui/field-error';
 import { Check } from 'lucide-react';
 import { sanitizeDigits } from '@/lib/format/sanitize-number';
 
@@ -86,7 +87,7 @@ export function TwoFactorSetup({ initialEnabled }: { initialEnabled: boolean }) 
         <Button onClick={start} disabled={busy}>
           {busy ? 'Starting…' : 'Enable 2FA'}
         </Button>
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        <FieldError message={error ?? undefined} />
       </div>
     );
   }
@@ -97,7 +98,7 @@ export function TwoFactorSetup({ initialEnabled }: { initialEnabled: boolean }) 
         <p className="text-sm">Scan this with Google Authenticator or Authy, then enter the code it shows.</p>
         {qr && <img src={qr} alt="Scan with your authenticator app" className="h-44 w-44 rounded-2xl bg-white p-2" />}
         {codeField('setup-code', true)}
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        <FieldError message={error ?? undefined} />
         <Button type="submit" disabled={busy || !code}>
           {busy ? 'Verifying…' : 'Verify & enable'}
         </Button>
@@ -127,7 +128,7 @@ export function TwoFactorSetup({ initialEnabled }: { initialEnabled: boolean }) 
       <form onSubmit={disable} className="space-y-4" noValidate>
         <p className="text-sm">Enter a current code — or one of your recovery codes — to turn 2FA off.</p>
         {codeField('disable-code', false)}
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        <FieldError message={error ?? undefined} />
         <div className="flex gap-2">
           <Button type="submit" variant="destructive" disabled={busy || !code}>
             {busy ? 'Turning off…' : 'Turn off 2FA'}

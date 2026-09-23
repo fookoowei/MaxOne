@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Send, QrCode, ScanLine, ChevronRight } from 'lucide-react';
-import { serverApi } from '@/lib/api/server';
+import { serverApiJson } from '@/lib/api/server';
 import { PageHeader } from '@/components/layout/page-header';
 import { WithAside } from '@/components/layout/with-aside';
 import { ActivityCard, type Transaction } from '@/components/wallet/activity-card';
@@ -18,13 +18,10 @@ const TRANSFERS = new Set(['transfer_in', 'transfer_out']);
 export default async function PayPage() {
   // Desktop aside: the last few sends/receives. Both reads are enhancements — the page renders
   // its three actions regardless.
-  const wallets = await serverApi('/wallets').then(async (r) => (r.ok ? ((await r.json()) as Wallet[]) : [])).catch(() => [] as Wallet[]);
+  const wallets = await serverApiJson<Wallet[]>('/wallets', []);
   const primary = wallets[0];
   const transfers = primary
-    ? await serverApi(`/wallets/${primary.id}/transactions`)
-        .then(async (r) => (r.ok ? ((await r.json()) as Transaction[]) : []))
-        .then((rows) => rows.filter((t) => TRANSFERS.has(t.type)))
-        .catch(() => [] as Transaction[])
+    ? (await serverApiJson<Transaction[]>(`/wallets/${primary.id}/transactions`, [])).filter((t) => TRANSFERS.has(t.type))
     : [];
   return (
     <WithAside

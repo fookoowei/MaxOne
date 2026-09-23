@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { holdingSchema, type HoldingInput } from '@/lib/schemas/holding';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FieldError } from '@/components/ui/field-error';
 import { sanitizePrice, sanitizeQuantity, withSanitizer } from '@/lib/format/sanitize-number';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
@@ -52,12 +53,12 @@ export function AddHoldingForm({ assets }: { assets: { symbol: string; name: str
       <div className="space-y-1">
         <Label htmlFor="quantity">Quantity</Label>
         <Input id="quantity" inputMode="decimal" placeholder="0.5" {...withSanitizer(register('quantity'), sanitizeQuantity)} />
-        {errors.quantity && <p className="text-sm text-destructive">{errors.quantity.message}</p>}
+        <FieldError message={errors.quantity?.message} />
       </div>
       <div className="space-y-1">
         <Label htmlFor="avgCost">Avg buy price (USD)</Label>
         <Input id="avgCost" inputMode="decimal" placeholder="30000" {...withSanitizer(register('avgCost'), sanitizePrice)} />
-        {errors.avgCost && <p className="text-sm text-destructive">{errors.avgCost.message}</p>}
+        <FieldError message={errors.avgCost?.message} />
       </div>
       <Button type="submit" className="w-full" pending={isSubmitting}>
         {isSubmitting ? 'Adding…' : 'Add holding'}

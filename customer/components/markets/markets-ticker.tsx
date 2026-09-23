@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import { formatChangePct, formatPrice } from '@/lib/format/price';
+import { formatPrice } from '@/lib/format/price';
+import { ChangeText } from '@/components/markets/change-text';
+import { Panel } from '@/components/layout/panel';
 import { CoinIcon } from '@/components/markets/coin-icon';
-import { cn } from '@/lib/utils';
 import type { WatchedAsset } from '@/components/wallet/watching-card';
 
 // Desktop aside: the top few assets, server-rendered from the 15s-cached list. Hidden entirely
@@ -10,11 +11,7 @@ import type { WatchedAsset } from '@/components/wallet/watching-card';
 export function MarketsTicker({ assets }: { assets: (WatchedAsset & { name: string })[] }) {
   if (assets.length === 0) return null;
   return (
-    <section className="rounded-[20px] border bg-card px-4 pb-1 pt-1">
-      <div className="flex items-center justify-between py-3">
-        <h2 className="text-sm font-semibold">Markets</h2>
-        <span className="text-xs text-muted-foreground">live · 15s</span>
-      </div>
+    <Panel title="Markets" action={<span className="text-xs text-muted-foreground">live · 15s</span>}>
       <ul className="divide-y">
         {assets.slice(0, 4).map((a) => (
           <li key={a.symbol}>
@@ -28,12 +25,12 @@ export function MarketsTicker({ assets }: { assets: (WatchedAsset & { name: stri
               </div>
               <div className="text-right">
                 <p className="text-sm font-semibold tabular">{formatPrice(a.price)}</p>
-                <p className={cn('text-xs tabular', a.change24h >= 0 ? 'text-status-approved' : 'text-status-rejected')}>{formatChangePct(a.change24h)}</p>
+                <ChangeText pct={a.change24h} className="block text-xs tabular" />
               </div>
             </Link>
           </li>
         ))}
       </ul>
-    </section>
+    </Panel>
   );
 }

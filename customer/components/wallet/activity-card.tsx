@@ -4,6 +4,8 @@ import { MoneyText } from '@/components/money-text';
 import { EmptyState } from '@/components/layout/empty-state';
 import { RelativeTime } from '@/components/layout/relative-time';
 import { groupByDay } from '@/lib/format/group-by-day';
+import { Panel } from '@/components/layout/panel';
+import { StatusPill } from '@/components/status-pill';
 import { cn } from '@/lib/utils';
 
 export interface Transaction {
@@ -47,13 +49,7 @@ export function ActivityCard({
   const rows = limit ? transactions.slice(0, limit) : transactions;
   const groups = grouped ? groupByDay(rows) : [{ label: null as string | null, items: rows }];
   return (
-    <section className="rounded-[20px] border bg-card px-4 pb-1 pt-1">
-      <div className="flex items-center justify-between py-3">
-        <h2 className="text-sm font-semibold">{title}</h2>
-        {seeAllHref && transactions.length > (limit ?? 0) && (
-          <CardLink href={seeAllHref}>See all</CardLink>
-        )}
-      </div>
+    <Panel title={title} action={seeAllHref && transactions.length > (limit ?? 0) && <CardLink href={seeAllHref}>See all</CardLink>}>
       {rows.length === 0 ? (
         <div className="pb-3">
           <EmptyState icon={History} title={empty.title} description={empty.description} />
@@ -79,9 +75,9 @@ export function ActivityCard({
                           <p className="truncate text-sm font-medium">{LABEL[t.type] ?? t.type}{t.note ? ` · ${t.note}` : ''}</p>
                           <p className="mt-0.5 text-xs text-muted-foreground">
                             {pending ? (
-                              <span className="inline-flex h-5 items-center rounded-full bg-status-pending/12 px-2 text-xs font-medium text-status-pending">Pending review</span>
+                              <StatusPill tone="pending">Pending review</StatusPill>
                             ) : rejected ? (
-                              <span className="inline-flex h-5 items-center rounded-full bg-status-rejected/12 px-2 text-xs font-medium text-status-rejected">Declined</span>
+                              <StatusPill tone="rejected">Declined</StatusPill>
                             ) : (
                               <RelativeTime iso={t.createdAt} />
                             )}
@@ -97,6 +93,6 @@ export function ActivityCard({
           ))}
         </div>
       )}
-    </section>
+    </Panel>
   );
 }

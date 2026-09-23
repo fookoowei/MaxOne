@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import type { Socket } from 'socket.io-client';
-import { connectSocket } from '@/lib/realtime/socket';
+import { useState } from 'react';
+import { useSocket } from '@/lib/realtime/use-socket';
 import { AssetHeader, type AssetDetail } from '@/components/markets/asset-header';
 import { PriceChart } from '@/components/markets/price-chart';
 import type { Candle } from '@/lib/chart/candles';
@@ -31,23 +30,10 @@ export function applyLive(asset: AssetDetail, incoming: LivePrice[]): AssetDetai
 export function AssetLive({ asset: initial, chart }: { asset: AssetDetail; chart: { candles: Candle[] } }) {
   const [asset, setAsset] = useState(initial);
 
-  useEffect(() => {
-    let socket: Socket | undefined;
-    let cancelled = false;
-    (async () => {
-      const res = await fetch('/api/ws-ticket', { method: 'POST' });
-      if (!res.ok || cancelled) return; // live is an enhancement; the SSR page stands on its own
-      const { ticket } = (await res.json()) as { ticket: string };
-      if (cancelled) return;
-      socket = connectSocket(ticket);
-      socket.on('prices.updated', (incoming: LivePrice[]) =>
-        setAsset((prev) => applyLive(prev, incoming)),
-      );
-    })();
-    return () => {
-      cancelled = true;
-      socket?.disconnect();
-    };
+  useSocket((socket) => {
+    socket.on('prices.updated', (incoming: LivePrice[]) =>
+      setAsset((prev) => applyLive(prev, incoming)),
+    );
   }, []);
 
   return (

@@ -1,11 +1,11 @@
 import Link from 'next/link';
 import { Bell } from 'lucide-react';
-import { formatChangePct, formatPrice } from '@/lib/format/price';
+import { formatPrice } from '@/lib/format/price';
+import { ChangeText } from '@/components/markets/change-text';
 import { PriceChart } from '@/components/markets/price-chart';
 import { buttonVariants } from '@/components/ui/button';
 import { CardLink } from '@/components/layout/card-link';
 import { CoinIcon } from '@/components/markets/coin-icon';
-import { cn } from '@/lib/utils';
 import type { MarketAsset } from '@/components/markets/market-list';
 import type { Candle } from '@/lib/chart/candles';
 
@@ -25,7 +25,7 @@ export function FeaturedAsset({ asset, chart }: { asset: MarketAsset; chart: { c
       </div>
       <p className="text-[28px] leading-9 font-bold tracking-tight tabular">
         {formatPrice(asset.price)}{' '}
-        <span className={cn('text-sm font-semibold', asset.change24h >= 0 ? 'text-status-approved' : 'text-status-rejected')}>{formatChangePct(asset.change24h)}</span>
+        <ChangeText pct={asset.change24h} className="text-sm font-semibold" />
       </p>
       <PriceChart id={asset.id} initial={chart} compact />
       <Link href={`/alerts/new?symbol=${encodeURIComponent(asset.symbol)}`} className={buttonVariants({ variant: 'outline', className: 'h-10 w-full' })}>

@@ -1,13 +1,14 @@
 import { MoneyText } from '@/components/money-text';
 import { RelativeTime } from '@/components/layout/relative-time';
 import type { Transaction } from './activity-card';
+import { Panel } from '@/components/layout/panel';
+import { StatusPill } from '@/components/status-pill';
 
 // Desktop aside: what's waiting on a reviewer, with how long it has waited.
 export function PendingCard({ transactions, currency }: { transactions: Transaction[]; currency: string }) {
   const pending = transactions.filter((t) => t.status === 'pending');
   return (
-    <section className="rounded-[20px] border bg-card p-4">
-      <h2 className="text-sm font-semibold">Pending</h2>
+    <Panel padded title="Pending">
       {pending.length === 0 ? (
         <p className="mt-2 text-sm text-muted-foreground">Nothing waiting for review.</p>
       ) : (
@@ -22,11 +23,11 @@ export function PendingCard({ transactions, currency }: { transactions: Transact
                   Waiting for review · <RelativeTime iso={t.createdAt} />
                 </p>
               </div>
-              <span className="inline-flex h-5 shrink-0 items-center rounded-full bg-status-pending/12 px-2 text-xs font-medium text-status-pending">Pending</span>
+              <StatusPill tone="pending" className="shrink-0">Pending</StatusPill>
             </li>
           ))}
         </ul>
       )}
-    </section>
+    </Panel>
   );
 }

@@ -4,7 +4,8 @@ export type RecipientState =
   | { kind: 'found'; name: string; handle: string; currency: string }
   | { kind: 'error'; message: string };
 
-const initials = (name: string) => name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+import { initials } from '@/lib/format/initials';
+import { StatusPill } from '@/components/status-pill';
 
 // The chosen recipient, pinned under the field once the dropdown has closed, so the user can read
 // who they're paying while they type the amount. Looking-up and error states live in the dropdown.
@@ -19,7 +20,7 @@ export function RecipientCard({ state }: { state: RecipientState }) {
           @{state.handle} · {state.currency} wallet
         </p>
       </div>
-      <span className="inline-flex h-5 items-center rounded-full bg-status-approved/12 px-2 text-xs font-medium text-status-approved">Found</span>
+      <StatusPill tone="approved">Found</StatusPill>
     </div>
   );
 }

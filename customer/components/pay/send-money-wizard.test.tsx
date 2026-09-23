@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { mockFetch } from '@/lib/test/mock-fetch';
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
@@ -20,9 +21,6 @@ beforeEach(() => {
 const alice = () => new Response(JSON.stringify({ walletId: 'w2', currency: 'USD', recipientName: 'Alice Lee' }), { status: 200, headers: { 'content-type': 'application/json' } });
 const ok = () => new Response(JSON.stringify({ id: 'abc12345-0' }), { status: 201, headers: { 'content-type': 'application/json' } });
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
-function mockFetch(handler: (url: string) => Response) {
-  return vi.spyOn(global, 'fetch').mockImplementation((input) => Promise.resolve(handler(String(input))));
-}
 function wizard() {
   return render(<SendMoneyWizard myWalletId="w1" myCurrency="USD" balance={125000} />);
 }

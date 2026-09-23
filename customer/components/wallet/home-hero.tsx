@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Bell, History, LayoutGrid, Plus, Send } from 'lucide-react';
 import { LiveBalance } from './live-balance';
 import { CopyHandle } from './copy-handle';
+import { initials } from '@/lib/format/initials';
 
 interface HeroWallet {
   id: string;
@@ -15,14 +16,13 @@ interface HeroWallet {
  * rounded card on wider screens. The greeting and name are the page's <h1>.
  */
 export function HomeHero({ greeting, name, handle, wallet, pendingCount = 0 }: { greeting: string; name: string; handle?: string; wallet?: HeroWallet; pendingCount?: number }) {
-  const initials = name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase() || 'ME';
   return (
     <section className="hero-gradient enter-up relative -mx-5 -mt-6 overflow-hidden rounded-b-[32px] px-5 pb-6 pt-[calc(env(safe-area-inset-top)+1.25rem)] text-white shadow-lg shadow-primary/20 md:mx-0 md:mt-0 md:rounded-[32px] md:p-6">
       <div aria-hidden className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full bg-white/10 blur-3xl" />
       <header className="relative flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="flex size-11 items-center justify-center rounded-full bg-white/15 text-sm font-bold ring-1 ring-white/20" aria-hidden>
-            {initials}
+            {initials(name)}
           </span>
           <div>
             <p className="text-[13px] text-white/70">{greeting}!</p>

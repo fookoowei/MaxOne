@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import type { Socket } from 'socket.io-client';
+import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { MarketList, type MarketAsset } from '@/components/markets/market-list';
 import { MarketDataNotice } from '@/components/markets/market-data-notice';
-import { connectSocket } from '@/lib/realtime/socket';
+import { Panel } from '@/components/layout/panel';
+import { useSocket } from '@/lib/realtime/use-socket';
 import { mergeLivePrices } from '@/lib/markets/live-prices';
 
 type Chip = 'all' | 'watching' | 'gainers' | 'losers';
@@ -25,21 +25,8 @@ export function MarketsView({ initialAssets, followedSymbols }: { initialAssets:
   const [q, setQ] = useState('');
   const [chip, setChip] = useState<Chip>('all');
 
-  useEffect(() => {
-    let socket: Socket | undefined;
-    let cancelled = false;
-    (async () => {
-      const res = await fetch('/api/ws-ticket', { method: 'POST' });
-      if (!res.ok || cancelled) return; // live prices are an enhancement — the SSR list stays
-      const { ticket } = (await res.json()) as { ticket: string };
-      if (cancelled) return;
-      socket = connectSocket(ticket);
-      socket.on('prices.updated', (incoming: MarketAsset[]) => setAssets((prev) => mergeLivePrices(prev, incoming)));
-    })();
-    return () => {
-      cancelled = true;
-      socket?.disconnect();
-    };
+  useSocket((socket) => {
+    socket.on('prices.updated', (incoming: MarketAsset[]) => setAssets((prev) => mergeLivePrices(prev, incoming)));
   }, []);
 
   const visible = useMemo(() => {
@@ -69,9 +56,9 @@ export function MarketsView({ initialAssets, followedSymbols }: { initialAssets:
           </Button>
         ))}
       </div>
-      <section className="rounded-[20px] border bg-card px-4 py-1">
+      <Panel>
         <MarketList assets={visible} followedSymbols={followedSymbols} emptyText={empty} />
-      </section>
+      </Panel>
     </div>
   );
 }

@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import { formatChangePct, formatPrice } from '@/lib/format/price';
+import { formatPrice } from '@/lib/format/price';
+import { ChangeText } from '@/components/markets/change-text';
 import { WatchButton } from '@/components/markets/watch-button';
 import { CoinIcon } from '@/components/markets/coin-icon';
-import { cn } from '@/lib/utils';
 
 export interface MarketAsset {
   id: string;
@@ -34,7 +34,7 @@ export function MarketList({ assets, followedSymbols, emptyText = 'Markets are u
             </span>
             <span className="shrink-0 text-right">
               <span className="block text-sm font-semibold tabular">{formatPrice(a.price)}</span>
-              <span className={cn('block text-xs tabular', a.change24h >= 0 ? 'text-status-approved' : 'text-status-rejected')}>{formatChangePct(a.change24h)}</span>
+              <ChangeText pct={a.change24h} className="block text-xs tabular" />
             </span>
           </Link>
           {followedSymbols && <WatchButton symbol={a.symbol} type={a.type} followed={followedSymbols.includes(a.symbol)} />}

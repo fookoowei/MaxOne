@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { WithAside } from '@/components/layout/with-aside';
 import { AccountSummaryCard } from '@/components/profile/account-summary-card';
 import { SecurityStatusCard } from '@/components/profile/security-status-card';
+import { Panel } from '@/components/layout/panel';
 
 export default async function ProfilePage() {
   const session = await getSessionUser();
@@ -38,37 +39,37 @@ export default async function ProfilePage() {
           </div>
         )}
 
-        <section className="space-y-3 rounded-[20px] border bg-card p-4">
+        <Panel padded className="space-y-3">
           <div>
             <h2 className="text-sm font-semibold">Appearance</h2>
             <p className="text-xs text-muted-foreground">Follow your device, or pick one.</p>
           </div>
           <ThemeToggle />
-        </section>
+        </Panel>
 
-        <section className="space-y-3 rounded-[20px] border bg-card p-4">
+        <Panel padded className="space-y-3">
           <h2 className="text-sm font-semibold">Security</h2>
           <p className="text-xs text-muted-foreground">
             Two-factor authentication adds a 6-digit code from your phone to every login.
           </p>
           <TwoFactorSetup initialEnabled={enabled} />
-        </section>
+        </Panel>
 
-        <section className="space-y-3 rounded-[20px] border bg-card p-4">
+        <Panel padded className="space-y-3">
           <h2 className="text-sm font-semibold">Passkeys</h2>
           <p className="text-xs text-muted-foreground">
             Sign in with Face ID, Touch ID or Windows Hello — no password. We only ever store a public key.
           </p>
           <PasskeyManager initial={passkeys} />
-        </section>
+        </Panel>
 
-        <section className="space-y-3 rounded-[20px] border bg-card p-4">
+        <Panel padded className="space-y-3">
           <h2 className="text-sm font-semibold">Account</h2>
           <p className="text-xs text-muted-foreground">
             Signs you out on this device only — other devices keep their own session.
           </p>
           <SignOutButton />
-        </section>
+        </Panel>
       </div>
     </WithAside>
   );

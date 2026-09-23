@@ -1,10 +1,12 @@
 import { redirect } from 'next/navigation';
-import { serverApi } from '@/lib/api/server';
+import { serverApi, serverApiJson } from '@/lib/api/server';
 import { getSessionUser } from '@/lib/auth/session';
 import { WithAside } from '@/components/layout/with-aside';
-import { CardLink } from '@/components/layout/card-link';
+import { IconLink } from '@/components/layout/icon-link';
+import { ArrowUpDown, Plus } from 'lucide-react';
 import { HomeHero } from '@/components/wallet/home-hero';
 import { Enter } from '@/components/layout/enter';
+import { Panel } from '@/components/layout/panel';
 import { QuickActions } from '@/components/wallet/quick-actions';
 import { ActivityCard, type Transaction } from '@/components/wallet/activity-card';
 import { WalletList } from '@/components/wallet/wallet-list';
@@ -27,8 +29,8 @@ export default async function HomePage() {
 
   const [transactions, assets, watched] = await Promise.all([
     primary ? serverApi(`/wallets/${primary.id}/transactions`).then(async (r) => (r.ok ? ((await r.json()) as Transaction[]) : [])) : [],
-    serverApi('/markets').then(async (r) => (r.ok ? ((await r.json()) as Asset[]) : [])).catch(() => [] as Asset[]),
-    serverApi('/watchlist').then(async (r) => (r.ok ? ((await r.json()) as { symbol: string }[]) : [])).catch(() => [] as { symbol: string }[]),
+    serverApiJson<Asset[]>('/markets', []),
+    serverApiJson<{ symbol: string }[]>('/watchlist', []),
   ]);
   const watchedSymbols = new Set(watched.map((w) => w.symbol));
   const watching = assets.filter((a) => watchedSymbols.has(a.symbol));
@@ -58,16 +60,17 @@ export default async function HomePage() {
 
         {wallets.length > 1 && (
           <Enter i={2}>
-            <section className="rounded-[20px] border bg-card px-4 py-1">
-              <div className="flex items-center justify-between py-3">
-                <h2 className="text-sm font-semibold">Your currencies</h2>
-                <div className="flex gap-3">
-                  <CardLink href="/convert">Exchange</CardLink>
-                  <CardLink href="/wallets/new">Add</CardLink>
+            <Panel
+              title="Your currencies"
+              action={
+                <div className="flex gap-2">
+                  <IconLink href="/convert" label="Exchange" icon={ArrowUpDown} />
+                  <IconLink href="/wallets/new" label="Add a currency" icon={Plus} />
                 </div>
-              </div>
+              }
+            >
               <WalletList wallets={wallets} />
-            </section>
+            </Panel>
           </Enter>
         )}
 

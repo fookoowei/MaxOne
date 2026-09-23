@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { PieChart, Plus } from 'lucide-react';
-import { formatChangePct, formatPrice } from '@/lib/format/price';
+import { formatPrice } from '@/lib/format/price';
+import { ChangeText } from '@/components/markets/change-text';
 import { buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/layout/empty-state';
 import { CoinIcon } from '@/components/markets/coin-icon';
@@ -38,7 +39,7 @@ export function HoldingList({ rows }: { rows: HoldingRow[] }) {
           </Link>
           <div className="mr-2 text-right">
             <p className="text-sm font-semibold tabular">{formatPrice(r.value)}</p>
-            <p className={`text-xs tabular ${r.pnl >= 0 ? 'text-status-approved' : 'text-status-rejected'}`}>{formatChangePct(r.pnlPct)}</p>
+            <ChangeText pct={r.pnlPct} className="block text-xs tabular" />
           </div>
           <RemoveHoldingButton symbol={r.symbol} />
         </li>
