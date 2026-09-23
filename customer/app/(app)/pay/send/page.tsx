@@ -14,7 +14,7 @@ export default async function SendPage({ searchParams }: { searchParams: Promise
   if (!primary) redirect('/');
   return (
     <div className="space-y-6 lg:max-w-[560px]">
-      <PageHeader title="Send money" description="Instant, no fee, between MaxOne wallets." back={{ href: '/pay', label: 'Wallet' }} />
+      <PageHeader title="Send money" description="Instant, no fee, between MaxOne wallets." back={{ href: '/pay', label: 'Pay' }} />
       <SendMoneyWizard myWalletId={primary.id} myCurrency={primary.currency} balance={primary.balance} prefillHandle={handle ?? ''} />
     </div>
   );

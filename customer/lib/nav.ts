@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Home, TrendingUp, User, Wallet } from 'lucide-react';
+import { Home, Send, TrendingUp, User } from 'lucide-react';
 
 export interface NavItem {
   href: string;
@@ -10,7 +10,7 @@ export interface NavItem {
 // The four places a customer goes. One list, three shapes (tabs / rail / sidebar) in AppNav.
 export const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
-  { href: '/pay', label: 'Wallet', icon: Wallet },
+  { href: '/pay', label: 'Pay', icon: Send },
   { href: '/markets', label: 'Markets', icon: TrendingUp },
   { href: '/profile', label: 'Profile', icon: User },
 ];
